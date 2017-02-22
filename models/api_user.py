@@ -1,6 +1,8 @@
+import enum as _enum
+import models as _models
 import sqlalchemy as _sql
 
-from models import Model, Base
+from models import Base, Model
 
 
 class APIUser(Model, Base):

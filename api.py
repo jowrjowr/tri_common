@@ -25,7 +25,7 @@ def main():
     options_parser.add_argument("--debug", action="store_true", default=False)
     options_parser.add_argument("--log-single", action="store_true", default=False)
     options_parser.add_argument("--log-verbose", action="store_true", default=False)
-    options_parser.add_argument("--verbose", action="store_true", default=False)
+    options_parser.add_argument("--quiet", action="store_true", default=False)
 
     arguments = parser.parse_args()
 
@@ -36,6 +36,8 @@ def main():
 
     if arguments.debug:
         log_lvl = _logger.LogLevel.DEBUG
+    elif arguments.quiet:
+        log_lvl = _logger.LogLevel.WARNING
 
     if arguments.log_single:
         log_mod = _logger.LogMode.SINGLE
@@ -49,8 +51,6 @@ def main():
     for _, modname, is_pkg in _pkgutil.iter_modules(_endpoints.__path__):
         if is_pkg:
             module = _importlib.import_module("endpoints." + modname)
-            print("registering "+modname)
-            print(getattr(module, 'blueprint'))
             app.register_blueprint(getattr(module, 'blueprint'))
 
 

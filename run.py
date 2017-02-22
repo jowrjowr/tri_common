@@ -93,7 +93,13 @@ class CommandAction(_argparse.Action):
         if option_string[2:] in commands:
             raise Exception("You cannot choose an option twice ({0}).".format(option_string))
 
-        commands[option_string[2:]] = values[0]
+        if values is None or len(values) == 0:
+            commands[option_string[2:]] = None
+        elif type(values) == str:
+            commands[option_string[2:]] = values
+        else:
+            commands[option_string[2:]] = values[0]
+
         setattr(namespace, 'commands', _json.dumps(commands))
 
 if __name__ == '__main__':
