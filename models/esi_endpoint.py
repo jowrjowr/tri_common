@@ -52,5 +52,5 @@ class ESIEndpoint(Model, Base):
                 raise Exception("Parameter {0} has unkown \"in\" value {1}"
                                 .format(parameter['name'], parameter['in']))
 
-            # build url and return
-            return 'https://' + url + "?" + _urlparse.urlencode(query)
+        # build url and return
+        return 'https://' + url + "?" + _urlparse.urlencode(query)
