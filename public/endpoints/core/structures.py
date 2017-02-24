@@ -1,3 +1,6 @@
+from . import blueprint
+
+@blueprint.route("/structures", methods=['GET'])
 def core_structures():
 
     from logger import log
