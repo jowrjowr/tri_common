@@ -53,6 +53,11 @@ def main():
             module = _importlib.import_module("endpoints." + modname)
             app.register_blueprint(getattr(module, 'blueprint'))
 
+    from api.core.structures import core_structures
+    @blueprint.route('/core/structures', methods=['GET'])
+    def api_structures():
+        return core_structures()
+
 
 if __name__ == '__main__':
     main()
