@@ -9,15 +9,19 @@ import json as _json
 import pkgutil as _pkgutil
 
 from flask import Flask, Blueprint, Response
-app = Flask(__name__)
+app = Flask('tri_api')
 
-
-@app.route("/")
 def root():
     return Response(_json.dumps({}), status=200, mimetype='application/json')
+app.add_url_rule('/', 'root', root)
+
+def hello_world():
+    return 'hello world'
+app.add_url_rule('/hello', 'hello', hello_world)
 
 
 def main():
+    print('[DEBUG] loading main()')
     parser = _argparse.ArgumentParser()
 
     # logging options
@@ -54,6 +58,14 @@ def main():
             app.register_blueprint(getattr(module, 'blueprint'))
 
 
-if __name__ == '__main__':
-    main()
-    app.run()
+
+    from endpoints.core.structures import core_structures
+    app.add_url_rule('/core/structures', 'structures', core_structures)
+    from endpoints.core.isblue import core_isblue
+    app.add_url_rule('/core/isblue', 'isblue', core_isblue)
+
+    print('[DEBUG] done loading main()')
+
+main()
+app.run('0.0.0.0',5000)
+

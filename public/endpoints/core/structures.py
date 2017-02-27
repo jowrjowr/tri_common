@@ -1,13 +1,12 @@
-from . import blueprint
-
-@blueprint.route("/structures", methods=['GET'])
 def core_structures():
 
-    from logger import log
     from flask import Flask, request, url_for, json, Response
-    from internal.request_esi import request_esi
+    from joblib import Parallel, delayed
+    from common.request_esi import request_esi
+
+    import logging
     import MySQLdb as mysql
-    import env as ENV
+    import common.database as DATABASE
     import requests
     import json
 
@@ -17,15 +16,14 @@ def core_structures():
     # attempt mysql connection (abort in case of failure)
     try:
         sql_conn = mysql.connect(
-            database=ENV.DB_DATABASE,
-            user= ENV.DB_USERNAME,
-            password=ENV.DB_PASSWORD,
-            host=ENV.DB_HOST)
-        log('mysql.connect', 'success')
+            database=DATABASE.DB_DATABASE,
+            user=DATABASE.DB_USERNAME,
+            password=DATABASE.DB_PASSWORD,
+            host=DATABASE.DB_HOST)
     except mysql.Error as err:
-        log('mysql.connect', format(err))
-        log('mysql.connect', 'aborting...')
-        exit(1)
+        js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
+        resp = Response(js, status=500, mimetype='application/json')
+        return resp
 
     # get all the structure shit for the char in question
 
@@ -92,95 +90,105 @@ def core_structures():
 
     # get name of structures and build the structure dictionary
 
+# parallelize this with joblib
+
     for object in result_parsed:
-
         structure_id = object['structure_id']
-
-        structure = {}
-        try:
-            structure['fuel_expires'] = object['fuel_expires']
-        except:
-            # there seems to be no fuel key if there are no services
-            # unclear on what happens if there are services but no fuel
-            structure['fuel_expires'] = 'N/A'
-
-        structure['structure_id'] = structure_id
-
-        esi_url = baseurl + 'universe/structures/' + str(structure_id)
-        esi_url = esi_url + '?datasource=tranquility'
-        esi_url = esi_url + '&token=' + atoken
-
-        result = request_esi(esi_url)
-        data = json.loads(result)
-
-        # catch errors
-
-        try:
-            structure['name'] = data['name']
-        except:
-            # try a graceful fail
-            structure['name'] = 'Unknown'
-            structure['system'] = 'Unknown'
-            structure['region'] = 'Unknown'
-            error = data['error']
-            error_code = data['code']
-            log('core.structures','unable to retreive structure info for ' + str(structure_id) + 'code: ' + error_code + ' error: ' + str(error))
-            structures[structure_id] = structure
-            continue
-
-        # get solar system info
-        # step 1: get name and constellation
-
-        system_id = data['solar_system_id']
-        esi_url = baseurl + 'universe/systems/' + str(system_id)
-        esi_url = esi_url + '?datasource=tranquility'
-
-        result = request_esi(esi_url)
-        data = json.loads(result)
-
-        try:
-            constellation_id = data['constellation_id']
-            structure['system'] = data['name']
-        except:
-            structures[structure_id] = structure
-            error = data['error']
-            error_code = data['code']
-            log('core.structures','unable to retreive system info for ' + str(system_id) + 'code: ' + error_code + ' error: ' + str(error))
-            continue
-
-        # step 2: get the constellation info
-
-        esi_url = baseurl + 'universe/constellations/'+str(constellation_id)
-        esi_url = esi_url + '?datasource=tranquility'
-
-        result = request_esi(esi_url)
-        data = json.loads(result)
-
-        try:
-            region_id = data['region_id']
-        except:
-            structures[structure_id] = structure
-            error = data['error']
-            error_code = data['code']
-            log('core.structures','unable to retreive constellation info for ' + str(constellation_id) + 'code: ' + error_code + ' error: ' + str(error))
-            continue
-
-        # step 3: get region name
-        esi_url = baseurl + 'universe/regions/'+str(region_id)
-        esi_url = esi_url + '?datasource=tranquility'
-
-        result = request_esi(esi_url)
-        data = json.loads(result)
-
-        try:
-            structure['region'] = data['name']
-        except:
-            structures[structure_id] = structure
-            error = data['error']
-            error_code = data['code']
-            log('core.structures','unable to retreive region info for ' + str(region_id) + 'code: ' + error_code + ' error: ' + str(error))
-            continue
-        structures[structure_id] = structure
-
+        structures[structure_id] = structure_info(baseurl, atoken, structure_id)
     sql_conn.close()
     return json.dumps(structures)
+
+def structure_info(baseurl, atoken, structure_id):
+
+    from common.request_esi import request_esi
+    import logging
+    import MySQLdb as mysql
+    import common.database as DATABASE
+    import requests
+    import json
+
+    structure = {}
+    try:
+        structure['fuel_expires'] = object['fuel_expires']
+    except:
+        # there seems to be no fuel key if there are no services
+        # unclear on what happens if there are services but no fuel
+        structure['fuel_expires'] = 'N/A'
+
+    structure['structure_id'] = structure_id
+
+    esi_url = baseurl + 'universe/structures/' + str(structure_id)
+    esi_url = esi_url + '?datasource=tranquility'
+    esi_url = esi_url + '&token=' + atoken
+
+    result = request_esi(esi_url)
+    data = json.loads(result)
+
+    # catch errors
+
+    try:
+        structure['name'] = data['name']
+    except:
+        # try a graceful fail
+        structure['name'] = 'Unknown'
+        structure['system'] = 'Unknown'
+        structure['region'] = 'Unknown'
+        error = data['error']
+        error_code = data['code']
+        logging.error('unable to retreive structure info for ' + str(structure_id) + 'code: ' + error_code + ' error: ' + str(error))
+        return structure
+
+    # get solar system info
+    # step 1: get name and constellation
+
+    system_id = data['solar_system_id']
+    esi_url = baseurl + 'universe/systems/' + str(system_id)
+    esi_url = esi_url + '?datasource=tranquility'
+
+    result = request_esi(esi_url)
+    data = json.loads(result)
+
+    try:
+        constellation_id = data['constellation_id']
+        structure['system'] = data['name']
+    except:
+        structures[structure_id] = structure
+        error = data['error']
+        error_code = data['code']
+        logging.error('unable to retreive system info for ' + str(system_id) + 'code: ' + error_code + ' error: ' + str(error))
+        return structure
+
+    # step 2: get the constellation info
+
+    esi_url = baseurl + 'universe/constellations/'+str(constellation_id)
+    esi_url = esi_url + '?datasource=tranquility'
+
+    result = request_esi(esi_url)
+    data = json.loads(result)
+
+    try:
+        region_id = data['region_id']
+    except:
+        structures[structure_id] = structure
+        error = data['error']
+        error_code = data['code']
+        logging.error('unable to retreive constellation info for ' + str(constellation_id) + 'code: ' + error_code + ' error: ' + str(error))
+        return structure
+
+    # step 3: get region name
+    esi_url = baseurl + 'universe/regions/'+str(region_id)
+    esi_url = esi_url + '?datasource=tranquility'
+
+    result = request_esi(esi_url)
+    data = json.loads(result)
+
+    try:
+        structure['region'] = data['name']
+    except:
+        structures[structure_id] = structure
+        error = data['error']
+        error_code = data['code']
+        logging.error('unable to retreive region info for ' + str(region_id) + 'code: ' + error_code + ' error: ' + str(error))
+        return structure
+
+    return structure
