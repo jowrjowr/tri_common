@@ -4,7 +4,11 @@
 def request_esi(url):
 
     import requests
+    import logging
     import json
+
+    # without configuring logging, requests will spew connection nonsense to log
+    logging.getLogger("requests").setLevel(logging.WARNING)
 
     headers = {'Accept': 'application/json'}
 
