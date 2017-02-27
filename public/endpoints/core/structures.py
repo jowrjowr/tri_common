@@ -94,11 +94,11 @@ def core_structures():
 
     for object in result_parsed:
         structure_id = object['structure_id']
-        structures[structure_id] = structure_info(baseurl, atoken, structure_id)
+        structures[structure_id] = structure_parse(baseurl, atoken, object, structure_id)
     sql_conn.close()
     return json.dumps(structures)
 
-def structure_info(baseurl, atoken, structure_id):
+def structure_parse(baseurl, atoken, object, structure_id):
 
     from common.request_esi import request_esi
     import logging
@@ -137,6 +137,24 @@ def structure_info(baseurl, atoken, structure_id):
         error_code = data['code']
         logging.error('unable to retreive structure info for ' + str(structure_id) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
+
+
+    # get structure type name
+
+    typeid = data['type_id']
+    esi_url = baseurl + 'universe/types/' + str(typeid)
+    esi_url = esi_url + '?datasource=tranquility'
+
+    result = request_esi(esi_url)
+    typedata = json.loads(result)
+
+    try:
+        structure['type_name'] = typedata['name']
+    except:
+        structure['type_name'] = 'Unknown'
+        logging.error('unable to retreive typeid info for ' + str(typeid) + 'code: ' + error_code + ' error: ' + str(error))
+        return structure
+
 
     # get solar system info
     # step 1: get name and constellation
