@@ -70,66 +70,51 @@ def core_isblue():
     headers = {'Accept': 'application/json'}
 
     # do the request, but catch exceptions for connection issues
+    request = request_esi(esi_url)
+    result_parsed = json.loads(request)
+
+    # catch errors
+
     try:
-        request = requests.get(esi_url, headers=headers)
-    except ConnectionError as err:
-        js = json.dumps({ 'code': -1, 'error': 'API connection error: ' + str(err)})
-        resp = Response(js, status=401, mimetype='application/json')
+        error = result_parsed['error']
+        error_code = result_parsed['code']
+        resp = Response(result, status=error_code, mimetype='application/json')
         return resp
-    except Timeout as err:
-        js = json.dumps({ 'code': -1, 'error': 'API connection timeout: ' + str(err)})
-        resp = Response(js, status=401, mimetype='application/json')
-        return resp
+    except:
+        # no error. continue.
+        pass
 
-    ##### TODO: ACTUAL LOGGING OF ISSUES SUCH AS THIS
 
-    # so given this is the final test, if the return is 404 then
-    # it isn't a valid char (or blue corp/alliance) so we're done
-
-    if 400 <= request.status_code <= 499:
-        js = json.dumps({ 'code': 0 })
-        resp = Response(js, status=200, mimetype='application/json')
-        return resp
-
-    # need to also check that the api thinks this was success.
-
-    if not 200 <= request.status_code <=299:
-        js = json.dumps({ 'code': -1, 'error': 'API error. /characters endpoint. id: ' + str(id) + ' http code: ' + str(request.status_code) })
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-
-    parsed_json = json.loads(request.text)
     # parse out the corp/alliance ids and test
 
     try:
-        alliance_id = parsed_json['alliance_id']
+        alliance_id = result_parsed['alliance_id']
     except KeyError:
-        alliance_id = '0'
+        alliance_id = 0
 
     if alliance_id > 0:
         test_result_json = str(test_alliance(sql_conn, alliance_id))
         test_result = json.loads(str(test_result_json))
-
-    if test_result['code'] == -1:
-        # shit's broken. we're done parsing.
-        resp = Response(test_result_json, status=401, mimetype='application/json')
-        return resp
-    elif test_result['code'] == 1:
-        # blue. done parsing.
-        resp = Response(test_result_json, status=200, mimetype='application/json')
-        return resp
+        if test_result['code'] == -1:
+            # shit's broken. we're done parsing.
+            resp = Response(test_result_json, status=401, mimetype='application/json')
+            return resp
+        elif test_result['code'] == 1:
+            # blue. done parsing.
+            resp = Response(test_result_json, status=200, mimetype='application/json')
+            return resp
 
     # test as a corp
 
     try:
-        corporation_id = parsed_json['corporation_id']
+        corporation_id = result_parsed['corporation_id']
     except KeyError:
         # not sure how this can happen but leaving the try anyway
         corporation_id = 'None'
 
     test_result_json = str(test_corp(sql_conn, baseurl, id))
     test_result = json.loads(str(test_result_json))
-#    print(test_result)
+
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
         resp = Response(test_result_json, status=401, mimetype='application/json')
@@ -182,6 +167,7 @@ def test_corp(sql_conn, baseurl, corp_id):
     # alliance are blue to us
 
     from flask import Flask, request, url_for, json, Response
+    from common.request_esi import request_esi
     import requests
     import json
 
@@ -192,31 +178,22 @@ def test_corp(sql_conn, baseurl, corp_id):
 #    print('meow')
 
     # do the request, but catch exceptions for connection issues
-    try:
-        request = requests.get(esi_url, headers=headers)
-    except ConnectionError as err:
-        js = json.dumps({ 'code': -1, 'error': 'API connection error: ' + str(err)})
-        return js
-    except Timeout as err:
-        js = json.dumps({ 'code': -1, 'error': 'API connection timeout: ' + str(err)})
-        return js
+    request = request_esi(esi_url)
+    result_parsed = json.loads(request)
 
-    # is this even a corp?
-
-    if 400 <= request.status_code <= 499:
-        # nope
-        js = json.dumps({ 'code': 0 })
-        return js
-    if not 200 <= request.status_code <=299:
-        print(request.text)
-        js = json.dumps({ 'code': -1, 'error': 'API error. /corporations endpoint. id: ' + str(corp_id) + ' http code: ' + str(request.status_code) })
-        return js
-
-    # asssuming this is a corp...
-    parsed_json = json.loads(request.text)
+    # catch errors
 
     try:
-        alliance_id = parsed_json['alliance_id']
+        error = result_parsed['error']
+        error_code = result_parsed['code']
+        resp = Response(result, status=error_code, mimetype='application/json')
+        return resp
+    except:
+        # no error. continue.
+        pass
+
+    try:
+        alliance_id = result_parsed['alliance_id']
     except KeyError:
         # no alliance id. the test for blue on corpid was done earlier
         # so this isn't blue.
@@ -231,6 +208,7 @@ def test_corp(sql_conn, baseurl, corp_id):
 def test_alliance(sql_conn, alliance_id):
 
     from flask import Flask, request, url_for, json, Response
+    from common.request_esi import request_esi
     import requests
     import json
 
