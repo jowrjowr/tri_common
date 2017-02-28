@@ -1,0 +1,20 @@
+[Unit]
+Description=uWSGI for tri_api
+After=syslog.target
+
+[Service]
+Environment="PYTHONPATH=/srv/api/public"
+WorkingDirectory=/srv/api/public
+ExecStart=/usr/local/bin/uwsgi --ini /srv/api/config/tri_api.ini --uid www-data --gid www-data -w api --pidfile /run/uwsgi/tri_api.pid
+RuntimeDirectory=uwsgi
+User=www-data
+Group=www-data
+Restart=always
+KillSignal=SIGQUIT
+Type=simple
+StandardError=syslog
+NotifyAccess=all
+PIDFile=/run/uwsgi/tri_api.pid
+
+[Install]
+WantedBy=multi-user.target
