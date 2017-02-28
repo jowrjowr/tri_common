@@ -4,13 +4,25 @@
 def request_esi(url):
 
     import requests
+    import requests_cache
     import logging
     import json
+    import redis
 
     # without configuring logging, requests will spew connection nonsense to log
     logging.getLogger("requests").setLevel(logging.WARNING)
 
     headers = {'Accept': 'application/json'}
+
+    # setup redis caching for the requests object
+    # half hour cache seems like a reasonable start
+
+    try:
+        r = redis.StrictRedis(host='localhost', port=6379, db=0)
+        requests_cache.install_cache(cache_name='esi_cache', backend='redis', expire_after=1800, connection=r)
+    except ConnectionRefusedError as redis_error:
+        logger.error('Unable to connect to redis: ' + str(redis_error))
+        pass
 
     # do the request, but catch exceptions for connection issues
     try:
