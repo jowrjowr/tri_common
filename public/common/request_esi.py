@@ -26,13 +26,16 @@ def request_esi(url):
 
     # do the request, but catch exceptions for connection issues
     try:
-        request = requests.get(url, headers=headers)
+        request = requests.get(url, headers=headers, timeout=10)
     except ConnectionError as err:
         js = json.dumps({ 'code': 500, 'error': 'API connection error: ' + str(err)})
-        return re
+        return js
     except Timeout as err:
         js = json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
-        return re
+        return js
+    except Exception as err:
+        js = json.dumps({ 'code': 500, 'error': 'General error: ' + str(err)})
+        return js
 
     ##### TODO: ACTUAL LOGGING OF ISSUES SUCH AS THIS
 

@@ -1,10 +1,8 @@
-
-
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
     from common.request_esi import request_esi
-    import logging
+    import common.logger as _logger
     import MySQLdb as mysql
     import common.database as DATABASE
     import requests
@@ -24,11 +22,13 @@ def core_isblue():
             password=DATABASE.DB_PASSWORD,
             host=DATABASE.DB_HOST)
     except mysql.Error as err:
+        _logger.log('mysql error: ' + str(err), _logger.LogLevel.ERROR)
         js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
     if 'id' not in request.args:
+        _logger.log('no id', _logger.LogLevel.WARNING)
         js = json.dumps({ 'code': -1, 'error': 'need an id to check'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -38,6 +38,7 @@ def core_isblue():
     try:
         id = int(request.args['id'])
     except ValueError:
+        _logger.log('invalid id: ' + str(id), _logger.LogLevel.WARNING)
         js = json.dumps({ 'code': -1, 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -52,6 +53,7 @@ def core_isblue():
         row = cursor.execute(query, (id,))
         cursor.close()
     except Exception as errmsg:
+        _logger.log('mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
         js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -72,7 +74,6 @@ def core_isblue():
     # do the request, but catch exceptions for connection issues
     request = request_esi(esi_url)
     result_parsed = json.loads(request)
-
     # catch errors
 
     try:
