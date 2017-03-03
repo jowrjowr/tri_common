@@ -111,8 +111,8 @@ def core_isblue():
         # not sure how this can happen but leaving the try anyway
         corporation_id = 'None'
 
-    test_result_json = str(test_corp(sql_conn, baseurl, id))
-    test_result = json.loads(str(test_result_json))
+    test_result_json = test_corp(sql_conn, baseurl, id)
+    test_result = json.loads(test_result_json)
 
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
@@ -124,9 +124,7 @@ def core_isblue():
         return resp
 
     # test it as an alliance
-#    print('alliance test')
     test_result_json = str(test_alliance(sql_conn, id))
-#    print('alliance test done')
     test_result = json.loads(str(test_result_json))
 
     if test_result['code'] == -1:
@@ -142,10 +140,8 @@ def core_isblue():
     # the /corporations endpoint is the least stable so we hit it last
     # see: https://github.com/ccpgames/esi-issues/issues/294
 
-#    print('corp test')
-    test_result_json = str(test_corp(sql_conn, baseurl, id))
-    test_result = json.loads(str(test_result_json))
-#    print('corp test done')
+    test_result_json = test_corp(sql_conn, baseurl, id)
+    test_result = json.loads(test_result_json)
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
         return test_result_json
@@ -183,11 +179,9 @@ def test_corp(sql_conn, baseurl, corp_id):
         if not error.code == 404:
             # something broke severely
             _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            resp = Response(error.message, status=error.code, mimetype='application/json')
-            return resp
+            return error.message
         # 404 simply means this was not found as a corp
         pass
-
     result_parsed = json.loads(request)
 
     try:

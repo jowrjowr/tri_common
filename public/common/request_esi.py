@@ -27,13 +27,10 @@ def esi(function, url):
         r.client_list()
         requests_cache.install_cache(cache_name='esi_cache', backend='redis', expire_after=1800, connection=r)
     except redis.exceptions.ConnectionError as err:
-        print(err)
         _logger.log('[' + function + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
     except redis.exceptions.ConnectionRefusedError as err:
-        print(err)
         _logger.log('[' + function + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
     except Exception as err:
-        print(err)
         logger.error('[' + function + '] Redis generic error: ' + str(err))
 
     # do the request, but catch exceptions for connection issues
@@ -41,21 +38,17 @@ def esi(function, url):
         request = requests.get(url, headers=headers, timeout=10)
     except requests.exceptions.ConnectionError as err:
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'API connection error: ' + str(err)})
-        return js
+        return json.dumps({ 'code': 500, 'error': 'API connection error: ' + str(err)})
     except requests.exceptions.ReadTimeout as err:
         _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
-        return js
+        return json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
     except requests.exceptions.Timeout as err:
         _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
-        return js
+        return json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
         _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'General error: ' + str(err)})
-        return js
-
+        return json.dumps({ 'code': 500, 'error': 'General error: ' + str(err)})
+    #print(request.text)
     # need to also check that the api thinks this was success.
 
     if not request.status_code == 200:
@@ -63,11 +56,14 @@ def esi(function, url):
         if not request.status_code == 404:
             _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.ERROR)
             _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.ERROR)
-        raise NotHttp200(request.status_code, request.text)
+        NotHttp200(request.status_code, request.text)
 
     # assume everything is ok. return json result.
 
-    return request.text
+    # shouldn't have to typecast it but sometimes:
+    # TypeError: the JSON object must be str, not 'LocalProxy'
+
+    return str(request.text)
 
 
 class Error(Exception):
