@@ -1,13 +1,12 @@
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
-    from common.request_esi import request_esi
+    import common.request_esi
     import common.logger as _logger
     import MySQLdb as mysql
     import common.database as DATABASE
     import requests
     import json
-
 
     # core isblue function that tells whether a user, corp, or alliance is currently blue to triumvirate
 
@@ -22,13 +21,13 @@ def core_isblue():
             password=DATABASE.DB_PASSWORD,
             host=DATABASE.DB_HOST)
     except mysql.Error as err:
-        _logger.log('mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
     if 'id' not in request.args:
-        _logger.log('no id', _logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] no id', _logger.LogLevel.WARNING)
         js = json.dumps({ 'code': -1, 'error': 'need an id to check'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -38,7 +37,7 @@ def core_isblue():
     try:
         id = int(request.args['id'])
     except ValueError:
-        _logger.log('invalid id: ' + str(id), _logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] invalid id: ' + str(request.args['id']), _logger.LogLevel.WARNING)
         js = json.dumps({ 'code': -1, 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -53,7 +52,7 @@ def core_isblue():
         row = cursor.execute(query, (id,))
         cursor.close()
     except Exception as errmsg:
-        _logger.log('mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
         js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -72,19 +71,18 @@ def core_isblue():
     headers = {'Accept': 'application/json'}
 
     # do the request, but catch exceptions for connection issues
-    request = request_esi(esi_url)
-    result_parsed = json.loads(request)
-    # catch errors
-
     try:
-        error = result_parsed['error']
-        error_code = result_parsed['code']
-        resp = Response(result, status=error_code, mimetype='application/json')
-        return resp
-    except:
-        # no error. continue.
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        if not error.code == 404:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /characters API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+            resp = Response(error.message, status=error.code, mimetype='application/json')
+            return resp
+        # 404 simply means this was not found as a character
         pass
 
+    result_parsed = json.loads(request)
 
     # parse out the corp/alliance ids and test
 
@@ -168,7 +166,8 @@ def test_corp(sql_conn, baseurl, corp_id):
     # alliance are blue to us
 
     from flask import Flask, request, url_for, json, Response
-    from common.request_esi import request_esi
+    import common.request_esi
+    import common.logger as _logger
     import requests
     import json
 
@@ -176,22 +175,20 @@ def test_corp(sql_conn, baseurl, corp_id):
 
     esi_url = baseurl + 'corporations/' + str(corp_id) + '/?datasource=tranquility'
     headers = {'Accept': 'application/json'}
-#    print('meow')
 
     # do the request, but catch exceptions for connection issues
-    request = request_esi(esi_url)
-    result_parsed = json.loads(request)
-
-    # catch errors
-
     try:
-        error = result_parsed['error']
-        error_code = result_parsed['code']
-        resp = Response(result, status=error_code, mimetype='application/json')
-        return resp
-    except:
-        # no error. continue.
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        if not error.code == 404:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+            resp = Response(error.message, status=error.code, mimetype='application/json')
+            return resp
+        # 404 simply means this was not found as a corp
         pass
+
+    result_parsed = json.loads(request)
 
     try:
         alliance_id = result_parsed['alliance_id']
@@ -209,7 +206,7 @@ def test_corp(sql_conn, baseurl, corp_id):
 def test_alliance(sql_conn, alliance_id):
 
     from flask import Flask, request, url_for, json, Response
-    from common.request_esi import request_esi
+    import common.logger as _logger
     import requests
     import json
 

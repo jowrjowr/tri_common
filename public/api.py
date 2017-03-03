@@ -34,7 +34,7 @@ def main():
     arguments = parser.parse_args()
 
     # initialize logging
-    log_lvl = _logger.LogLevel.INFO
+    log_lvl = _logger.LogLevel.DEBUG
     log_mod = _logger.LogMode.DAILY
     log_fmt = _logger.LogFormat.SIMPLE
 

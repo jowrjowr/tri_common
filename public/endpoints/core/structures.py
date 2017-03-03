@@ -2,11 +2,11 @@ def core_structures():
 
     from flask import Flask, request, url_for, json, Response
     from joblib import Parallel, delayed
-    from common.request_esi import request_esi
 
-    import logging
+    import common.logger as _logger
     import MySQLdb as mysql
     import common.database as DATABASE
+    import common.request_esi
     import requests
     import json
 
@@ -72,19 +72,15 @@ def core_structures():
 
     # get all structures that this token has access to
 
-    result = request_esi(esi_url)
-    result_parsed = json.loads(result)
-
-    # catch errors
-
+    # do the request, but catch exceptions for connection issues
     try:
-        error = result_parsed['error']
-        error_code = result_parsed['code']
-        resp = Response(result, status=error_code, mimetype='application/json')
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        # something broke severely
+        _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        resp = Response(error.message, status=error.code, mimetype='application/json')
         return resp
-    except:
-        # no error. continue.
-        pass
+    result_parsed = json.loads(request)
 
     structures = {}
 
@@ -100,10 +96,10 @@ def core_structures():
 
 def structure_parse(baseurl, atoken, object, structure_id):
 
-    from common.request_esi import request_esi
-    import logging
+    import common.logger as _logger
     import MySQLdb as mysql
     import common.database as DATABASE
+    import common.request_esi
     import requests
     import json
 
@@ -121,8 +117,13 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = esi_url + '?datasource=tranquility'
     esi_url = esi_url + '&token=' + atoken
 
-    result = request_esi(esi_url)
-    data = json.loads(result)
+    try:
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        # kinder, gentler error handling
+        pass
+    data = json.loads(request)
 
     # catch errors
 
@@ -135,7 +136,6 @@ def structure_parse(baseurl, atoken, object, structure_id):
         structure['region'] = 'Unknown'
         error = data['error']
         error_code = data['code']
-        logging.error('unable to retreive structure info for ' + str(structure_id) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
 
 
@@ -145,14 +145,18 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/types/' + str(typeid)
     esi_url = esi_url + '?datasource=tranquility'
 
-    result = request_esi(esi_url)
-    typedata = json.loads(result)
+    try:
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        _logger.log('[' + __name__ + '] /universe/types API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        # kinder, gentler error handling
+        pass
+    typedata = json.loads(request)
 
     try:
         structure['type_name'] = typedata['name']
     except:
         structure['type_name'] = 'Unknown'
-        logging.error('unable to retreive typeid info for ' + str(typeid) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
 
 
@@ -163,8 +167,13 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/systems/' + str(system_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    result = request_esi(esi_url)
-    data = json.loads(result)
+    try:
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        # kinder, gentler error handling
+        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        pass
+    data = json.loads(request)
 
     try:
         constellation_id = data['constellation_id']
@@ -173,7 +182,6 @@ def structure_parse(baseurl, atoken, object, structure_id):
         structures[structure_id] = structure
         error = data['error']
         error_code = data['code']
-        logging.error('unable to retreive system info for ' + str(system_id) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
 
     # step 2: get the constellation info
@@ -181,8 +189,13 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/constellations/'+str(constellation_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    result = request_esi(esi_url)
-    data = json.loads(result)
+    try:
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        # kinder, gentler error handling
+        _logger.log('[' + __name__ + '] /universe/constellations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        pass
+    data = json.loads(request)
 
     try:
         region_id = data['region_id']
@@ -190,15 +203,19 @@ def structure_parse(baseurl, atoken, object, structure_id):
         structures[structure_id] = structure
         error = data['error']
         error_code = data['code']
-        logging.error('unable to retreive constellation info for ' + str(constellation_id) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
 
     # step 3: get region name
     esi_url = baseurl + 'universe/regions/'+str(region_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    result = request_esi(esi_url)
-    data = json.loads(result)
+    try:
+        request = common.request_esi.esi(__name__, esi_url)
+    except common.request_esi.NotHttp200 as error:
+        # kinder, gentler error handling
+        _logger.log('[' + __name__ + '] /universe/regions API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        pass
+    data = json.loads(request)
 
     try:
         structure['region'] = data['name']
@@ -206,7 +223,6 @@ def structure_parse(baseurl, atoken, object, structure_id):
         structures[structure_id] = structure
         error = data['error']
         error_code = data['code']
-        logging.error('unable to retreive region info for ' + str(region_id) + 'code: ' + error_code + ' error: ' + str(error))
         return structure
 
     return structure
