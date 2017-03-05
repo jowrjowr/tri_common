@@ -112,6 +112,10 @@ def core_isblue():
         corporation_id = 'None'
 
     test_result_json = test_corp(sql_conn, baseurl, id)
+
+    if test_result_json == None:
+        resp = Response("{'error': 'Emtpy JSON'}", status=500, mimetype='application/json')
+        return resp
     test_result = json.loads(test_result_json)
 
     if test_result['code'] == -1:
