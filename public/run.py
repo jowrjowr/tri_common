@@ -46,7 +46,7 @@ def main():
     # initialize logging
     log_lvl = _logger.LogLevel.INFO
     log_mod = _logger.LogMode.DAILY
-    log_fmt = _logger.LogFormat.SIMPLE
+    log_fmt = _logger.LogFormat.TIMESTAMP
 
     if arguments.debug:
         log_lvl = _logger.LogLevel.DEBUG
