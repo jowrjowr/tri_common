@@ -88,19 +88,31 @@ def user_validate(charid, charname):
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return
 
-    cursor = sql_conn.cursor()
-    query = 'DELETE FROM Users WHERE charID = %s'
+    # purge from relevant tables that key off charID
+    # SRP and Security are deliberately left out.
 
-    try:
-        row = cursor.execute(query, (charid,))
-    except Exception as errmsg:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        return
-    finally:
-        cursor.close()
-        sql_conn.commit()
-        sql_conn.close()
+    tables = [
+        'CoreCREST','CoreCharSkillInTraining','CoreCharSkills','CorePackActive','CoreSkillPackValidator',
+        'CoreSkillPlanChecker','CoreSkillsQueue','CoreStatus','CrestNM','CrestTokens','FleetTrackerMemberLog',
+        'SkillTraining','Skills','SuperUsers','Teamspeak','Users','UsersSettings','Wallets','sessions'
+    ]
 
+
+    for table in tables:
+        cursor = sql_conn.cursor()
+        query = 'DELETE FROM ' + table + ' WHERE charID = %s'
+        try:
+            row = cursor.execute(query, (charid,))
+        except Exception as errmsg:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
+            return
+        finally:
+            sql_conn.commit()
+            cursor.close()
+
+        _logger.log('[' + __name__ + '] CharID {0} purged from {1}'.format(charid, table), _logger.LogLevel.DEBUG)
+
+    sql_conn.close()
     _logger.log('[' + __name__ + '] CORE user {0} removed'.format(charname),_logger.LogLevel.WARNING)
 
     return
