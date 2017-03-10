@@ -89,7 +89,7 @@ def user_validate(serviceuser):
 
     if row == 1:
         # we're done.
-        _logger.log('[' + __name__ + '] ...user {0} valid'.format(serviceuser),_logger.LogLevel.DEBUG)
+        #_logger.log('[' + __name__ + '] ...user {0} valid'.format(serviceuser),_logger.LogLevel.DEBUG)
         return
 
     # oops orphan. we hate orphans.
