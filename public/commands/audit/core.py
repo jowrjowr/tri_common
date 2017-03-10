@@ -101,9 +101,8 @@ def user_validate(charid, charname):
     # SRP and Security are deliberately left out.
 
     tables = [
-        'CoreCREST','CoreCharSkillInTraining','CoreCharSkills','CorePackActive','CoreSkillPackValidator',
-        'CoreSkillPlanChecker','CoreSkillsQueue','CoreStatus','CrestNM','CrestTokens','FleetTrackerMemberLog',
-        'SkillTraining','Skills','SuperUsers','Teamspeak','Users','UsersSettings','Wallets','sessions'
+        'CrestNM','CrestTokens','SRP','Security','SkillTraining',
+        'Skills','SuperUsers','Teamspeak','Users','UsersSettings','sessions'
     ]
 
 
