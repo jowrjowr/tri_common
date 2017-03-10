@@ -9,6 +9,7 @@ from commands import Command, InvalidArgument
 from commands.audit.jabber import audit_jabber
 from commands.audit.teamspeak import audit_teamspeak
 from commands.audit.core import audit_core
+from commands.audit.coregroups import audit_coregroups
 
 class Audit(Command):
     __description__ = "Audit Tri core for users who have left the coalition"
@@ -22,5 +23,7 @@ class Audit(Command):
         audit_jabber()
         _logger.log('[' + __name__ + '] teamspeak audit', _logger.LogLevel.DEBUG)
         audit_teamspeak()
+        _logger.log('[' + __name__ + '] core group audit', _logger.LogLevel.DEBUG)
+        audit_coregroups()
 
         return kwargs
