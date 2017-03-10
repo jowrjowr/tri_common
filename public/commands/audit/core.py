@@ -23,25 +23,34 @@ def audit_core():
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return
 
-    cursor = sql_conn.cursor()
-    query = 'SELECT charID, charName from Users where isMain=1'
-    try:
-        count = cursor.execute(query)
-    except Exception as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+    # the three tables we want to keep audited are:
+    # Users (core users)
+    # Teamspeak (ts3 users)
+    # CrestTokens (SSO tokens)
+
+    # there's a cost to having bullshit in those
+
+    tables = [ 'CrestTokens', 'Users', 'Teamspeak' ]
+
+    for table in tables:
+        cursor = sql_conn.cursor()
+        query = 'SELECT charID, charName from {0}'.format(table)
+        try:
+            count = cursor.execute(query)
+        except Exception as err:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+            return
+        _logger.log('[' + __name__ + '] number of users in core table {0}: {1}'.format(table,str(count)), _logger.LogLevel.INFO)
+
+        rows = cursor.fetchall()
+
+        # loop and audit each individual user
+
+        for row in rows:
+            charid = row[0]
+            charname = row[1]
+            user_validate(charid, charname)
         return
-    _logger.log('[' + __name__ + '] number of users in core: ' + str(count), _logger.LogLevel.DEBUG)
-
-    rows = cursor.fetchall()
-
-    # loop and audit each one
-
-    for row in rows:
-        charid = row[0]
-        charname = row[1]
-        user_validate(charid, charname)
-    return
-
 
 def user_validate(charid, charname):
 
