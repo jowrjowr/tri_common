@@ -48,6 +48,7 @@ def audit_teamspeak():
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.WARNING)
 
     loop = asyncio.new_event_loop()
+
     for user in resp.parsed:
         serviceuser = user['client_nickname']
         _logger.log('[' + __name__ + '] Validating ts3 user {0}'.format(serviceuser),_logger.LogLevel.DEBUG)
@@ -93,7 +94,7 @@ async def group_validate(ts3_groupid):
     import json
     import time
     import ts3
-
+    import asyncio
 
     # do not validate certain group ids
     # gid 8: guest
@@ -123,9 +124,11 @@ async def group_validate(ts3_groupid):
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.WARNING)
 
+    loop = asyncio.get_event_loop()
+
     for user in resp.parsed:
         user_id = user['cldbid']
-        user_validate(user_id)
+        loop.run_until_complete(user_validate(user_id))
 
 async def user_validate(ts3_userid):
 
