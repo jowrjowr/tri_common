@@ -11,6 +11,7 @@ from commands.audit.jabber import audit_jabber
 from commands.audit.teamspeak import audit_teamspeak
 from commands.audit.core import audit_core
 from commands.audit.coregroups import audit_coregroups
+from commands.audit.bothunt import audit_bothunt
 
 class Audit(Command):
     __description__ = "Audit Tri core for users who have left the coalition"
@@ -26,5 +27,7 @@ class Audit(Command):
         audit_teamspeak()
         _logger.log('[' + __name__ + '] core group audit', _logger.LogLevel.DEBUG)
         audit_coregroups()
+        _logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
+        audit_bothunt()
 
         return kwargs
