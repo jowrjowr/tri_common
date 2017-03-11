@@ -1,3 +1,5 @@
+import asyncio
+
 def audit_teamspeak():
 
     import common.database as _database
@@ -45,6 +47,7 @@ def audit_teamspeak():
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.WARNING)
 
+    loop = asyncio.new_event_loop()
     for user in resp.parsed:
         serviceuser = user['client_nickname']
         _logger.log('[' + __name__ + '] Validating ts3 user {0}'.format(serviceuser),_logger.LogLevel.DEBUG)
@@ -59,7 +62,7 @@ def audit_teamspeak():
             # otherwise:
 
             ts3_userid = user['cldbid']
-            user_validate(ts3_userid)
+            loop.run_until_complete(user_validate(ts3_userid))
 
 
     # iterate through ts3 groups and validate assigned users
@@ -73,11 +76,13 @@ def audit_teamspeak():
         groupname = group['name']
         groupid = group['sgid']
         _logger.log('[' + __name__ + '] Validating ts3 group ({0}) {1}'.format(groupid, groupname),_logger.LogLevel.DEBUG)
-        group_validate(groupid)
+        loop.run_until_complete(group_validate(groupid))
 
+    loop.close()
     return ''
 
-def group_validate(ts3_groupid):
+
+async def group_validate(ts3_groupid):
 
     # iterate through a given ts3 group and validate each individual userid
     import common.ts3 as _ts3
@@ -122,7 +127,7 @@ def group_validate(ts3_groupid):
         user_id = user['cldbid']
         user_validate(user_id)
 
-def user_validate(ts3_userid):
+async def user_validate(ts3_userid):
 
     # validate a given user against the core database
     import MySQLdb as mysql

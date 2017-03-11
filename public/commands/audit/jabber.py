@@ -1,3 +1,5 @@
+import asyncio
+
 def audit_jabber():
 
     import common.jabber as _jabber
@@ -32,6 +34,7 @@ def audit_jabber():
 
     result_parsed = json.loads(request.text)
 
+    loop = asyncio.new_event_loop()
     for user in result_parsed['user']:
         serviceuser = user['username']
         _logger.log('[' + __name__ + '] Validating user {0}'.format(serviceuser),_logger.LogLevel.DEBUG)
@@ -44,11 +47,11 @@ def audit_jabber():
             pass
         else:
             # otherwise:
-            user_validate(serviceuser)
+            loop.run_until_complete(user_validate(serviceuser))
+    loop.close()
+    return
 
-    return ''
-
-def user_validate(serviceuser):
+async def user_validate(serviceuser):
 
     import MySQLdb as mysql
     import common.database as _database

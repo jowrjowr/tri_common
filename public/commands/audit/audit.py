@@ -4,6 +4,7 @@ import models as _models
 import random as _rnd
 import string as _str
 import MySQLdb as mysql
+import asyncio
 
 from commands import Command, InvalidArgument
 from commands.audit.jabber import audit_jabber

@@ -1,3 +1,5 @@
+import asyncio
+
 def audit_core():
 
     import common.database as _database
@@ -46,13 +48,15 @@ def audit_core():
 
         # loop and audit each individual user
 
+        loop = asyncio.new_event_loop()
         for row in rows:
             charid = row[0]
             charname = row[1]
-            user_validate(charid, charname)
+            loop.run_until_complete(user_validate(charid, charname))
+        loop.close()
         return
 
-def user_validate(charid, charname):
+async def user_validate(charid, charname):
 
     import common.database as _database
     import common.logger as _logger
