@@ -49,7 +49,6 @@ def init(log_dir="/srv/api/public/storage/logs/", log_lvl=_logging.INFO, log_mod
         log_dir += "/"
 
     scriptname = _sys.argv[0].split('/')[-1].split('.')[0]
-    print(scriptname)
     log_file_fmt = log_dir + scriptname + "{0}.log"
 
     if log_mod == LogMode.SINGLE:

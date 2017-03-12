@@ -2,10 +2,12 @@
 
 import sleekxmpp
 import sys
+import netifaces
 import xmltodict
+import dns.resolver
 import common.logger as _logger
 from common.discord_api import discord_forward
-
+from IPy import IP
 
 class Jabber(sleekxmpp.ClientXMPP):
 
@@ -123,6 +125,11 @@ def audit_bothunt():
 
         # do not check my own session
         if not jid == sessionid_base:
+
+            # test client ip for a tor exit node
+            test_tor(ip, sessionid)
+
+            # test jabber client directly for lazy bots
             _logger.log('[' + __name__ + '] checking session: {0} from: {1}'.format(sessionid, ip),_logger.LogLevel.INFO)
             jabber = Jabber('bothunt',jid, password, sessionid)
             jabber.connect()
@@ -130,3 +137,26 @@ def audit_bothunt():
 
     return
 
+def test_tor(ip, sessionid):
+
+    # test if the jabber ip is coming from a tor exit node
+    # see: http://www.torproject.org/projects/tordnsel.html.en
+    _logger.log('[' + __name__ + '] Testing for tor presence on jid {0} @ {1}'.format(sessionid, ip),_logger.LogLevel.DEBUG)
+    clientip_reverse = reverse_ip(ip)
+    hostip = netifaces.ifaddresses('enp2s0')[2][0]['addr']
+    hostip_reverse = reverse_ip(hostip)
+    query = clientip_reverse + '.' + '5222' + '.' + hostip_reverse + '.ip-port.exitlist.torproject.org'
+    try:
+        answers = dns.resolver.query(query, 'A')
+        # there should NEVER be a response for non-tor clients.
+        _logger.log('[' + __name__ + '] TOR detected on jid: {0} @ {1}'.format(sessionid, ip),_logger.LogLevel.WARNING)
+    except dns.resolver.NXDOMAIN:
+        # user passed
+        pass
+    return
+
+def reverse_ip(ip):
+    if len(ip) <= 1:
+       return ip
+    l = ip.split('.')
+    return '.'.join(l[::-1])
