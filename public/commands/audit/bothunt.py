@@ -36,7 +36,7 @@ class Jabber(sleekxmpp.ClientXMPP):
         self.disconnect(reconnect=False, wait=False, send_close=True)
 
     def start(self, event):
-        self.send_presence(ptype='away', ppriority='-1')
+        #self.send_presence(ptype='away', ppriority='-1')
 
         # this is the meat of this tool.
         # an unconfigured python client will have a default client type as "bot"
@@ -64,6 +64,7 @@ class Jabber(sleekxmpp.ClientXMPP):
         items = xmltodict.parse(str(items_xml))
         try:
             identity = items['iq']['query']['identity']
+            print(identity)
             id_cat = identity['@category']
             id_type = identity['@type']
             if id_type == 'bot':
@@ -127,7 +128,7 @@ def audit_bothunt():
         if not jid == sessionid_base:
 
             # test client ip for a tor exit node
-            test_tor(ip, sessionid)
+#            test_tor(ip, sessionid)
 
             # test jabber client directly for lazy bots
             _logger.log('[' + __name__ + '] checking session: {0} from: {1}'.format(sessionid, ip),_logger.LogLevel.INFO)

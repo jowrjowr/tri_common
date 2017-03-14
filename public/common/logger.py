@@ -91,3 +91,12 @@ def init(log_dir="/srv/api/public/storage/logs/", log_lvl=_logging.INFO, log_mod
 def log(message, log_lvl):
     logger = _logging.getLogger(__name__)
     logger.log(level=log_lvl.value, msg=message)
+
+def LogSetup(option, opt_str, value, parser):
+    log_lvl = value.upper()
+    init(
+        log_lvl=LogLevel[log_lvl],
+        log_mod=LogMode.DAILY,
+        log_fmt=LogFormat.TIMESTAMP
+    )
+
