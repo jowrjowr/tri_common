@@ -56,10 +56,39 @@ def group_validate(groupid, groupname, blob):
         group = phpserialize.loads(blob)
     except ValueError as err:
         pass
+    _logger.log('[' + __name__ + '] validating group {0}'.format(groupname),_logger.LogLevel.DEBUG)
 
     newgroup = copy.deepcopy(group)
     for key in group:
         userid = int(group[key])
+        print(userid)
+
+        # assume a fail condition and prove otherwise
+
+        isblue = -1
+
+        # core database crosschecking. sadly necessary.
+        try:
+            sql_conn = mysql.connect(
+                database=_database.DB_DATABASE,
+                user=_database.DB_USERNAME,
+                password=_database.DB_PASSWORD,
+                host=_database.DB_HOST)
+        except mysql.Error as err:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+            return
+        cursor = sql_conn.cursor()
+        query = 'SELECT charID, charName from Users where charID = %s'
+
+        # the forced-tuple on (id,) is deliberate due to mysqldb weirdness
+        try:
+            row = cursor.execute(query, (userid,))
+        except Exception as errmsg:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
+            return
+        finally:
+            cursor.close()
+            sql_conn.close()
 
         # is this character blue?
         esi_url = 'http://localhost:5000/core/isblue?id=' + str(userid)
@@ -78,7 +107,11 @@ def group_validate(groupid, groupname, blob):
 
         result_parsed = json.loads(request)
         isblue = result_parsed['code']
-        if isblue == 0:
+
+        # the "or" is to ensure that not only the user is blue, but that the user is in core as well
+        # data issues have cropped up where you are blue, in a group, but not in core somehow.
+
+        if isblue == 0 or row == 0:
             _logger.log('[' + __name__ + '] removing charid {0} from group {1}'.format(userid,groupname),_logger.LogLevel.WARNING)
             newgroup.pop(key, None)
 
