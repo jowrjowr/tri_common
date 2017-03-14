@@ -65,7 +65,7 @@ def core_isblue():
         resp = Response(js, status=200, mimetype='application/json')
         return resp
 
-    # so neither blue as corp or alliance. let's try char.
+    # so neither blue as corp or alliance. let's try char first next.
 
     esi_url = baseurl + 'characters/' + str(id) + '/?datasource=tranquility'
     headers = {'Accept': 'application/json'}
@@ -77,7 +77,8 @@ def core_isblue():
         if not error.code == 404:
             # something broke severely
             _logger.log('[' + __name__ + '] /characters API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            resp = Response(error.message, status=error.code, mimetype='application/json')
+            js = json.dumps({ 'code': -1, 'error': error.message })
+            resp = Response(js, status=error.code, mimetype='application/json')
             return resp
         # 404 simply means this was not found as a character
         pass
@@ -96,14 +97,15 @@ def core_isblue():
         test_result = json.loads(str(test_result_json))
         if test_result['code'] == -1:
             # shit's broken. we're done parsing.
-            resp = Response(test_result_json, status=401, mimetype='application/json')
+            js = json.dumps({ 'code': -1, 'error': test_result_json })
+            resp = Response(js, status=500, mimetype='application/json')
             return resp
         elif test_result['code'] == 1:
             # blue. done parsing.
-            resp = Response(test_result_json, status=200, mimetype='application/json')
+            js = json.dumps({ 'code': 1 })
+            resp = Response(js, status=200, mimetype='application/json')
             return resp
-
-    # test as a corp
+    # no determination. test as a corp
 
     try:
         corporation_id = result_parsed['corporation_id']
@@ -114,17 +116,20 @@ def core_isblue():
     test_result_json = test_corp(sql_conn, baseurl, id)
 
     if test_result_json == None:
-        resp = Response("{'error': 'Emtpy JSON'}", status=500, mimetype='application/json')
+        js = json.dumps({ 'code': -1, 'error': 'Empty JSON from test_corp' })
+        resp = Response(js, status=500, mimetype='application/json')
         return resp
     test_result = json.loads(test_result_json)
 
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
-        resp = Response(test_result_json, status=401, mimetype='application/json')
+        js = json.dumps({ 'code': -1, 'error': 'test_result broken' })
+        resp = Response(js, status=500, mimetype='application/json')
         return resp
     elif test_result['code'] == 1:
         # blue. done parsing.
-        resp = Response(test_result_json, status=200, mimetype='application/json')
+        js = json.dumps({ 'code': 1 })
+        resp = Response(js, status=200, mimetype='application/json')
         return resp
 
     # test it as an alliance
@@ -133,11 +138,13 @@ def core_isblue():
 
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
-        resp = Response(test_result_json, status=401, mimetype='application/json')
+        js = json.dumps({ 'code': -1, 'error': test_result_json })
+        resp = Response(js, status=500, mimetype='application/json')
         return resp
     elif test_result['code'] == 1:
         # blue. done parsing.
-        resp = Response(test_result_json, status=200, mimetype='application/json')
+        js = json.dumps({ 'code': 1 })
+        resp = Response(js, status=200, mimetype='application/json')
         return resp
 
     # test it as a corp.
@@ -148,14 +155,17 @@ def core_isblue():
     test_result = json.loads(test_result_json)
     if test_result['code'] == -1:
         # shit's broken. we're done parsing.
-        return test_result_json
+        js = json.dumps({ 'code': -1, 'error': test_result_json })
+        resp = Response(js, status=500, mimetype='application/json')
+        return resp
     elif test_result['code'] == 1:
         # blue. done parsing.
-        return test_result_json
+        js = json.dumps({ 'code': 1 })
+        resp = Response(js, status=200, mimetype='application/json')
+        return resp
 
 
-    # so if by this point nothing has caught it out explicitly blue, it isn't blue.
-
+    # so if by this point nothing has caught it out explicitly blue, or erroed, it isn't blue.
     js = json.dumps({ 'code': 0 })
     resp = Response(js, status=200, mimetype='application/json')
     return resp
@@ -183,7 +193,8 @@ def test_corp(sql_conn, baseurl, corp_id):
         if not error.code == 404:
             # something broke severely
             _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            return error.message
+            js = json.dumps({ 'code': -1, 'error': error.message, 'error_code': error.code })
+            return js
         # 404 simply means this was not found as a corp
         pass
     result_parsed = json.loads(request)

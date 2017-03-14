@@ -65,7 +65,6 @@ def esi(function, url):
 
     return str(request.text)
 
-
 class Error(Exception):
     pass
 
