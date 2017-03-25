@@ -84,10 +84,13 @@ async def user_validate(charid, charname):
 
     isblue = result_parsed['code']
 
-    if isblue == 1:
+    if isblue == 0:
+        _logger.log('[' + __name__ + '] charid {0} ({1}) is not blue'.format(charid,charname),_logger.LogLevel.INFO)
+    elif isblue == 1:
         return
     else:
-        _logger.log('[' + __name__ + '] charid {0} ({1}) is not blue'.format(charid,charname),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] nonsensical isblue result for charid {0} ({1}): {2}'.format(charid,charname,isblue),_logger.LogLevel.ERROR)
+        return
 
     # remove the user from the core database
 
