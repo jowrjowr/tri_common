@@ -7,7 +7,7 @@ def audit_coregroups():
 
     import common.request_esi
 
-    _logger.log('[' + __name__ + '] auditing CORE groups',_logger.LogLevel.DEBUG)
+    _logger.log('[' + __name__ + '] auditing CORE groups',_logger.LogLevel.INFO)
 
     try:
         sql_conn = mysql.connect(
