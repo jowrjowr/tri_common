@@ -30,7 +30,7 @@ def debug(message):
     log(message, LogLevel.DEBUG)
 
 
-def init(log_dir="/srv/api/public/storage/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY, log_fmt=LogFormat.TIMESTAMP):
+def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY, log_fmt=LogFormat.TIMESTAMP):
     """
     Initialize logging facilities
 

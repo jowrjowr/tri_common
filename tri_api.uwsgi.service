@@ -3,9 +3,9 @@ Description=uWSGI for tri_api
 After=syslog.target
 
 [Service]
-Environment="PYTHONPATH=/srv/api/public"
-WorkingDirectory=/srv/api/public
-ExecStart=/usr/local/bin/uwsgi --ini /srv/api/config/tri_api.ini --uid www-data --gid www-data -w api --pidfile /run/uwsgi/tri_api.pid
+Environment="PYTHONPATH=/srv/api/"
+WorkingDirectory=/srv/api/
+ExecStart=/usr/local/bin/uwsgi --ini /srv/api/config/tri_api.ini --uid www-data --gid www-data -w runserver --pidfile /run/uwsgi/tri_api.pid
 RuntimeDirectory=uwsgi
 User=www-data
 Group=www-data

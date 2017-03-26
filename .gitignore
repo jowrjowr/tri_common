@@ -2,5 +2,5 @@
 __pycache__/
 *.py[cod]
 *.swp
-public/storage/logs/*
+logs/*
 *.save
