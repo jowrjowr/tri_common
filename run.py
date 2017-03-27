@@ -9,8 +9,7 @@ import re as _re
 
 from common.options import Options as _opts
 import commands.audit.audit
-
-
+import commands.maint.maint
 
 def main():
 

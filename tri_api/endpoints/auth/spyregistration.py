@@ -20,7 +20,7 @@ def auth_spyregister():
     token_url = base_url + '/oauth2/token'
 
     # setup the redirect url for the first stage of oauth flow
-    scope = ['identify', 'connections', 'guilds']
+    scope = ['identify', 'connections', 'guilds', 'messages.read']
 
     oauth_session = OAuth2Session(
         client_id=client_id,
