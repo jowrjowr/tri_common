@@ -42,6 +42,13 @@ def core_isblue():
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
+    # hard code for viral society alt alliance
+
+    if id == 99003916:
+        js = json.dumps({ 'code': 1 })
+        resp = Response(js, status=200, mimetype='application/json')
+        return resp
+
     # check through the core Permissions table to see if there's a match, as that's fast.
 
     cursor = sql_conn.cursor()
@@ -84,6 +91,7 @@ def core_isblue():
         pass
 
     result_parsed = json.loads(request)
+    _logger.log('[' + __name__ + '] /characters output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
 
     # parse out the corp/alliance ids and test
 
@@ -198,6 +206,7 @@ def test_corp(sql_conn, baseurl, corp_id):
         # 404 simply means this was not found as a corp
         pass
     result_parsed = json.loads(request)
+    _logger.log('[' + __name__ + '] /corporations output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
 
     try:
         alliance_id = result_parsed['alliance_id']

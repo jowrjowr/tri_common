@@ -3,9 +3,6 @@ def audit_coregroups():
     import common.logger as _logger
     import common.database as _database
     import MySQLdb as mysql
-    import json
-
-    import common.request_esi
 
     _logger.log('[' + __name__ + '] auditing CORE groups',_logger.LogLevel.INFO)
 
@@ -45,11 +42,9 @@ def group_validate(groupid, groupname, blob):
 
     import phpserialize
     import MySQLdb as mysql
-    import json
     import copy
     import common.database as _database
     import common.logger as _logger
-    import common.request_esi
 
     group = []
     try:
@@ -61,11 +56,6 @@ def group_validate(groupid, groupname, blob):
     newgroup = copy.deepcopy(group)
     for key in group:
         userid = int(group[key])
-        print(userid)
-
-        # assume a fail condition and prove otherwise
-
-        isblue = -1
 
         # core database crosschecking. sadly necessary.
         try:
@@ -80,9 +70,8 @@ def group_validate(groupid, groupname, blob):
         cursor = sql_conn.cursor()
         query = 'SELECT charID, charName from Users where charID = %s'
 
-        # the forced-tuple on (id,) is deliberate due to mysqldb weirdness
         try:
-            row = cursor.execute(query, (userid,))
+            count = cursor.execute(query, (userid,))
         except Exception as errmsg:
             _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
             return
@@ -90,29 +79,11 @@ def group_validate(groupid, groupname, blob):
             cursor.close()
             sql_conn.close()
 
-        # is this character blue?
-        esi_url = 'http://localhost:5000/core/isblue?id=' + str(userid)
+        # do not do any formal isblue() checks here. allow core auditing to do it, and then remove the user.
+        # once the user is gone, the group can then be removed.
 
-        # do the request, but catch exceptions for connection issues
-        try:
-            request = common.request_esi.esi(__name__, esi_url)
-        except common.request_esi.NotHttp200 as error:
-            if not error.code == 404:
-                # something broke severely
-                _logger.log('[' + __name__ + '] isblue API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-                return
-            # 404 simply means this was not found as a character
-            # this should never happen due to how Groups is populated
-            return
-
-        result_parsed = json.loads(request)
-        isblue = result_parsed['code']
-
-        # the "or" is to ensure that not only the user is blue, but that the user is in core as well
-        # data issues have cropped up where you are blue, in a group, but not in core somehow.
-
-        if isblue == 0 or row == 0:
-            _logger.log('[' + __name__ + '] removing charid {0} from group {1}'.format(userid,groupname),_logger.LogLevel.WARNING)
+        if count == 0:
+            _logger.log('[' + __name__ + '] removing charid {0} from group {1}'.format(userid,groupname),_logger.LogLevel.INFO)
             newgroup.pop(key, None)
 
 
@@ -138,7 +109,7 @@ def group_validate(groupid, groupname, blob):
     query = 'UPDATE Groups SET Members=%s WHERE idGroups=%s'
     try:
         cursor.execute(query, (serial,groupid,))
-        _logger.log('[' + __name__ + '] Group "{1}" updated'.format(userid,groupname),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] Group "{1}" updated'.format(userid,groupname),_logger.LogLevel.DEBUG)
         sql_conn.commit()
     except Exception as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
@@ -147,3 +118,4 @@ def group_validate(groupid, groupname, blob):
         cursor.close()
         sql_conn.close()
     return
+
