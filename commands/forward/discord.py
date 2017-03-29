@@ -33,7 +33,7 @@ def start_discord(username, password, covername, handler, discord_queue):
         if message.mention_everyone:
             body = 'FROM: {0}, DISCORD SERVER: {1}, CHANNEL: #{2} \n'.format(str(message.author),str(message.server), str(message.channel))
             body = body + str(message.content).replace('@','#') + '\n'
-            discord_queue.put(prefix + body)
+            discord_queue.put(header + body)
 
     try:
         client.run(username, password)

@@ -14,29 +14,15 @@ from sleekxmpp import ClientXMPP
 from sleekxmpp.exceptions import IqError, IqTimeout
 from common.discord_api import discord_forward
 import common.credentials.discord as _discord
-
+from common.options import Options as _opts
 from concurrent.futures import ThreadPoolExecutor
 
-import forward.discord
-import forward.jabber
+from commands.forward.discord import start_discord
+from commands.forward.jabber import start_jabber
 
-if __name__ == '__main__':
+def forward(option, opt_str, value, parser):
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', help="full debug output", action="store_true")
-    args = parser.parse_args()
-
-    # initialize logging
-    if args.debug:
-        log_lvl = _logger.LogLevel.DEBUG
-    else:
-        log_lvl = _logger.LogLevel.INFO
-
-    log_mod = _logger.LogMode.DAILY
-    log_fmt = _logger.LogFormat.TIMESTAMP
-    _logger.init(log_lvl=log_lvl, log_mod=log_mod, log_fmt=log_fmt)
-
-    _logger.log('[' + __name__ + '] spy forwarder starting up', _logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] spy forwarder starting up', _logger.LogLevel.DEBUG)
 
     # get our list of spies
     try:
@@ -79,10 +65,10 @@ if __name__ == '__main__':
         server_type = row[6]
 
         if server_type == 'discord':
-            pool.submit(forward.discord.start_discord, username, password, covername, handler, discord_queue)
+            pool.submit(start_discord, username, password, covername, handler, discord_queue)
         if server_type == 'jabber':
             jid = username + '@' + server
-            pool.submit(forward.jabber.start_jabber, jid, password, covername, handler, discord_queue)
+            pool.submit(start_jabber, jid, password, covername, handler, discord_queue)
 
     while True:
         _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.DEBUG)
@@ -92,3 +78,8 @@ if __name__ == '__main__':
         discord_queue.task_done()
         time.sleep(1)
 
+_opts.parser.add_option('--spy',
+    action='callback',
+    help='spying on people. some 5eyes shit yo.',
+    callback=forward,
+)
