@@ -36,10 +36,8 @@ def core_jumpbridge():
 
     if 'size' not in request.args:
         size = 'large'
-        qr_size = 3
     else:
         size = request.args['size']
-        qr_size = 1
     charid = int(request.args['id'])
 
     # pad charid to 16 bytes using null characters
@@ -56,6 +54,11 @@ def core_jumpbridge():
     # http://www.qrcode.com/en/about/version.html
 
     # H is the version with most error correction
+
+    if size == 'large':
+        qr_size = 3
+    elif size == 'small':
+        qr_size = 2
 
     qr = qrcode.QRCode(
         version=2,
