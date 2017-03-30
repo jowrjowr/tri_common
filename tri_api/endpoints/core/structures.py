@@ -91,6 +91,8 @@ def core_structures():
 
     # get name of structures and build the structure dictionary
 
+    structures = dict()
+
     for object in result_parsed:
         structure_id = object['structure_id']
         structures[structure_id] = structure_parse(baseurl, atoken, object, structure_id)
