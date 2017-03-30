@@ -36,9 +36,10 @@ def core_jumpbridge():
 
     if 'size' not in request.args:
         size = 'large'
+        qr_size = 3
     else:
         size = request.args['size']
-
+        qr_size = 1
     charid = int(request.args['id'])
 
     # pad charid to 16 bytes using null characters
@@ -59,7 +60,7 @@ def core_jumpbridge():
     qr = qrcode.QRCode(
         version=2,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=3,
+        box_size=qr_size,
         border=0,
     )
     qr.add_data(ciphertext)
