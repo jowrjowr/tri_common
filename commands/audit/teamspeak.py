@@ -226,7 +226,6 @@ async def user_validate(ts3_userid):
 
     # remove orphan ts3 users
 
-    #return
 
     try:
         # Note, that the client will wait for the response and raise a
@@ -241,6 +240,30 @@ async def user_validate(ts3_userid):
         return
 
     ts3conn.use(sid=_ts3.TS_SERVER_ID)
+
+
+    # first kick from the server if they are on, asking them to re-register
+    # to do that i need the client id, which is not the client db id, because
+    # of fucking course it isn't
+
+    try:
+        resp = ts3conn.clientlist()
+        clients = resp.parsed
+    except ts3.query.TS3QueryError as err:
+        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
+
+    for client in clients:
+        clid = client['clid']
+        cldbid = client['client_database_id']
+        if cldbid == ts3_userid:
+            try:
+                reason = 'You are detached from CORE. Please configure services.'
+                resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server'.format(user_nick),_logger.LogLevel.WARNING)
+            except ts3.query.TS3QueryError as err:
+                _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
+
+    # now remove the client from the ts3 database
 
     try:
         resp = ts3conn.clientdbdelete(cldbid=ts3_userid)
