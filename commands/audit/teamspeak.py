@@ -162,10 +162,11 @@ async def user_validate(ts3_userid):
         return
 
     cursor = sql_conn.cursor()
-    query = 'SELECT ClientDBID FROM Teamspeak WHERE ClientDBID = %s'
+    query = 'SELECT ClientDBID,charName FROM Teamspeak WHERE ClientDBID = %s'
 
     try:
-        row = cursor.execute(query, (ts3_userid,))
+        activecount = cursor.execute(query, (ts3_userid,))
+        registered_username = cursor.fetchone()[1]
     except Exception as errmsg:
         _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
         js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
@@ -176,15 +177,6 @@ async def user_validate(ts3_userid):
         sql_conn.commit()
         sql_conn.close()
 
-    # a nonzero return means the ts3 user is linked to an active core user
-
-    if row == 1:
-        # we're done.
-        #_logger.log('[' + __name__ + '] ...user {0} valid'.format(serviceuser),_logger.LogLevel.DEBUG)
-        return
-
-    # oops orphan. we hate orphans.
-    # log the everloving shit out of this
 
     try:
         # Note, that the client will wait for the response and raise a
@@ -199,19 +191,52 @@ async def user_validate(ts3_userid):
         return
 
     ts3conn.use(sid=_ts3.TS_SERVER_ID)
+    try:
+        resp = ts3conn.clientlist()
+        clients = resp.parsed
+    except ts3.query.TS3QueryError as err:
+        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
 
     try:
         resp = ts3conn.clientdbinfo(cldbid=ts3_userid)
+        user = resp.parsed
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts3_userid, err),_logger.LogLevel.WARNING)
 
-    user = resp.parsed
+
     user_nick = user[0]['client_nickname']
     user_lastip = user[0]['client_lastip']
     user_lastconn = int(user[0]['client_lastconnected'])
     user_conns = int(user[0]['client_totalconnections'])
     user_created = int(user[0]['client_totalconnections'])
 
+    # if the user is online, we want to make sure that the username matches
+    # what is in the teamspeak table
+
+    for client in clients:
+        clid = client['clid']
+        cldbid = client['client_database_id']
+        client_username = client['client_nickname']
+        if cldbid == ts3_userid and client_username != registered_username:
+            # online user has a username that does not match records.
+            # "encourage" fixing this.
+            reason = 'Please use your main character name as your teamspeak nickname, without any tags'
+            try:
+                resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: mismatch'.format(user_nick),_logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.WARNING)
+            except ts3.query.TS3QueryError as err:
+                _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
+
+
+    if activecount == 1:
+        # a nonzero return means the ts3 user is linked to an active core user
+        #
+        # we're done auditing this user. the user has a core entry and the correct
+        # username he registered with.
+        return
+
+    # oops orphan. we hate orphans.
     # log the shit out of the orphan user
 
     lastconnected = time.gmtime(user_lastconn)
@@ -239,18 +264,9 @@ async def user_validate(ts3_userid):
         _logger.log('[' + __name__ + '] unable to connect to TS3: "{0}"'.format(err.resp.error["msg"]),_logger.LogLevel.ERROR)
         return
 
-    ts3conn.use(sid=_ts3.TS_SERVER_ID)
-
-
     # first kick from the server if they are on, asking them to re-register
     # to do that i need the client id, which is not the client db id, because
     # of fucking course it isn't
-
-    try:
-        resp = ts3conn.clientlist()
-        clients = resp.parsed
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
 
     for client in clients:
         clid = client['clid']
@@ -259,7 +275,7 @@ async def user_validate(ts3_userid):
             try:
                 reason = 'You are detached from CORE. Please configure services.'
                 resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
-                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server'.format(user_nick),_logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server (orphan user)'.format(user_nick),_logger.LogLevel.WARNING)
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
 
