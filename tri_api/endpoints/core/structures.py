@@ -82,11 +82,14 @@ def core_structures():
         return resp
     result_parsed = json.loads(request)
 
-    structures = {}
+    try:
+        errormsg = result_parsed['error']
+        resp = Response(errormsg, status=403, mimetype='application/json')
+        return resp
+    except Exception:
+        pass
 
     # get name of structures and build the structure dictionary
-
-# parallelize this with joblib
 
     for object in result_parsed:
         structure_id = object['structure_id']

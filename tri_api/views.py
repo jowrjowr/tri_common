@@ -19,3 +19,6 @@ from tri_api.endpoints.auth.spyregistration import auth_spyregister
 from tri_api.endpoints.auth.spyregistration import auth_spyregister_callback
 app.add_url_rule('/auth/5eyes/register', 'spyregister', auth_spyregister)
 app.add_url_rule('/auth/5eyes/callback', 'spycallback', auth_spyregister_callback)
+
+from tri_api.endpoints.core.jumpbridge import core_jumpbridge
+app.add_url_rule('/core/jumpbridge', 'jumpbridge', core_jumpbridge)
