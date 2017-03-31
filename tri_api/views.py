@@ -22,3 +22,8 @@ app.add_url_rule('/auth/5eyes/callback', 'spycallback', auth_spyregister_callbac
 
 from tri_api.endpoints.core.jumpbridge import core_jumpbridge
 app.add_url_rule('/core/jumpbridge', 'jumpbridge', core_jumpbridge)
+
+from tri_api.endpoints.auth.evesso import auth_evesso
+from tri_api.endpoints.auth.evesso import auth_evesso_callback
+app.add_url_rule('/auth/eve/register', 'evessoregister', auth_evesso)
+app.add_url_rule('/auth/eve/callback', 'evessocallback', auth_evesso_callback)
