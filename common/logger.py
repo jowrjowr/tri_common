@@ -76,6 +76,11 @@ def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY,
     logger = _logging.getLogger()
     logger.setLevel(log_lvl.value)
 
+    # make sure everyone complies
+
+    for log in _logging.Logger.manager.loggerDict:
+        _logging.getLogger(log).setLevel(log_lvl.value)
+
     # setup file logger
     file_logger = _logging.FileHandler(log_file_fmt.format(log_file_ins), mode='a')
     file_logger.setLevel(log_lvl.value)
