@@ -166,7 +166,7 @@ async def user_validate(charid, charname):
     # the SRP and Security tables are deliberately left out.
 
     tables = [
-        'CrestNM','CrestTokens','SRP','Security','SkillTraining',
+        'CrestTokens','SkillTraining',
         'Skills','SuperUsers','Teamspeak','Users','UsersSettings','sessions'
     ]
 

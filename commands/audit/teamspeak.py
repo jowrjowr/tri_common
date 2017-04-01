@@ -166,15 +166,15 @@ async def user_validate(ts3_userid):
 
     try:
         activecount = cursor.execute(query, (ts3_userid,))
-        registered_username = cursor.fetchone()[1]
+        if activecount == 0:
+            registered_username = None
+        else:
+            registered_username = cursor.fetchone()[1]
     except Exception as errmsg:
         _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
-        resp = Response(js, status=401, mimetype='application/json')
-        return resp
+        return False
     finally:
         cursor.close()
-        sql_conn.commit()
         sql_conn.close()
 
 
@@ -250,19 +250,6 @@ async def user_validate(ts3_userid):
 
 
     # remove orphan ts3 users
-
-
-    try:
-        # Note, that the client will wait for the response and raise a
-        # **TS3QueryError** if the error id of the response is not 0.
-        ts3conn = ts3.query.TS3Connection(_ts3.TS_HOST)
-        ts3conn.login(
-            client_login_name=_ts3.TS_USER,
-            client_login_password=_ts3.TS_PASSWORD
-        )
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] unable to connect to TS3: "{0}"'.format(err.resp.error["msg"]),_logger.LogLevel.ERROR)
-        return
 
     # first kick from the server if they are on, asking them to re-register
     # to do that i need the client id, which is not the client db id, because

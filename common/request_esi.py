@@ -10,11 +10,6 @@ def esi(function, url):
     import json
     import redis
 
-    # without configuring logging, requests will spew connection nonsense to log
-    logging.getLogger("requests").setLevel(logging.WARNING)
-
-    headers = {'Accept': 'application/json'}
-
     # setup redis caching for the requests object
     # half hour cache seems like a reasonable start
 
@@ -34,7 +29,9 @@ def esi(function, url):
         logger.error('[' + function + '] Redis generic error: ' + str(err))
 
     # do the request, but catch exceptions for connection issues
+
     try:
+        headers = {'Accept': 'application/json'}
         request = requests.get(url, headers=headers, timeout=10)
     except requests.exceptions.ConnectionError as err:
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
@@ -48,7 +45,7 @@ def esi(function, url):
     except Exception as err:
         _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
         return json.dumps({ 'code': 500, 'error': 'General error: ' + str(err)})
-    #print(request.text)
+
     # need to also check that the api thinks this was success.
 
     if not request.status_code == 200:
