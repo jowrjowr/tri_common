@@ -18,7 +18,7 @@ def discord_forward(message):
         channel = client.get_channel('288786919175749632')
         _logger.log('[' + __name__ + '] Discord message to channel {0}: "{1}"'.format(str(channel),str(message)), _logger.LogLevel.INFO)
         await client.send_message(channel, message)
-#        await client.close()
+        await client.close()
     try:
         client.run(token)
     except Exception as error:
