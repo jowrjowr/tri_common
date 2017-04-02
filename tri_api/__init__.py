@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from flask import Flask, Blueprint, Response
+
 import os
 
 app = Flask(__name__)
