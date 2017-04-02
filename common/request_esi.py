@@ -29,16 +29,18 @@ def esi(function, url, **kwargs):
 
     # do the request, but catch exceptions for connection issues
 
+    headers = {'Accept': 'application/json'}
+    timeout=10
+
     try:
-        headers = {'Accept': 'application/json'}
 
         if method == 'post':
-            request = session.post(url, headers=headers, timeout=10)
+            request = session.post(url, headers=headers, timeout=timeout)
         elif method == 'get':
-            request = session.get(url, headers=headers, timeout=10)
+            request = session.get(url, headers=headers, timeout=timeout)
         else:
             # assume get as a default, also backwards compatibility
-            request = session.get(url, headers=headers, timeout=10)
+            request = session.get(url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
