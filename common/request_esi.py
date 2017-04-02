@@ -1,26 +1,25 @@
 # handles all the bubblewrap associated with an ESI request
 # keeps the recycling to a minimum
 
-def esi(function, url):
+def esi(function, url, **kwargs):
 
     import requests
-    import requests_cache
     import common.logger as _logger
     import logging
     import json
     import redis
+    from cachecontrol import CacheControl
+    from cachecontrol.caches.redis_cache import RedisCache
 
+    method = 'get'
     # setup redis caching for the requests object
-    # half hour cache seems like a reasonable start
-
-    # not quitting on redis errors as they aren't fatal
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
-
+    session = requests.Session()
     # redis does not actually connect above, i have to specifically test
 
     try:
         r.client_list()
-        requests_cache.install_cache(cache_name='esi_cache', backend='redis', expire_after=1800, connection=r)
+        session = CacheControl(session, RedisCache(r))
     except redis.exceptions.ConnectionError as err:
         _logger.log('[' + function + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
     except redis.exceptions.ConnectionRefusedError as err:
@@ -32,18 +31,26 @@ def esi(function, url):
 
     try:
         headers = {'Accept': 'application/json'}
-        request = requests.get(url, headers=headers, timeout=10)
+
+        if method == 'post':
+            request = session.post(url, headers=headers, timeout=10)
+        elif method == 'get':
+            request = session.get(url, headers=headers, timeout=10)
+        else:
+            # assume get as a default, also backwards compatibility
+            request = session.get(url, headers=headers, timeout=10)
+
     except requests.exceptions.ConnectionError as err:
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
         return json.dumps({ 'code': 500, 'error': 'API connection error: ' + str(err)})
     except requests.exceptions.ReadTimeout as err:
-        _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
-        return json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
+        _logger.log('[' + function + '] ESI connection read timeout: ' + str(err), _logger.LogLevel.ERROR)
+        return json.dumps({ 'code': 500, 'error': 'API connection read timeout: ' + str(err)})
     except requests.exceptions.Timeout as err:
-        _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.ERROR)
         return json.dumps({ 'code': 500, 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
-        _logger.log('[' + function + '] ESI connection error: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.ERROR)
         return json.dumps({ 'code': 500, 'error': 'General error: ' + str(err)})
 
     # need to also check that the api thinks this was success.
