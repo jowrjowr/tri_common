@@ -2,7 +2,7 @@ import asyncio
 
 def audit_jabber():
 
-    import common.jabber as _jabber
+    import common.credentials.jabber as _jabber
     import common.logger as _logger
 
     import logging
@@ -10,13 +10,12 @@ def audit_jabber():
     import json
 
     _logger.log('[' + __name__ + '] auditing jabber',_logger.LogLevel.DEBUG)
-    logging.getLogger("requests").setLevel(logging.WARNING)
 
     # get all jabber users
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.JABBER_TOKEN)}
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.atoken)}
 
     # hardcode service user for testing
-    jabber_url = _jabber.JABBER_BASEURL + 'users/'
+    jabber_url = _jabber. + 'users/'
 
     try:
         request = requests.get(jabber_url, headers=headers, timeout=10)

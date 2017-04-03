@@ -81,7 +81,7 @@ class Jabber(sleekxmpp.ClientXMPP):
 
 def audit_bothunt():
 
-    import common.jabber as _jabber
+    import common.credentials.jabber as _jabber
     import common.logger as _logger
     import common.credentials.bothunt as _bothunt
 
@@ -94,10 +94,10 @@ def audit_bothunt():
     logging.getLogger("requests").setLevel(logging.WARNING)
 
     # get all jabber users
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.JABBER_TOKEN)}
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.atoken)}
 
     # hardcode service user for testing
-    jabber_url = _jabber.JABBER_BASEURL + 'sessions/'
+    jabber_url = _jabber.baseurl + 'sessions/'
 
     try:
         request = requests.get(jabber_url, headers=headers, timeout=10)
