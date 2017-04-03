@@ -9,6 +9,7 @@ def core_isblue():
     import json
 
     # core isblue function that tells whether a user, corp, or alliance is currently blue to triumvirate
+    _logger.log('[' + __name__ + '] testing {0}'.format(request.args['id']), _logger.LogLevel.DEBUG)
 
     # CONSTANTS TO MOVE OUT
     baseurl = 'https://esi.tech.ccp.is/latest/'

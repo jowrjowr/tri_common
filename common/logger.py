@@ -97,8 +97,8 @@ def log(message, log_lvl):
     logger = _logging.getLogger(__name__)
     logger.log(level=log_lvl.value, msg=message)
 
-def LogSetup(option, opt_str, value, parser):
-    log_lvl = value.upper()
+def LogSetup(log_lvl):
+    log_lvl = log_lvl.upper()
     init(
         log_lvl=LogLevel[log_lvl],
         log_mod=LogMode.DAILY,

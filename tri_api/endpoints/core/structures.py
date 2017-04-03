@@ -22,6 +22,7 @@ def core_structures():
             host=DATABASE.DB_HOST)
     except mysql.Error as err:
         js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
+        _logger.log('[' + __name__ + '] unable to connect to mysql:'.format(err), _logger.LogLevel.ERROR)
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
@@ -29,8 +30,11 @@ def core_structures():
 
     if 'id' not in request.args:
         js = json.dumps({ 'code': -1, 'error': 'need an id to check'})
+        _logger.log('[' + __name__ + '] need an id to check', _logger.LogLevel.WARNING)
         resp = Response(js, status=401, mimetype='application/json')
         return resp
+    _logger.log('[' + __name__ + '] querying structures for {0}'.format(request.args['id']), _logger.LogLevel.INFO)
+
 
     # filtering garbage requires exception catching, as it turns out...
 
@@ -38,6 +42,7 @@ def core_structures():
         id = int(request.args['id'])
     except ValueError:
         js = json.dumps({ 'code': -1, 'error': 'id parameter must be integer'})
+        _logger.log('[' + __name__ + '] id parameters must be integer: {0}'.format(id), _logger.LogLevel.WARNING)
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -51,6 +56,7 @@ def core_structures():
         if row_count == 0:
             cursor.close()
             js = json.dumps({ 'code': -1, 'error': 'no token for charid ' + str(id) })
+            _logger.log('[' + __name__ + '] no token for charid: {0}'.format(charid), _logger.LogLevel.WARNING)
             resp = Response(js, status=404, mimetype='application/json')
             return resp
 
@@ -63,6 +69,7 @@ def core_structures():
     except Exception as errmsg:
         cursor.close()
         js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
+        _logger.log('[' + __name__ + '] mysql broke:'.format(errmsg), _logger.LogLevel.ERROR)
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
@@ -73,6 +80,7 @@ def core_structures():
     # get all structures that this token has access to
 
     # do the request, but catch exceptions for connection issues
+    print(esi_url)
     try:
         request = common.request_esi.esi(__name__, esi_url)
     except common.request_esi.NotHttp200 as error:
@@ -80,6 +88,9 @@ def core_structures():
         _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
         resp = Response(error.message, status=error.code, mimetype='application/json')
         return resp
+
+    _logger.log('[' + __name__ + '] /structures output:'.format(request), _logger.LogLevel.DEBUG)
+
     result_parsed = json.loads(request)
 
     try:
