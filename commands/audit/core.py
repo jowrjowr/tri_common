@@ -86,7 +86,7 @@ async def user_validate(charid, charname):
     import common.request_esi
 
     # is this character blue?
-    esi_url = 'http://localhost:5000/core/isblue?id=' + str(charid)
+    esi_url = 'https://api.triumvirate.rocks/core/isblue?id=' + str(charid)
 
     # do the request, but catch exceptions for connection issues
     try:

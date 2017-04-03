@@ -1,7 +1,7 @@
 # handles all the bubblewrap associated with an ESI request
 # keeps the recycling to a minimum
 
-def esi(function, url, **kwargs):
+def esi(function, url):
 
     import requests
     import common.logger as _logger
@@ -31,7 +31,6 @@ def esi(function, url, **kwargs):
 
     headers = {'Accept': 'application/json'}
     timeout=10
-
     try:
 
         if method == 'post':

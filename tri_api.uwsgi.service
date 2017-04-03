@@ -5,7 +5,7 @@ After=syslog.target
 [Service]
 Environment="PYTHONPATH=/srv/api/"
 WorkingDirectory=/srv/api/
-ExecStart=/usr/local/bin/uwsgi --ini /srv/api/config/tri_api.ini --uid www-data --gid www-data -w runserver --pidfile /run/uwsgi/tri_api.pid
+ExecStart=/usr/local/bin/uwsgi --ini /srv/api/config/tri_api.ini --uid www-data --gid www-data -w runserver --pidfile /run/uwsgi/tri_api.pid --processes 10 --threads 2 --stats 127.0.0.1:9191
 RuntimeDirectory=uwsgi
 User=www-data
 Group=www-data
