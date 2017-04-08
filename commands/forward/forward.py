@@ -14,13 +14,14 @@ from sleekxmpp import ClientXMPP
 from sleekxmpp.exceptions import IqError, IqTimeout
 from common.discord_api import discord_forward
 import common.credentials.discord as _discord
-from common.options import Options as _opts
 from concurrent.futures import ThreadPoolExecutor
 
 from commands.forward.discord import start_discord
 from commands.forward.jabber import start_jabber
 
-def forward(option, opt_str, value, parser):
+def forward():
+
+    # allow differentiation for spy targets?
 
     _logger.log('[' + __name__ + '] spy forwarder starting up', _logger.LogLevel.DEBUG)
 
@@ -78,8 +79,21 @@ def forward(option, opt_str, value, parser):
         discord_queue.task_done()
         time.sleep(1)
 
-_opts.parser.add_option('--spy',
-    action='callback',
-    help='spying on people. some 5eyes shit yo.',
-    callback=forward,
-)
+
+class parseaction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+       # if nargs is not None:
+        #    raise ValueError("nargs not allowed")
+        super(parseaction, self).__init__(option_strings, dest, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+        print(values)
+        forward()
+
+def add_arguments(parser):
+    parser.add_argument("--spy",
+        nargs=0,
+        action=parseaction,
+        choices = [ 'all' ],
+        help='spying on people!',
+    )

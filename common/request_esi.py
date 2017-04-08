@@ -11,6 +11,9 @@ def esi(function, url):
     from cachecontrol import CacheControl
     from cachecontrol.caches.redis_cache import RedisCache
 
+    # shut the FUCK up.
+    logging.getLogger("requests").setLevel(logging.WARNING)
+
     method = 'get'
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)

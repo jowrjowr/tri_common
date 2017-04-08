@@ -3,7 +3,7 @@ import enum as _enum
 import logging as _logging
 import sys as _sys
 import time as _time
-
+import argparse
 
 class LogFormat(_enum.Enum):
     SIMPLE = 0
@@ -105,3 +105,21 @@ def LogSetup(log_lvl):
         log_fmt=LogFormat.TIMESTAMP
     )
 
+
+class parseaction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(parseaction, self).__init__(option_strings, dest, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+        LogSetup(values)
+
+def add_arguments(parser):
+    parser.add_argument("--loglevel",
+        action=parseaction,
+        dest='loglevel',
+        choices=['debug', 'info', 'warning', 'error', 'critical'],
+        default='info',
+        help='Level of log output (default is info)',
+    )

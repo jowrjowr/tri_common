@@ -15,7 +15,7 @@ def audit_jabber():
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.atoken)}
 
     # hardcode service user for testing
-    jabber_url = _jabber. + 'users/'
+    jabber_url = _jabber.baseurl + 'users/'
 
     try:
         request = requests.get(jabber_url, headers=headers, timeout=10)
@@ -101,9 +101,9 @@ async def user_validate(serviceuser):
     # remove the orphan user
 
     logging.getLogger("requests").setLevel(logging.WARNING)
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.JABBER_TOKEN)}
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.atoken)}
 
-    jabber_url = _jabber.JABBER_BASEURL + 'users/' + serviceuser
+    jabber_url = _jabber.baseurl + 'users/' + serviceuser
 
     try:
         request = requests.delete(jabber_url, headers=headers, timeout=10)
