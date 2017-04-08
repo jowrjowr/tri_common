@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 http://www.openldap.org/faq/data/cache/347.html
 As seen working on Ubuntu 12.04 with OpenLDAP 2.4.28-1.1ubuntu4
@@ -52,7 +52,7 @@ def make_secret(password):
 if __name__ == '__main__':
     # buffer straight out of OpenLDAP
     ldap_buf = 'e1NTSEF9VGY1dVFxUkl0VzV2NGowV0RNNXczY2dJd2ZLS0FUcFg='
-    print 'ldap buffer result: {}'.format(check_password(ldap_buf, 'foobar'))
+    print('ldap buffer result: {0}'.format(check_password(ldap_buf, 'foobar')))
 
     # check that make_secret() above can properly encode
-print 'checking make_secret: {}'.format(check_password(make_secret('foobar'), 'foobar'))
+    print('checking make_secret: {0}'.format(check_password(make_secret('foobar'), 'foobar')))
