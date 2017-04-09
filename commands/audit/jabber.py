@@ -54,7 +54,7 @@ async def user_validate(serviceuser):
 
     import MySQLdb as mysql
     import common.database as _database
-    import common.jabber as _jabber
+    import common.credentials.jabber as _jabber
     import common.logger as _logger
     import common.request_esi
 

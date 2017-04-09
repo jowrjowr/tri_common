@@ -3,7 +3,6 @@ import asyncio
 def audit_teamspeak():
 
     import common.database as _database
-    import common.jabber as _jabber
     import common.ts3 as _ts3
     import common.logger as _logger
 
