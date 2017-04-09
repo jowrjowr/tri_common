@@ -10,9 +10,11 @@ import requests
 import MySQLdb as mysql
 import math
 import phpserialize
-import copy
+import uuid
+import hashlib
 
 from datetime import datetime
+from passlib.hash import ldap_salted_sha1
 
 #dostuff = _jabber.setup(90622096, True)
 #print(dostuff)
@@ -80,16 +82,21 @@ def migrateusers():
             user = users[charid]
         else:
             user = dict()
-            
+
         user['charid'], user['atoken'], user['rtoken'] = row
-        
+
+
         for item in list(user):
             if user[item] == None or user[item] == '':
                 user.pop(item, None)
-        users[charid] = user    
-    
-    
-        
+
+        if 'atoken' in user.keys():
+            user['atoken'] = user['atoken'].decode('utf-8')
+        if 'rtoken' in user.keys():
+            user['rtoken'] = user['rtoken'].decode('utf-8')
+
+        users[charid] = user
+
     # bans last to clobber active users "just in case"
 
     # old assed blacklist
@@ -252,7 +259,6 @@ def migrateusers():
         members = phpserialize.loads(members)
         for key in members:
             charid = int(members[key].decode('utf-8'))
-            print('group: {0}, user: {1}'.format(group, charid))
             users[charid]['authgroup'].append(group)
 
     print("distinct ldap users: {}".format(len(users.keys())))
@@ -302,11 +308,17 @@ def migrateusers():
             attrs.append(('accountStatus', [user['accountstatus']]))
             attrs.append(('authGroup', user['authgroup']))
 
-#            if 'password' in user.keys():
-#                attrs.append(('userPassword', [user['password']]))
-#            else:
-#                attrs.append(('userPassword', [b'idk some shit']))
-            attrs.append(('userPassword', [b'{SSHA}Qeb5EDwJjOSJ6yv2au72TaPW7lhtNo4W']))
+            if 'password' in user.keys():
+                # existing password
+                password = user['password'].decode('utf-8')
+            else:
+                # no password? you get a random one
+                password = uuid.uuid4().hex
+
+            password_hash = ldap_salted_sha1.hash(password)
+            print('user: {0}, password: {1}, hash: {2}'.format(cn, str(password), password_hash)) 
+            password_hash = password_hash.encode('utf-8')
+            attrs.append(('userPassword', [password_hash]))
 
             # add normal shit
             if 'allianceid' in user.keys():
@@ -317,8 +329,8 @@ def migrateusers():
             if 'atoken' in user.keys():
                 attrs.append(('esiAccessToken', [user['atoken']]))
             if 'rtoken' in user.keys():
-                attrs.append(('esiRefreshToken', [user['rtoken']]))             
-            # add bans
+                attrs.append(('esiRefreshToken', [user['rtoken']]))
+            # add ban
 
             # confirmed ban
             if 'blconfirmdate' in user.keys():

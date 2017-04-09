@@ -1,4 +1,3 @@
-import configparser as _configparser
 import enum as _enum
 import logging as _logging
 import sys as _sys

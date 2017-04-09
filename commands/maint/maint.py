@@ -1,9 +1,13 @@
 from commands.maint.tokens import maint_tokens
+from commands.maint.ldapgroups import maint_ldapgroups
 import common.logger as _logger
 import argparse
 
 # do everything
 def maint_all():
+    _logger.log('[' + __name__ + '] ldap group maintenance', _logger.LogLevel.INFO)
+    maint_ldapgroups()
+    _logger.log('[' + __name__ + '] token maintenance', _logger.LogLevel.INFO)
     maint_tokens()
 
 class parseaction(argparse.Action):
@@ -19,12 +23,15 @@ class parseaction(argparse.Action):
         elif values == 'tokens':
             _logger.log('[' + __name__ + '] token maintenance', _logger.LogLevel.INFO)
             maint_tokens()
+        elif values == 'ldapgroups':
+            _logger.log('[' + __name__ + '] ldap group maintenance', _logger.LogLevel.INFO)
+            maint_ldapgroups()
 
 
 def add_arguments(parser):
     parser.add_argument("--maint",
         dest='maint_target',
-        choices=['tokens', 'all'],
+        choices=['tokens', 'ldapgroups', 'all'],
         default='all',
         action=parseaction,
         help='core maintenance commands',
