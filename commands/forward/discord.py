@@ -26,7 +26,7 @@ def start_discord(username, password, covername, handler, discord_queue):
         now = time.localtime(None)
         now_friendly = time.strftime("%Y-%m-%d @ %H:%M:%S %z", now)
         header = '[' + str(covername) + ']'
-        header = header + '\t' + 'Time: {0}, covername: {1}, owner: {2}'.format(str(now_friendly), covername, handler)
+        header = header + '\t' + 'Time: {0}, covername: {1}'.format(str(now_friendly), covername)
         header = header + '\n'
         header = header + '----------' + '\n'
 

@@ -32,6 +32,7 @@ class JabberForwarder(ClientXMPP):
         ## add xmpp event handlers
 
         # https://github.com/fritzy/SleekXMPP/wiki/Event-Index
+        self.add_event_handler('ssl_invalid_cert', self.discard)
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
         self.add_event_handler('failed_auth', self.failure)
@@ -42,12 +43,14 @@ class JabberForwarder(ClientXMPP):
             jid=None, node=None,  # this will make the handler respond globally, for any JID+node
             handler=self.disco_info
         )
+    def discard(self, event, *args):
+        return
 
     def header(self):
         now = time.localtime(None)
         now_friendly = time.strftime("%Y-%m-%d @ %H:%M:%S %z", now)
         prefix = '[' + str(self.identifier) + ']'
-        prefix = prefix + '\t' + 'Time: {0}, covername: {1}, owner: {2}'.format(str(now_friendly), self.identifier, self.handler)
+        prefix = prefix + '\t' + 'Time: {0}, covername: {1}'.format(str(now_friendly), self.identifier)
         prefix = prefix + '\n'
         prefix = prefix + '----------' + '\n'
         return prefix
