@@ -102,7 +102,7 @@ def audit_bothunt():
     try:
         request = requests.get(jabber_url, headers=headers, timeout=10)
     except Exception as err:
-        pass
+        return False
 
     if request.status_code == 404:
         _logger.log('[' + __name__ + '] jabber /users endpoint does not exist?!',_logger.LogLevel.WARNING)

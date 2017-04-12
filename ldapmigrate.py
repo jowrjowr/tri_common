@@ -219,7 +219,7 @@ def migrateusers():
         # account status is one of the following:
         # public (pubbie access or lack thereof), banned, or blue
         # privileges delinated with authgroups
-        
+
         user['accountstatus'] = 'blue'
         
         authgroups = ['public', 'vanguard'] # default level of access for blues

@@ -1,5 +1,5 @@
 user = 'SaekaTyr'
-password = 'yyHH3b5Y'
+password = '65e1a312'
 server = 'triumvirate.rocks'
 #user = 'BixtoriousSwills'
 #password = 'uRjQXiWr'
