@@ -11,6 +11,20 @@ def do_esi(function, url, method, *data):
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
 
+    # test first that eve is online. this will fail if ESI or EVE are down.
+
+    headers = {'Accept': 'application/json'}
+    status_url = 'https://esi.tech.ccp.is/latest/status/?datasource=tranquility'
+    request = requests.get(status_url, headers=headers, timeout=2)
+    # we don't really care about the response past 200-or-not
+    if not request.status_code == 200:
+        _logger.log('[' + function + '] EVE offline / ESI down', _logger.LogLevel.ERROR)
+        try:
+            result = json.loads(str(request.text))
+        except TypeError as error:
+            return(500, { 'code': 500, 'error': 'cant convert esi response to json'})
+        return(500, result)
+
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     session = requests.Session()
