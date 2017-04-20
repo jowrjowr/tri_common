@@ -10,7 +10,6 @@ def registeruser(charid, atoken, rtoken):
     import MySQLdb as mysql
 
     import json
-    import requests
     import datetime
     import uuid
     import time
@@ -19,7 +18,6 @@ def registeruser(charid, atoken, rtoken):
     from passlib.hash import ldap_salted_sha1
 
     # get character affiliations
-    # doing via requests directly so no caching the request
 
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     base_url = 'https://esi.tech.ccp.is/latest'
@@ -42,29 +40,30 @@ def registeruser(charid, atoken, rtoken):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
         return(False, 'error')
-    
+
     request_url = base_url + '/characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
-    result = requests.post(request_url, headers=headers, data=data)
-
-    try:
-        result.raise_for_status()
-    except requests.exceptions.HTTPError as error:
+    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
-    result = json.loads(result.text)
     corpid = result[0]['corporation_id']
     allianceid = result[0]['alliance_id']
-    
+
     # username
-    try:
-        request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
-        request = common.request_esi.esi(__name__, request_url)
-        result = json.loads(request)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /characters endpoint error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        return(False, 'error')
+    esi_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
+
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            return(False, 'error')
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return(False, 'error')
 
     try:
         charname = result['name']
@@ -74,24 +73,35 @@ def registeruser(charid, atoken, rtoken):
 
     # get corp name
     request_url = base_url + "/corporations/" + str(corpid) + '/?datasource=tranquility'
-    try:
-        result = common.request_esi.esi(__name__, request_url)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /corporations endpoint error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            pass
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
         return('SORRY, INTERNAL API ERROR')
 
-    result = json.loads(result)
     corpname = result['corporation_name']
 
 
     # get alliance name
     request_url = base_url + "/alliances/" + str(allianceid) + '/?datasource=tranquility'
-    try:
-        result = common.request_esi.esi(__name__, request_url)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /alliances endpoint error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            pass
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
         return('SORRY, INTERNAL API ERROR')
-    result = json.loads(result)
+
     alliancename = result['alliance_name']
 
     # setup the service user/pass

@@ -168,8 +168,7 @@ def migrateusers():
 
         try:
             request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(user['approvedby'])
-            request = common.request_esi.esi(__name__, request_url)
-            result = json.loads(request)
+            code, result = common.request_esi.esi(__name__, request_url, 'get')
             user['approvedbyname'] = result['name']
         except Exception as error:
             user['approvedbyname'] = 'Unknown'
@@ -211,8 +210,7 @@ def migrateusers():
         # character name
         
         request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
-        request = common.request_esi.esi(__name__, request_url)
-        result = json.loads(request)
+        code, result = common.request_esi.esi(__name__, request_url, 'get')
         user['charname'] = result['name']
                 
         # sort out scoping/authgroups

@@ -141,7 +141,6 @@ def usertest(charid):
     
     import ldap
     import json
-    import requests
     import common.credentials.ldap as _ldap
     import common.logger as _logger
     import common.request_esi
@@ -160,12 +159,17 @@ def usertest(charid):
     _logger.log('[' + __name__ + '] determining status of {0}'.format(charid),_logger.LogLevel.INFO)
     
     # username
-    try:
-        request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
-        request = common.request_esi.esi(__name__, request_url)
-        result = json.loads(request)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /characters endpoint error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+
+    request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            pass
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
         return(False, 'error')
 
     try:
@@ -173,20 +177,18 @@ def usertest(charid):
     except KeyError as error:
         _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
         return(False, 'error')
-    
+
     # character affiliations
     # doing via requests directly so no caching the request
 
     
     request_url = 'https://esi.tech.ccp.is/latest/characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
-    result = requests.post(request_url, headers=headers, data=data)
-    try:
-        result.raise_for_status()
-    except requests.exceptions.HTTPError as error:
+    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
-    result = json.loads(result.text)
+
     corpid = result[0]['corporation_id']
     try:
         allianceid = result[0]['alliance_id']
@@ -198,15 +200,15 @@ def usertest(charid):
 
 
     # validate that the person who wants services is, in fact, blue to us
+    request_url = 'https://api.triumvirate.rocks/core/isblue?id={0}'.format(charid)
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
 
-    try:
-        request_url = 'https://api.triumvirate.rocks/core/isblue?id={0}'.format(charid)
-        result = common.request_esi.esi(__name__, request_url)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /core/isblue endpoint error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        return(False, 'error')
-    isblue = json.loads(result)
-    isblue = isblue['code']
+    if not code == 200:
+        # something broke severely
+        _logger.log('[' + __name__ + '] /isblue API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return(False,'error')
+
+    isblue = result['code']
         
     # see if the user is already in the database, one way or the other.
     

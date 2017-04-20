@@ -89,18 +89,19 @@ async def user_validate(charid, charname):
     esi_url = 'https://api.triumvirate.rocks/core/isblue?id=' + str(charid)
 
     # do the request, but catch exceptions for connection issues
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        if not error.code == 404:
+
+    code, request = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            return False
+        else:
             # something broke severely
             _logger.log('[' + __name__ + '] isblue API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
             return False
-        # 404 simply means this was not found as a character (or my endpoint disappeared lol)
-        return False
 
-    result_parsed = json.loads(request)
-    isblue = result_parsed['code']
+    isblue = request['code']
 
     if isblue == 0:
         _logger.log('[' + __name__ + '] charid {0} ({1}) is reporting not blue.'.format(charid,charname),_logger.LogLevel.INFO)

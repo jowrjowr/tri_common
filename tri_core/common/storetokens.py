@@ -11,7 +11,6 @@ def storetokens(charid, atoken, rtoken):
     import MySQLdb as mysql
 
     import json
-    import requests
     import datetime
     import uuid
     import time

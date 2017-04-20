@@ -51,14 +51,19 @@ def makesession(charid, token):
 
     # first, get the user data.
 
-    try:
-        esi_url = baseurl + 'characters/' + str(charid) + '/?datasource=tranquility'
-        request = common.request_esi.esi(__name__, esi_url)
-        result = json.loads(request)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /characters API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        return False
+    esi_url = baseurl + 'characters/' + str(charid) + '/?datasource=tranquility'
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            return False
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return False
+
     charname = result['name']
     payload['charName'] = charname
     payload['corpID'] = int(result['corporation_id'])
@@ -80,27 +85,37 @@ def makesession(charid, token):
     else:
         payload['scope'] = 1
 
-    try:
-        esi_url = baseurl + 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
-        request = common.request_esi.esi(__name__, esi_url)
-        result = json.loads(request)
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        return False
+    esi_url = baseurl + 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /corporations output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            return False
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return False
+
     payload['corpName'] = result['corporation_name']
 
-    try:
-        if not payload['allianceID'] == False:
-            esi_url = baseurl + 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
-            request = common.request_esi.esi(__name__, esi_url)
-            result = json.loads(request)
+    if not payload['allianceID'] == False:
+        esi_url = baseurl + 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
+        _logger.log('[' + __name__ + '] /alliances output: {}'.format(result), _logger.LogLevel.DEBUG)
 
-    except common.request_esi.NotHttp200 as error:
-        _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        return False
-    _logger.log('[' + __name__ + '] /corporations output: {}'.format(result), _logger.LogLevel.DEBUG)
-    payload['allianceName'] = result['alliance_name']
+        if not code == 200:
+            if code == 404:
+                # 404s aren't worth logging
+                return False
+            else:
+                # something broke severely
+                _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+                return False
+        payload['allianceName'] = result['alliance_name']
+    else:
+        payload['allianceName'] = None
 
     payload = phpserialize.dumps(payload)
     payload = base64.b64encode(payload)

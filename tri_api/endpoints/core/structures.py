@@ -80,18 +80,14 @@ def core_structures():
     # get all structures that this token has access to
 
     # do the request, but catch exceptions for connection issues
-    print(esi_url)
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
+    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        resp = Response(error.message, status=error.code, mimetype='application/json')
+        resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
     _logger.log('[' + __name__ + '] /structures output:'.format(request), _logger.LogLevel.DEBUG)
-
-    result_parsed = json.loads(request)
 
     try:
         errormsg = result_parsed['error']
@@ -133,13 +129,12 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = esi_url + '?datasource=tranquility'
     esi_url = esi_url + '&token=' + atoken
 
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
+    code, data = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
+        # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        # kinder, gentler error handling
-        pass
-    data = json.loads(request)
+        resp = Response(result['error'], status=code, mimetype='application/json')
+        return resp
 
     # catch errors
 
@@ -161,13 +156,12 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/types/' + str(typeid)
     esi_url = esi_url + '?datasource=tranquility'
 
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
+    code, typedata = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
+        # something broke severely
         _logger.log('[' + __name__ + '] /universe/types API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        # kinder, gentler error handling
-        pass
-    typedata = json.loads(request)
+        resp = Response(result['error'], status=code, mimetype='application/json')
+        return resp
 
     try:
         structure['type_name'] = typedata['name']
@@ -183,13 +177,12 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/systems/' + str(system_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        # kinder, gentler error handling
+    code, data = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
+        # something broke severely
         _logger.log('[' + __name__ + '] /universe/systems API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        pass
-    data = json.loads(request)
+        resp = Response(result['error'], status=code, mimetype='application/json')
+        return resp
 
     try:
         constellation_id = data['constellation_id']
@@ -205,13 +198,12 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/constellations/'+str(constellation_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        # kinder, gentler error handling
+    code, data = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
+        # something broke severely
         _logger.log('[' + __name__ + '] /universe/constellations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        pass
-    data = json.loads(request)
+        resp = Response(result['error'], status=code, mimetype='application/json')
+        return resp
 
     try:
         region_id = data['region_id']
@@ -225,13 +217,12 @@ def structure_parse(baseurl, atoken, object, structure_id):
     esi_url = baseurl + 'universe/regions/'+str(region_id)
     esi_url = esi_url + '?datasource=tranquility'
 
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        # kinder, gentler error handling
+    code, data = common.request_esi.esi(__name__, esi_url, 'get')
+    if not code == 200:
+        # something broke severely
         _logger.log('[' + __name__ + '] /universe/regions API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        pass
-    data = json.loads(request)
+        resp = Response(result['error'], status=code, mimetype='application/json')
+        return resp
 
     try:
         structure['region'] = data['name']

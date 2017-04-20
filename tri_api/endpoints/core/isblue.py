@@ -23,13 +23,13 @@ def core_isblue():
             host=DATABASE.DB_HOST)
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
+        js = json.dumps({ 'code': 500, 'error': 'unable to connect to mysql: ' + str(err)})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
     if 'id' not in request.args:
         _logger.log('[' + __name__ + '] no id', _logger.LogLevel.WARNING)
-        js = json.dumps({ 'code': -1, 'error': 'need an id to check'})
+        js = json.dumps({ 'code': 500, 'error': 'need an id to check'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -39,7 +39,7 @@ def core_isblue():
         id = int(request.args['id'])
     except ValueError:
         _logger.log('[' + __name__ + '] invalid id: ' + str(request.args['id']), _logger.LogLevel.WARNING)
-        js = json.dumps({ 'code': -1, 'error': 'id parameter must be integer'})
+        js = json.dumps({ 'code': 500, 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -61,7 +61,7 @@ def core_isblue():
         cursor.close()
     except Exception as errmsg:
         _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
+        js = json.dumps({ 'code': 500, 'error': 'mysql broke: ' + str(errmsg)})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -79,19 +79,20 @@ def core_isblue():
     headers = {'Accept': 'application/json'}
 
     # do the request, but catch exceptions for connection issues
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        if not error.code == 404:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /characters API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            js = json.dumps({ 'code': -1, 'error': error.message })
-            resp = Response(js, status=error.code, mimetype='application/json')
-            return resp
-        # 404 simply means this was not found as a character
-        pass
 
-    result_parsed = json.loads(request)
+    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            return False
+        else:
+            # something broke severely
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result_parsed['error']), _logger.LogLevel.ERROR)
+            js = json.dumps({ 'code': 500, 'error': result_parsed['error'] })
+            resp = Response(js, status=code, mimetype='application/json')
+            return False
+
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
 
     # parse out the corp/alliance ids and test
@@ -196,17 +197,19 @@ def test_corp(sql_conn, baseurl, corp_id):
     headers = {'Accept': 'application/json'}
 
     # do the request, but catch exceptions for connection issues
-    try:
-        request = common.request_esi.esi(__name__, esi_url)
-    except common.request_esi.NotHttp200 as error:
-        if not error.code == 404:
+
+    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        if code == 404:
+            # 404s aren't worth logging
+            pass
+        else:
             # something broke severely
-            _logger.log('[' + __name__ + '] /corporations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            js = json.dumps({ 'code': -1, 'error': error.message, 'error_code': error.code })
+            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result_parsed['error']), _logger.LogLevel.ERROR)
+            js = json.dumps({ 'code': -1, 'error': result_parsed['error'], 'error_code': code })
             return js
-        # 404 simply means this was not found as a corp
-        pass
-    result_parsed = json.loads(request)
+
     _logger.log('[' + __name__ + '] /corporations output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
 
     try:
