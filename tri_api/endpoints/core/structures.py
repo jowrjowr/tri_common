@@ -47,8 +47,8 @@ def core_structures():
         return resp
 
     cursor = sql_conn.cursor()
-    query = 'SELECT charID,corpID,accessToken,refreshToken FROM CrestTokens WHERE charID = %s'
-    # the forced-tuple on (id,) is deliberate due to mysqldb weirdness
+    query = 'SELECT accessToken FROM CrestTokens WHERE charID = %s'
+
     try:
         row_count = cursor.execute(query, (id,))
 
@@ -61,10 +61,7 @@ def core_structures():
             return resp
 
         row = cursor.fetchone()
-        charid = row[0]
-        corpid = row[1]
-        atoken = row[2].decode("utf-8")
-        rtoken = row[3].decode("utf-8")
+        atoken = row[0].decode("utf-8")
 
     except Exception as errmsg:
         cursor.close()
@@ -73,21 +70,31 @@ def core_structures():
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
+    # get corpid
+    request_url = baseurl + 'characters/affiliation/?datasource=tranquility'
+    data = '[{}]'.format(id)
+    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    if not code == 200:
+        _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        return(False, 'error')
+
+    corpid = result[0]['corporation_id']
+
     esi_url = baseurl + 'corporations/' + str(corpid)
     esi_url = esi_url + '/structures?datasource=tranquility'
     esi_url = esi_url + '&token=' + atoken
 
     # get all structures that this token has access to
-
+    print(esi_url)
     # do the request, but catch exceptions for connection issues
     code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-        resp = Response(result['error'], status=code, mimetype='application/json')
+        _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(result_parsed['error']), _logger.LogLevel.ERROR)
+        resp = Response(result_parsed['error'], status=code, mimetype='application/json')
         return resp
 
-    _logger.log('[' + __name__ + '] /structures output:'.format(request), _logger.LogLevel.DEBUG)
+    _logger.log('[' + __name__ + '] /structures output:'.format(result_parsed), _logger.LogLevel.DEBUG)
 
     try:
         errormsg = result_parsed['error']
@@ -132,7 +139,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /structures API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
         resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
@@ -159,7 +166,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     code, typedata = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /universe/types API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /universe/types API error ' + str(code) + ': ' + str(typedata['error']), _logger.LogLevel.ERROR)
         resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
@@ -180,7 +187,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
         resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
@@ -201,7 +208,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /universe/constellations API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /universe/constellations API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
         resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
@@ -220,7 +227,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
     if not code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /universe/regions API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /universe/regions API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
         resp = Response(result['error'], status=code, mimetype='application/json')
         return resp
 
