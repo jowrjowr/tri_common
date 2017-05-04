@@ -44,14 +44,10 @@ def start_discord(username, password, covername, handler, discord_queue):
         _logger.log(prefix + 'Discord connection error: ' + str(error), _logger.LogLevel.ERROR)
 
 def parse_message(cover, message):
-    if cover == "fcon":
-        body = fcon_parser(message)
-    elif cover == "low effort horde spy":
+    if cover == "low effort horde spy":
         body = horde_parser(message)
     elif cover == "GOTG":
-        body = horde_parser(message)
-    elif cover == "brave_spy":
-        body = brave_spy(message)
+        body = gotg_parser(message)
     else:
         body = default_parser(message)
 
@@ -61,23 +57,6 @@ def parse_message(cover, message):
 def default_parser(message):
     return "FROM: {0}|{1}\nTO: {2}\n--------------------\n{3}"\
         .format(str(message.author),str(message.server), str(message.channel), str(message.content).replace('@','#'))
-
-def fcon_parser(message):
-    try:
-        text = message.content.splitlines()
-
-        main_text = text[3].replace(" || ", "\n")
-
-        footer_text = text[-1].split(" ")
-
-        ping_from = footer_text[6]
-        ping_to = footer_text[8][1:-1]
-
-        return "FROM: {0}\nTO: {1}\n--------------------\n{2}" \
-            .format(ping_from, ping_to, main_text)
-
-    except Exception:
-        return default_parser(message)
 
 def gotg_parser(message):
     try:
@@ -93,13 +72,6 @@ def gotg_parser(message):
         return default_parser(message)
 
 def horde_parser(message):
-    try:
-        text = message.content
-        raise NotImplementedError()
-    except Exception:
-        return default_parser(message)
-
-def brave_spy(message):
     try:
         text = message.content
         raise NotImplementedError()
