@@ -132,7 +132,7 @@ class JabberForwarder(ClientXMPP):
             self.logprefix + ': {0}: {1}'.format(presence_from[0],event['body']),
             _logger.LogLevel.INFO
         )
-        self.queue.put(self.header() + '{0}: {1}'.format(presence_from[0],event['body']))
+        self.queue.put(parse_message(presence_from[0],event['body']))
 
 def start_jabber(jid, password, covername, handler, discord_queue):
     _logger.log('[' + __name__ + '] starting spy {0}'.format(jid), _logger.LogLevel.INFO)
@@ -148,4 +148,29 @@ def start_jabber(jid, password, covername, handler, discord_queue):
     jabber.connect()
     # explicitly nonblocking - care for your threads!
     jabber.process(block=False)
+
+def parse_message(cover, message):
+    if cover == "fcon":
+        body = fcon_parser(message)
+    elif cover == "brave":
+        body = brave_parser(message)
+    else:
+        body = message
+
+    return "**[{0}]** | __{1}__\n```css\n{2}```"\
+        .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
+
+def fcon_parser(message):
+    try:
+        text = message
+        raise NotImplementedError()
+    except Exception:
+        return message
+
+def brave_parser(message):
+    try:
+        text = message
+        raise NotImplementedError()
+    except Exception:
+        return message
 
