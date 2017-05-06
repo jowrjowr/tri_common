@@ -80,7 +80,6 @@ def horde_parser(message):
         mentions = [mention for mention in text.split() if mention.startswith('@')]
 
         textwords = [word for word in text if word not in mentions]
-        text = ' '.join(textwords)
 
         return "FROM:  | {1}\nTO: {2} (CHANNEL:{3})\n--------------------\n{4}" \
             .format(author_clean, str(message.server), ", ".join(mentions).replace('@', ''), str(message.channel),

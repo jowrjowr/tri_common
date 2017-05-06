@@ -152,7 +152,7 @@ def start_jabber(jid, password, covername, handler, discord_queue):
 def parse_message(cover, presence_from, message):
     if cover == "fcon":
         body = fcon_parser(presence_from, message)
-    elif cover == "brave":
+    elif cover == "brave_spy":
         body = brave_parser(presence_from, message)
     elif cover == "test":
         body = test_parser(presence_from, message)
@@ -164,7 +164,7 @@ def parse_message(cover, presence_from, message):
 
 def fcon_parser(presence_from, message):
     try:
-        text = "\n".join(message.splitlines()[1:-1]).replace(' || ', '\n')
+        text = "\n".join(message.splitlines()[3:-1]).replace(' || ', '\n')
 
         footer = message.splitlines()[-1].split(' to ')
 
