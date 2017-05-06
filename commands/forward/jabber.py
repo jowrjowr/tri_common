@@ -132,7 +132,7 @@ class JabberForwarder(ClientXMPP):
             self.logprefix + ': {0}: {1}'.format(presence_from[0],event['body']),
             _logger.LogLevel.INFO
         )
-        self.queue.put(parse_message(presence_from[0],event['body']))
+        self.queue.put(parse_message(self.identifier, presence_from[0],event['body']))
 
 def start_jabber(jid, password, covername, handler, discord_queue):
     _logger.log('[' + __name__ + '] starting spy {0}'.format(jid), _logger.LogLevel.INFO)
@@ -149,28 +149,61 @@ def start_jabber(jid, password, covername, handler, discord_queue):
     # explicitly nonblocking - care for your threads!
     jabber.process(block=False)
 
-def parse_message(cover, message):
+def parse_message(cover, presence_from, message):
     if cover == "fcon":
-        body = fcon_parser(message)
+        body = fcon_parser(presence_from, message)
     elif cover == "brave":
-        body = brave_parser(message)
+        body = brave_parser(presence_from, message)
+    elif cover == "test":
+        body = test_parser(presence_from, message)
     else:
         body = message
 
     return "**[{0}]** | __{1}__\n```css\n{2}```"\
         .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
 
-def fcon_parser(message):
+def fcon_parser(presence_from, message):
     try:
-        text = message
-        raise NotImplementedError()
+        text = "\n".join(message.splitlines()[1:-1])
+
+        footer = message.splitlines()[-1].split(' to ')
+
+        target = footer[-2].split(' @ ')[0][1:-1]
+
+        author = ' to '.join(footer[:-2]).split('broadcast from')[1]
+
+        return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
+            .format(author, presence_from, target, str(text).replace('@', '#'))
     except Exception:
         return message
 
-def brave_parser(message):
+def brave_parser(presence_from, message):
     try:
-        text = message
-        raise NotImplementedError()
+        text = "\n".join(message.splitlines()[:-1])
+
+        footer = message.splitlines()[-1].split('; ')
+
+        target = footer[1].split(': ')[1]
+
+        author = footer[0].split(': ')[1]
+
+        return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
+            .format(author, presence_from, target, str(text).replace('@', '#'))
+    except Exception:
+        return message
+
+def test_parser(presence_from, message):
+    try:
+        text = "\n".join(message.splitlines()[:-1])
+
+        footer = message.splitlines()[-1].split(' to ')
+
+        target = footer[-1].split(' @ ')[0]
+
+        author = ' to '.join(footer[:-1]).split('SENT BY')[1]
+
+        return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
+            .format(author, presence_from, target, str(text).replace('@', '#'))
     except Exception:
         return message
 
