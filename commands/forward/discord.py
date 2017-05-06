@@ -55,7 +55,7 @@ def parse_message(cover, message):
         .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
 
 def default_parser(message):
-    return "FROM: {0}|{1}\nTO: {2}\n--------------------\n{3}"\
+    return "FROM: {0} | {1}\nCHANNEL: {2}\n--------------------\n{3}"\
         .format(str(message.author),str(message.server), str(message.channel), str(message.content).replace('@','#'))
 
 def gotg_parser(message):
@@ -65,15 +65,25 @@ def gotg_parser(message):
         ping_from = text[1].split(" ", 1)[-1]
         ping_to = text[2].split(" ", 1)[-1]
 
-        return "FROM: {0}|{1}\nTO: {2}\CHANNEL:{3}\n--------------------\n{4}" \
+        return "FROM: {0} | {1}\nTO: {2} (CHANNEL:{3})\n--------------------\n{4}" \
             .format(ping_from, str(message.server), ping_to, str(message.channel),
-                    str(text[3:]).replace('@', '#'))
+                    str("\n".join(text[3:])).replace('@', '#'))
     except Exception:
         return default_parser(message)
 
 def horde_parser(message):
     try:
         text = message.content
-        raise NotImplementedError()
+
+        author_clean = str(message.author)[:-5]
+
+        mentions = [mention for mention in text.split() if mention.startswith('@')]
+
+        textwords = [word for word in text if word not in mentions]
+        text = ' '.join(textwords)
+
+        return "FROM:  | {1}\nTO: {2} (CHANNEL:{3})\n--------------------\n{4}" \
+            .format(author_clean, str(message.server), ", ".join(mentions).replace('@', ''), str(message.channel),
+                    str(text).replace('@', '#'))
     except Exception:
         return default_parser(message)
