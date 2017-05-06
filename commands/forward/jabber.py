@@ -164,7 +164,7 @@ def parse_message(cover, presence_from, message):
 
 def fcon_parser(presence_from, message):
     try:
-        text = "\n".join(message.splitlines()[1:-1])
+        text = "\n".join(message.splitlines()[1:-1]).replace(' || ', '\n')
 
         footer = message.splitlines()[-1].split(' to ')
 
