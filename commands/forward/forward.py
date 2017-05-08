@@ -88,6 +88,16 @@ class parseaction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
         print(values)
+
+        # setup logging
+        if namespace.logname == None:
+            filename = "spy"
+        else:
+            filename = namespace.logname
+
+        _logger.LogSetup(namespace.loglevel, filename, namespace.logdir)
+        # actually do things
+
         forward()
 
 def add_arguments(parser):

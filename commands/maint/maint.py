@@ -19,6 +19,16 @@ class parseaction(argparse.Action):
         super(parseaction, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
+
+        # setup logging
+        if namespace.logname == None:
+            filename = "maint"
+        else:
+            filename = namespace.logname
+
+        _logger.LogSetup(namespace.loglevel, filename, namespace.logdir)
+        # actually do things
+
         if values == 'all':
             maint_all()
         elif values == 'tokens':

@@ -28,8 +28,7 @@ class LogMode(_enum.Enum):
 def debug(message):
     log(message, LogLevel.DEBUG)
 
-
-def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY, log_fmt=LogFormat.TIMESTAMP):
+def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY, log_fmt=LogFormat.TIMESTAMP, log_name=None):
     """
     Initialize logging facilities
 
@@ -43,12 +42,16 @@ def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY,
     :return:
     """
 
+    logger = _logging.getLogger()
+
     # setup log name
     if log_dir[-1] != "/":
         log_dir += "/"
 
-    scriptname = _sys.argv[0].split('/')[-1].split('.')[0]
-    log_file_fmt = log_dir + scriptname + "{0}.log"
+    if log_name == None:
+        log_name = _sys.argv[0].split('/')[-1].split('.')[0]
+
+    log_file_fmt = log_dir + log_name + "{0}.log"
 
     if log_mod == LogMode.SINGLE:
         log_file_ins = ""
@@ -61,6 +64,7 @@ def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY,
     else:
         raise TypeError("Argument log_mode is an invalid LogMode enum.")
 
+
     # setup output format
     if log_fmt == LogFormat.SIMPLE:
         log_out_fmt = "%(levelname)s: %(message)s"
@@ -71,14 +75,6 @@ def init(log_dir="/srv/api/logs/", log_lvl=_logging.INFO, log_mod=LogMode.DAILY,
     else:
         raise TypeError("Argument log_fmt is an invalid LogFormat enum.")
 
-    # setup base logger
-    logger = _logging.getLogger()
-    logger.setLevel(log_lvl.value)
-
-    # make sure everyone complies
-
-    for log in _logging.Logger.manager.loggerDict:
-        _logging.getLogger(log).setLevel(log_lvl.value)
 
     # setup file logger
     file_logger = _logging.FileHandler(log_file_fmt.format(log_file_ins), mode='a')
@@ -96,14 +92,20 @@ def log(message, log_lvl):
     logger = _logging.getLogger(__name__)
     logger.log(level=log_lvl.value, msg=message)
 
-def LogSetup(log_lvl):
+def LogSetup(log_lvl, log_name, log_dir):
     log_lvl = log_lvl.upper()
+
+    # log to a specific filename prefix
+    if log_name == None:
+        log_name = _sys.argv[0].split('/')[-1].split('.')[0]
+
     init(
         log_lvl=LogLevel[log_lvl],
         log_mod=LogMode.DAILY,
-        log_fmt=LogFormat.TIMESTAMP
+        log_fmt=LogFormat.TIMESTAMP,
+        log_name=log_name,
+        log_dir=log_dir,
     )
-
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -114,11 +116,32 @@ class parseaction(argparse.Action):
         setattr(namespace, self.dest, values)
         LogSetup(values)
 
+class parseaction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(parseaction, self).__init__(option_strings, dest, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+
 def add_arguments(parser):
+
+    parser.add_argument("--logname",
+        dest='logname',
+        default=None,
+        help='prefix of log file name',
+    )
+
+    parser.add_argument("--logdir",
+        dest='logdir',
+        default="/srv/api/logs",
+        help='logfile root directory',
+    )
+
     parser.add_argument("--loglevel",
-        action=parseaction,
         dest='loglevel',
         choices=['debug', 'info', 'warning', 'error', 'critical'],
         default='info',
-        help='Level of log output (default is info)',
+        help='log level',
     )
+

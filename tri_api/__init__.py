@@ -15,6 +15,7 @@ parser.add_argument("--loglevel",
     help='Level of log output (default is info)',
 )
 arguments = parser.parse_args()
+# initialize logging
 _logger.LogSetup(arguments.loglevel)
 # secret_key is a random seed value for http sessions
 app.secret_key = os.urandom(24)

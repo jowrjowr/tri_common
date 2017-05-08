@@ -11,6 +11,9 @@ def main():
     parser = argparse.ArgumentParser()
 
     # collect arguments
+    # all of the actual work is being done in the relevant script, and
+    # the parser just activates it. though it adds a weirdness for logger...
+
     _logger.add_arguments(parser)
     _maint.add_arguments(parser)
     _forward.add_arguments(parser)

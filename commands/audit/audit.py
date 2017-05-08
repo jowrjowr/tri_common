@@ -27,6 +27,16 @@ class parseaction(argparse.Action):
         super(parseaction, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, value, option_string=None):
         setattr(namespace, self.dest, value)
+
+        # setup logging
+        if namespace.logname == None:
+            filename = "audit"
+        else:
+            filename = namespace.logname
+
+        _logger.LogSetup(namespace.loglevel, filename, namespace.logdir)
+        # actually do things
+
         if value == 'all':
             audit_all()
         elif value == 'jabber':
