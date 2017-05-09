@@ -3,22 +3,23 @@
 from flask import Flask, Blueprint, Response
 import common.logger as _logger
 import os
-import argparse
+import uwsgi
 
 app = Flask(__name__)
-parser = argparse.ArgumentParser()
-parser.add_argument("--loglevel",
-    action='store',
-    dest='loglevel',
-    choices=['debug', 'info', 'warning', 'error', 'critical'],
-    default='info',
-    help='Level of log output (default is info)',
-)
-arguments = parser.parse_args()
+
 # initialize logging
-_logger.LogSetup(arguments.loglevel)
+logdir = "/srv/api/logs"
+filename = "api"
+try:
+    loglevel = uwsgi.opt['loglevel'].decode('utf-8')
+except Exception as e:
+    loglevel = 'info'
+
+_logger.LogSetup(loglevel, filename, logdir)
+
 # secret_key is a random seed value for http sessions
 app.secret_key = os.urandom(24)
+
 # the transport to nginx is https but nginx<-->uwsgi is not
 
 app.config.update({
