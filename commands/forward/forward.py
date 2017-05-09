@@ -87,7 +87,6 @@ class parseaction(argparse.Action):
         super(parseaction, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
-        print(values)
 
         # setup logging
         if namespace.logname == None:
@@ -96,6 +95,7 @@ class parseaction(argparse.Action):
             filename = namespace.logname
 
         _logger.LogSetup(namespace.loglevel, filename, namespace.logdir)
+
         # actually do things
 
         forward()

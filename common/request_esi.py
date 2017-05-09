@@ -2,7 +2,6 @@ def do_esi(function, url, method, *data):
 
     import requests
     import common.logger as _logger
-    import common.graphite as _graphite
     import logging
     import json
     import redis
@@ -62,8 +61,9 @@ def do_esi(function, url, method, *data):
             try:
                 result = json.loads(str(request.text))
             except TypeError as error:
-                return(500, { 'code': 500, 'error': 'cant convert esi response to json'})
-            return(500, result)
+                result = { 'code': 500, 'error': 'cant convert esi response to json'}
+            finally:
+                return(500, result)
 
         # okay probably worked
 
@@ -76,41 +76,41 @@ def do_esi(function, url, method, *data):
             request = session.get(url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
-            try:
-                graphite.send('connection_error',1)
-            except Exception as err:
-                _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        try:
+            graphite.send('connection_error',1)
+        except Exception as err:
+            _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
         return(500, { 'code': 500, 'error': 'API connection error: ' + str(err)})
     except requests.exceptions.ReadTimeout as err:
-            try:
-                graphite.send('read_timeout',1)
-            except Exception as err:
-                _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        try:
+            graphite.send('read_timeout',1)
+        except Exception as err:
+            _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
         _logger.log('[' + function + '] ESI connection read timeout: ' + str(err), _logger.LogLevel.ERROR)
         return(500, { 'code': 500, 'error': 'API connection read timeout: ' + str(err)})
     except requests.exceptions.Timeout as err:
-            try:
-                graphite.send('timeout',1)
-            except Exception as err:
-                _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        try:
+            graphite.send('timeout',1)
+        except Exception as err:
+            _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
         _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.ERROR)
         return(500, { 'code': 500, 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
-            try:
-                graphite.send('general_error',1)
-            except Exception as err:
-                _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        try:
+            graphite.send('general_error',1)
+        except Exception as err:
+            _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
         _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.ERROR)
         return(500, { 'code': 500, 'error': 'General error: ' + str(err)})
 
     # need to also check that the api thinks this was success.
 
     if not request.status_code == 200:
-            try:
-                graphite.send('failure',1)
-            except Exception as err:
-                _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        try:
+            graphite.send('failure',1)
+        except Exception as err:
+            _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
         # don't bother to log 404s
         if not request.status_code == 404:
             _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.ERROR)
