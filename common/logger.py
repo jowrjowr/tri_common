@@ -158,6 +158,12 @@ def securitylog(function, charid, ipaddress, action):
     from common.api import base_url
     import common.request_esi
 
+    # file logging
+
+    _logger.log('[{0}] {1} @ {2}: {3}'.format(function, charid, ipaddress, action),_logger.LogLevel.INFO)
+
+    # mysql logging
+
     try:
         sql_conn = mysql.connect(
             database=_database.DB_DATABASE,
@@ -168,27 +174,31 @@ def securitylog(function, charid, ipaddress, action):
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
     cursor = sql_conn.cursor()
     
-    # get character name
-    esi_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    # get character name if a charid is supplied
+    if not charid == None and not charid == 'unknown':
+        esi_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
-    if not code == 200:
-        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return False
-    try:
-        charname = result['name']
-    except KeyError as error:
-        _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+        if not code == 200:
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return False
+        try:
+            charname = result['name']
+        except KeyError as error:
+            _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            charname = None
+    else:
         charname = None
-    
+        charid = None
+
     # log to security table
     
     try:
-        query = 'INSERT INTO Security (charID, charName, IP, action) VALUES(%s, %s, %s, %s, %s)'
+        query = 'INSERT INTO Security (charID, charName, IP, action) VALUES(%s, %s, %s, %s)'
         cursor.execute(query, (
             charid,
             charname,
-            IP,
+            ipaddress,
             action,
         ),)
     except mysql.Error as err:
