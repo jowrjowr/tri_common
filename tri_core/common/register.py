@@ -54,9 +54,9 @@ def registeruser(charid, atoken, rtoken):
     allianceid = result[0]['alliance_id']
 
     # username
-    esi_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
+    request_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
     _logger.log('[' + __name__ + '] character output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
@@ -77,7 +77,7 @@ def registeruser(charid, atoken, rtoken):
     # get corp name
     request_url = base_url + "corporations/" + str(corpid) + '/?datasource=tranquility'
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
     _logger.log('[' + __name__ + '] corporations output for {0}: {1}'.format(corpid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
@@ -98,7 +98,7 @@ def registeruser(charid, atoken, rtoken):
     # get alliance name
     request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
 
     if not code == 200:
         if code == 404:
