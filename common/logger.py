@@ -149,3 +149,54 @@ def add_arguments(parser):
         help='log level',
     )
 
+def securitylog(function, charid, ipaddress, action):
+    # log stuff into the security table
+    
+    import MySQLdb as mysql
+    import common.credentials.database as _database
+    import common.logger as _logger
+    from common.api import base_url
+    import common.request_esi
+
+    try:
+        sql_conn = mysql.connect(
+            database=_database.DB_DATABASE,
+            user=_database.DB_USERNAME,
+            password=_database.DB_PASSWORD,
+            host=_database.DB_HOST)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+    cursor = sql_conn.cursor()
+    
+    # get character name
+    esi_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return False
+    try:
+        charname = result['name']
+    except KeyError as error:
+        _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+        charname = None
+    
+    # log to security table
+    
+    try:
+        query = 'INSERT INTO Security (charID, charName, IP, action) VALUES(%s, %s, %s, %s, %s)'
+        cursor.execute(query, (
+            charid,
+            charname,
+            IP,
+            action,
+        ),)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+    finally:
+        cursor.close()
+        sql_conn.commit()
+        sql_conn.close()
+    return True
+

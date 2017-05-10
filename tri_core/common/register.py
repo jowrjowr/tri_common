@@ -2,10 +2,12 @@ def registeruser(charid, atoken, rtoken):
     # put the barest skeleton of information into ldap/mysql
     
     import common.logger as _logger
-    import common.database as _database
+    import common.credentials.database as _database
     import tri_core.common.testing as _testing
     import common.credentials.ldap as _ldap
     import common.request_esi
+    from common.graphite import sendmetric
+    from common.api import base_url
     import ldap
     import MySQLdb as mysql
 
@@ -20,7 +22,6 @@ def registeruser(charid, atoken, rtoken):
     # get character affiliations
 
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    base_url = 'https://esi.tech.ccp.is/latest'
     _logger.log('[' + __name__ + '] registering user {}'.format(charid),_logger.LogLevel.INFO)
 
     try:
@@ -41,7 +42,7 @@ def registeruser(charid, atoken, rtoken):
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
-    request_url = base_url + '/characters/affiliation/?datasource=tranquility'
+    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, 'post', data)
     if not code == 200:
@@ -72,7 +73,7 @@ def registeruser(charid, atoken, rtoken):
         return(False, 'error')
 
     # get corp name
-    request_url = base_url + "/corporations/" + str(corpid) + '/?datasource=tranquility'
+    request_url = base_url + "corporations/" + str(corpid) + '/?datasource=tranquility'
 
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
@@ -85,11 +86,14 @@ def registeruser(charid, atoken, rtoken):
             _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
         return('SORRY, INTERNAL API ERROR')
 
-    corpname = result['corporation_name']
-
+    try:
+        corpname = result['corporation_name']
+    except Exception as error:
+        _logger.log('[' + __name__ + '] /corporations API did not return corp name: {0}'.format(error), _logger.LogLevel.ERROR)
+        return('SORRY, ESI API ERROR')
 
     # get alliance name
-    request_url = base_url + "/alliances/" + str(allianceid) + '/?datasource=tranquility'
+    request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
 
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
 

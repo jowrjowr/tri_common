@@ -1,18 +1,14 @@
 def auth_evesso():
-    from flask import request, url_for, Response, session, redirect, make_response
+    from flask import request, url_for, Response, session, redirect, make_response, request
     from requests_oauthlib import OAuth2Session
+
 
     import common.credentials.eve as _eve
     import common.logger as _logger
 
     client_id = _eve.client_id
     client_secret = _eve.client_secret
-    redirect_url = _eve.redirect
-    # testing id and secret for now:
-    client_id = '586228c3770847b0a865cf89ae6f0c90'
-    client_secret = '7MuEgxidtoIQBiU8jp9fv6qplYqa0h02RwidI4Yo'
-    redirect_url = 'https://auth.triumvirate.rocks/eve/callback'
-    
+    redirect_url = _eve.redirect_url
 
     base_url = 'https://login.eveonline.com'
     token_url = base_url + '/oauth/token'
@@ -67,10 +63,7 @@ def auth_evesso_callback():
 
     client_id = _eve.client_id
     client_secret = _eve.client_secret
-    redirect_url = _eve.redirect
-    client_id = '586228c3770847b0a865cf89ae6f0c90'
-    client_secret = '7MuEgxidtoIQBiU8jp9fv6qplYqa0h02RwidI4Yo'
-    redirect_url = 'https://auth.triumvirate.rocks/eve/callback'
+    redirect_url = _eve.redirect_url
 
     esi_url = 'https://esi.tech.ccp.is/latest'
     base_url = 'https://login.eveonline.com'
