@@ -2,10 +2,12 @@ def registeruser(charid, atoken, rtoken):
     # put the barest skeleton of information into ldap/mysql
     
     import common.logger as _logger
-    import common.database as _database
+    import common.credentials.database as _database
     import tri_core.common.testing as _testing
     import common.credentials.ldap as _ldap
     import common.request_esi
+    from common.graphite import sendmetric
+    from common.api import base_url
     import ldap
     import MySQLdb as mysql
 
@@ -20,7 +22,6 @@ def registeruser(charid, atoken, rtoken):
     # get character affiliations
 
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    base_url = 'https://esi.tech.ccp.is/latest'
     _logger.log('[' + __name__ + '] registering user {}'.format(charid),_logger.LogLevel.INFO)
 
     try:
@@ -41,29 +42,27 @@ def registeruser(charid, atoken, rtoken):
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
-    request_url = base_url + '/characters/affiliation/?datasource=tranquility'
+    # character affiliations
+    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, 'post', data)
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
+    _logger.log('[' + __name__ + '] character affiliations output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
     corpid = result[0]['corporation_id']
     allianceid = result[0]['alliance_id']
 
     # username
-    esi_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
+    request_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
+    _logger.log('[' + __name__ + '] character output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            return(False, 'error')
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            return(False, 'error')
+        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return(False, 'error')
 
     try:
         charname = result['name']
@@ -72,35 +71,29 @@ def registeruser(charid, atoken, rtoken):
         return(False, 'error')
 
     # get corp name
-    request_url = base_url + "/corporations/" + str(corpid) + '/?datasource=tranquility'
+    request_url = base_url + "corporations/" + str(corpid) + '/?datasource=tranquility'
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
+    _logger.log('[' + __name__ + '] corporations output for {0}: {1}'.format(corpid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            pass
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /corporations API error {0} for corp id {1}: {2}'.format(code, corpid, result['error']), _logger.LogLevel.ERROR)
         return('SORRY, INTERNAL API ERROR')
 
-    corpname = result['corporation_name']
-
+    try:
+        corpname = result['corporation_name']
+    except Exception as error:
+        _logger.log('[' + __name__ + '] /corporations API did not return corp name for corpid {0}: {1}'.format(corpid, error), _logger.LogLevel.ERROR)
+        return('SORRY, ESI API ERROR')
 
     # get alliance name
-    request_url = base_url + "/alliances/" + str(allianceid) + '/?datasource=tranquility'
+    request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, request_url, 'get')
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            pass
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return('SORRY, INTERNAL API ERROR')
+        _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return('SORRY, ESI API ERROR')
 
     alliancename = result['alliance_name']
 

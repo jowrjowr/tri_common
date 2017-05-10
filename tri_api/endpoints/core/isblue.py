@@ -1,31 +1,14 @@
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
+    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
-    import MySQLdb as mysql
-    import common.database as DATABASE
     import requests
     import json
 
     # core isblue function that tells whether a user, corp, or alliance is currently blue to triumvirate
     _logger.log('[' + __name__ + '] testing {0}'.format(request.args['id']), _logger.LogLevel.DEBUG)
-
-    # CONSTANTS TO MOVE OUT
-    baseurl = 'https://esi.tech.ccp.is/latest/'
-
-    # attempt mysql connection (abort in case of failure)
-    try:
-        sql_conn = mysql.connect(
-            database=DATABASE.DB_DATABASE,
-            user=DATABASE.DB_USERNAME,
-            password=DATABASE.DB_PASSWORD,
-            host=DATABASE.DB_HOST)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'unable to connect to mysql: ' + str(err)})
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
 
     if 'id' not in request.args:
         _logger.log('[' + __name__ + '] no id', _logger.LogLevel.WARNING)
@@ -38,215 +21,184 @@ def core_isblue():
     try:
         id = int(request.args['id'])
     except ValueError:
-        _logger.log('[' + __name__ + '] invalid id: ' + str(request.args['id']), _logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] invalid id: "{0}"'.format(request.args['id']), _logger.LogLevel.WARNING)
         js = json.dumps({ 'code': 500, 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
-    # hard code for viral society alt alliance
+    # query esi to determine id type and proceed accordingly
 
-    if id == 99003916:
-        js = json.dumps({ 'code': 1 })
-        resp = Response(js, status=200, mimetype='application/json')
+    request_url = base_url + 'universe/names/?datasource=tranquility'
+    data = '[{}]'.format(id)
+    _logger.log('[' + __name__ + '] determining type of id {0}'.format(id),_logger.LogLevel.DEBUG)
+    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    if not code == 200:
+        _logger.log('[' + __name__ + '] unable to get id type information for {0}: {1}'.format(id, result['error']),_logger.LogLevel.ERROR)
+        js = json.dumps({ 'code': code, 'error': result['error'] })
+        resp = Response(js, status=code, mimetype='application/json')
         return resp
 
-    # check through the core Permissions table to see if there's a match, as that's fast.
+    category = result[0]['category']
+    _logger.log('[' + __name__ + '] id {0} is category type: {1}'.format(id, category),_logger.LogLevel.DEBUG)
 
-    cursor = sql_conn.cursor()
-    query = 'SELECT allianceID,allianceName FROM Permissions WHERE allianceID = %s'
-
-    # the forced-tuple on (id,) is deliberate due to mysqldb weirdness
-    try:
-        row = cursor.execute(query, (id,))
-        cursor.close()
-    except Exception as errmsg:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': 500, 'error': 'mysql broke: ' + str(errmsg)})
-        resp = Response(js, status=401, mimetype='application/json')
+    if category == 'alliance':
+        # test alliance
+        code, result = test_alliance(id)
+        resp = Response(json.dumps(result), status=code, mimetype='application/json')
+        return resp
+    elif category == 'corporation':
+        # test corporation  
+        code, result = test_corp(id)
+        resp = Response(json.dumps(result), status=code, mimetype='application/json')
+        return resp
+    elif category == 'character':
+        # test character
+        code, result = test_char(id)
+        resp = Response(json.dumps(result), status=code, mimetype='application/json')
+        return resp
+    else:
+        # unknown category
+        code = 404
+        result = {'code': 0, 'error': "unknown id category"}
+        resp = Response(json.dumps(result), status=code, mimetype='application/json')
         return resp
 
-    # if there's a nonzero return, that means the corp/alliance in question is blue to tri.
-    # otherwise there's more processing to do.
-    if row == 1:
-        # BLUE! we're done.
-        js = json.dumps({ 'code': 1 })
-        resp = Response(js, status=200, mimetype='application/json')
-        return resp
+def test_char(charid):
 
-    # so neither blue as corp or alliance. let's try char first next.
+    from common.api import base_url
+    import common.request_esi
+    import common.logger as _logger
 
-    esi_url = baseurl + 'characters/' + str(id) + '/?datasource=tranquility'
-    headers = {'Accept': 'application/json'}
-
-    # do the request, but catch exceptions for connection issues
-
-    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+    # get character affiliations
+    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    data = '[{}]'.format(charid)
+    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    _logger.log('[' + __name__ + '] affiliations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            return False
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result_parsed['error']), _logger.LogLevel.ERROR)
-            js = json.dumps({ 'code': 500, 'error': result_parsed['error'] })
-            resp = Response(js, status=code, mimetype='application/json')
-            return False
-
-    _logger.log('[' + __name__ + '] /characters output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
-
-    # parse out the corp/alliance ids and test
-
+        # something broke severely
+        _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        error = result['error']
+        result = { 'code': code, 'error': error }
+        return code, result
+        
+    corpid = result[0]['corporation_id']
     try:
-        alliance_id = result_parsed['alliance_id']
+        allianceid = result[0]['alliance_id']
     except KeyError:
-        alliance_id = 0
+        allianceid = 0
+    
+    # test the character's corporation
+    
+    code, result = test_corp(corpid)
+    if not code == 200:
+        # something broke severely
+        error = result['error']
+        _logger.log('[' + __name__ + '] error testing corp {0} for charid {1}: {2}'.format(corpid, charid, error), _logger.LogLevel.ERROR)
+        result = { 'code': code, 'error': error }
+        return code, result
+    
+    if result['code'] == 1:
+        # the direct corporation test is passed
+        return 200, result
 
-    if alliance_id > 0:
-        test_result_json = str(test_alliance(sql_conn, alliance_id))
-        test_result = json.loads(str(test_result_json))
-        if test_result['code'] == -1:
-            # shit's broken. we're done parsing.
-            js = json.dumps({ 'code': -1, 'error': test_result_json })
-            resp = Response(js, status=500, mimetype='application/json')
-            return resp
-        elif test_result['code'] == 1:
-            # blue. done parsing.
-            js = json.dumps({ 'code': 1 })
-            resp = Response(js, status=200, mimetype='application/json')
-            return resp
-    # no determination. test as a corp
-
-    try:
-        corporation_id = result_parsed['corporation_id']
-    except KeyError:
-        # not sure how this can happen but leaving the try anyway
-        corporation_id = 'None'
-
-    test_result_json = test_corp(sql_conn, baseurl, id)
-
-    if test_result_json == None:
-        js = json.dumps({ 'code': -1, 'error': 'Empty JSON from test_corp' })
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-    test_result = json.loads(test_result_json)
-
-    if test_result['code'] == -1:
-        # shit's broken. we're done parsing.
-        js = json.dumps({ 'code': -1, 'error': 'test_result broken' })
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-    elif test_result['code'] == 1:
-        # blue. done parsing.
-        js = json.dumps({ 'code': 1 })
-        resp = Response(js, status=200, mimetype='application/json')
-        return resp
-
-    # test it as an alliance
-    test_result_json = str(test_alliance(sql_conn, id))
-    test_result = json.loads(str(test_result_json))
-
-    if test_result['code'] == -1:
-        # shit's broken. we're done parsing.
-        js = json.dumps({ 'code': -1, 'error': test_result_json })
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-    elif test_result['code'] == 1:
-        # blue. done parsing.
-        js = json.dumps({ 'code': 1 })
-        resp = Response(js, status=200, mimetype='application/json')
-        return resp
-
-    # test it as a corp.
-    # the /corporations endpoint is the least stable so we hit it last
-    # see: https://github.com/ccpgames/esi-issues/issues/294
-
-    test_result_json = test_corp(sql_conn, baseurl, id)
-    test_result = json.loads(test_result_json)
-    if test_result['code'] == -1:
-        # shit's broken. we're done parsing.
-        js = json.dumps({ 'code': -1, 'error': test_result_json })
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-    elif test_result['code'] == 1:
-        # blue. done parsing.
-        js = json.dumps({ 'code': 1 })
-        resp = Response(js, status=200, mimetype='application/json')
-        return resp
-
-
-    # so if by this point nothing has caught it out explicitly blue, or erroed, it isn't blue.
-    js = json.dumps({ 'code': 0 })
-    resp = Response(js, status=200, mimetype='application/json')
-    return resp
-
-def test_corp(sql_conn, baseurl, corp_id):
+    # test the character's alliance
+    code, result = test_alliance(allianceid)
+    if not code == 200:
+        # something broke severely
+        error = result['error']
+        _logger.log('[' + __name__ + '] error testing alliance {0} for charid {1}: {2}'.format(allianceid, charid, error), _logger.LogLevel.ERROR)
+        result = { 'code': code, 'error': error }
+        return code, result
+        
+    if result['code'] == 1:
+        # the direct corporation test is passed
+        return 200, result
+        
+    # failed corp and alliance level testing. not blue.
+    result = { 'code': 0 }
+    return 200, result
+    
+def test_corp(corpid):
 
     # everything for testing if this is a corp and if the corp / parent
     # alliance are blue to us
 
-    from flask import Flask, request, url_for, json, Response
+    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
-    import requests
-    import json
 
     # if it is a corp it is not directly in our blue table. check its alliance.
 
-    esi_url = baseurl + 'corporations/' + str(corp_id) + '/?datasource=tranquility'
-    headers = {'Accept': 'application/json'}
+    esi_url = base_url + 'corporations/' + str(corpid) + '/?datasource=tranquility'
 
     # do the request, but catch exceptions for connection issues
 
-    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    _logger.log('[' + __name__ + '] /corporations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            pass
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result_parsed['error']), _logger.LogLevel.ERROR)
-            js = json.dumps({ 'code': -1, 'error': result_parsed['error'], 'error_code': code })
-            return js
-
-    _logger.log('[' + __name__ + '] /corporations output: {}'.format(result_parsed), _logger.LogLevel.DEBUG)
+        # something broke severely
+        _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        error = result['error']
+        result = { 'code': code, 'error': error }
+        return code, result
 
     try:
-        alliance_id = result_parsed['alliance_id']
+        alliance_id = result['alliance_id']
     except KeyError:
-        # no alliance id. the test for blue on corpid was done earlier
-        # so this isn't blue.
-        js = json.dumps({ 'code': 0 })
-        return js
+        # no alliance id. not blue.
+        result = { 'code': 0 }
+        return 200, result
+    # test the alliance id
+    code, result = test_alliance(alliance_id)
 
-    # do a final test on the derived alliance id itself
+    return code, result
 
-    test_result = test_alliance(sql_conn, alliance_id)
-    return test_result
+def test_alliance(allianceid):
 
-def test_alliance(sql_conn, alliance_id):
-
-    from flask import Flask, request, url_for, json, Response
+    import MySQLdb as mysql
+    import common.credentials.database as _database
     import common.logger as _logger
-    import requests
-    import json
 
+    # hard code for viral society alt alliance
+    if id == 99003916:
+        result = { 'code': 1 }
+        return 200, result
+
+    # hardcode handling for noobcorps
+    if id == 0:
+        result = { 'code': 0 }
+        return 200, result
+
+    # attempt mysql connection (abort in case of failure)
+    try:
+        sql_conn = mysql.connect(
+            database=_database.DB_DATABASE,
+            user=_database.DB_USERNAME,
+            password=_database.DB_PASSWORD,
+            host=_database.DB_HOST)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        result = { 'code': 500, 'error': 'unable to connect to mysql: ' + str(err)}
+        return 500, result
+    
     # check the alliance id against the blue list
 
     cursor = sql_conn.cursor()
     query = 'SELECT allianceID,allianceName FROM Permissions WHERE allianceID = %s'
     try:
-        row = cursor.execute(query, (alliance_id,))
+        row = cursor.execute(query, (allianceid,))
         cursor.close()
     except Exception as errmsg:
-        js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
-        return js
+        result = { 'code': 500, 'error': 'mysql broke: ' + str(errmsg)}
+        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
+        return 500, result
     if row == 1:
-        js = json.dumps({ 'code': 1 })
-        return js
+        result = { 'code': 1 }
+        return 200, result
 
-    # have to return a little json otherwise other stuff gets upset
-    # not blue but this is not the final word
-    js = json.dumps({ 'code': 0 })
-    return js
+    # not blue 
+    result  = { 'code': 0 }
+    return 200, result
+
