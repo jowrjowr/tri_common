@@ -7,6 +7,7 @@ from commands.audit.teamspeak import audit_teamspeak
 from commands.audit.core import audit_core
 from commands.audit.coregroups import audit_coregroups
 from commands.audit.bothunt import audit_bothunt
+from commands.audit.supers import audit_supers
 
 def audit_all():
     _logger.log('[' + __name__ + '] core audit', _logger.LogLevel.DEBUG)
@@ -39,11 +40,13 @@ class parseaction(argparse.Action):
             audit_coregroups()
         elif value == 'bothunt':
             audit_bothunt()
+        elif value == 'supers':
+            audit_supers()
 
 def add_arguments(parser):
     parser.add_argument("--audit",
         nargs=0,
         action=parseaction,
-        choices=['jabber','teamspeak','core','coregroups','bothunt','all'],
+        choices=['jabber','teamspeak','core','coregroups','bothunt','all', 'supers'],
         help='core service auditing',
     )
