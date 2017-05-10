@@ -49,6 +49,7 @@ def registeruser(charid, atoken, rtoken):
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
+    _logger.log('[' + __name__ + '] character affiliations for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
     corpid = result[0]['corporation_id']
     allianceid = result[0]['alliance_id']
 
@@ -56,6 +57,7 @@ def registeruser(charid, atoken, rtoken):
     esi_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
 
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    _logger.log('[' + __name__ + '] character output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
         if code == 404:
@@ -76,6 +78,7 @@ def registeruser(charid, atoken, rtoken):
     request_url = base_url + "corporations/" + str(corpid) + '/?datasource=tranquility'
 
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    _logger.log('[' + __name__ + '] corporations output for {0}: {1}'.format(corpid, json.dumps(result)),_logger.LogLevel.DEBUG)
 
     if not code == 200:
         if code == 404:
@@ -83,13 +86,13 @@ def registeruser(charid, atoken, rtoken):
             pass
         else:
             # something broke severely
-            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] /corporations API error {0} for corp id {1}: {2}'.format(code, corpid, result['error']), _logger.LogLevel.ERROR)
         return('SORRY, INTERNAL API ERROR')
 
     try:
         corpname = result['corporation_name']
     except Exception as error:
-        _logger.log('[' + __name__ + '] /corporations API did not return corp name: {0}'.format(error), _logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] /corporations API did not return corp name for corpid {0}: {1}'.format(corpid, error), _logger.LogLevel.ERROR)
         return('SORRY, ESI API ERROR')
 
     # get alliance name
