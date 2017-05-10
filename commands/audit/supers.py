@@ -17,15 +17,13 @@ def audit_supers():
 
     try:
         users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                   filterstr='(objectclass=pilot)(authGroup=trisupers)',
+                                   filterstr='(&(objectclass=pilot)(authGroup=trisupers))',
                                    attrlist=['characterName', 'alliance, corporation, esiAccessToken'])
         user_count = users.__len__()
         _logger.log('[' + __name__ + '] total ldap super users: {}'.format(user_count), _logger.LogLevel.DEBUG)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
-
-
-
+        return
 
     for user in users:
         print(user)
