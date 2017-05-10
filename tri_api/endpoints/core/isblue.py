@@ -39,7 +39,7 @@ def core_isblue():
         return resp
 
     category = result[0]['category']
-    _logger.log('[' + __name__ + '] id {0} is category type: {1}'.format(id, category),_logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] id {0} is category type: {1}'.format(id, category),_logger.LogLevel.DEBUG)
 
     if category == 'alliance':
         # test alliance
