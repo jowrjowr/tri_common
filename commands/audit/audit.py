@@ -17,8 +17,8 @@ def audit_all():
     audit_teamspeak()
     _logger.log('[' + __name__ + '] core group audit', _logger.LogLevel.DEBUG)
     audit_coregroups()
-    _logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
-    audit_bothunt()
+#    _logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
+#    audit_bothunt()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
