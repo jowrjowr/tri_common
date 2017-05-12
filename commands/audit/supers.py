@@ -34,9 +34,9 @@ def audit_supers():
         dn, X = user
 
         character_name = X['characterName'][0].decode('utf-8')
-        character_id = X['uid'][0].decode('utf-8')
-        corporation_id = X['corporation'][0].decode('utf-8')
-        alliance_id = X['alliance'][0].decode('utf-8')
+        character_id = int(X['uid'][0].decode('utf-8'))
+        corporation_id = int(X['corporation'][0].decode('utf-8'))
+        alliance_id = int(X['alliance'][0].decode('utf-8'))
         token = X['esiAccessToken'][0].decode('utf-8')
         groups = X['authGroup']
 
