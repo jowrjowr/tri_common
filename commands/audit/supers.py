@@ -20,7 +20,7 @@ def audit_supers():
     try:
         users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                    filterstr='(&(objectclass=pilot)(authGroup=trisupers))',
-                                   attrlist=['characterName', 'uid', 'esiAccessToken', 'authGroup'])
+                                   attrlist=['characterName', 'uid', 'corporation', 'alliance', 'esiAccessToken', 'authGroup'])
         user_count = users.__len__()
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
@@ -31,11 +31,12 @@ def audit_supers():
     problems = []
 
     for user in users:
-        print("Auditing \"{0}\"...".format(user['characterName']))
+        dn, character_name, character_id, corporation_id, alliance_id, token, groups = user
+        print("Auditing \"{0}\"...".format(character_name))
 
         # get character affiliations
         request_url = base_url + 'characters/affiliation/?datasource=tranquility'
-        data = '[{}]'.format(user['uid'])
+        data = '[{}]'.format(character_id)
         code, result = common.request_esi.esi(__name__, request_url, 'post', data)
 
         if not code == 200:
@@ -52,21 +53,21 @@ def audit_supers():
         except KeyError:
             allianceid = 0
 
-        if corpid != user['corporation']:
+        if corpid != corporation_id:
             print("WARNING: ingame corporation ({0}) does not match ldap data ({1})"
-                  .format(corpid, user['corporation']))
+                  .format(corpid, corporation_id))
 
-            if user['characterName'] not in problems:
-                problems.append(user['characterName'])
+            if character_name not in problems:
+                problems.append(character_name)
 
-        if allianceid != user['alliance']:
+        if allianceid != alliance_id:
             print("WARNING: ingame alliance ({0}) does not match ldap data ({1})"
                   .format(allianceid, user['alliance']))
 
-            if user['characterName'] not in problems:
-                problems.append(user['characterName'])
+            if character_name not in problems:
+                problems.append(character_name)
 
-        if 'vgsupers' not in user['authGroup']:
+        if 'vgsupers' not in groups:
             print("WARNING: pilot is not in vgsupers group")
 
         # get corp & alliance names
@@ -102,13 +103,19 @@ def audit_supers():
             if(alliance_name != "Triumvirate."):
                 print("WARNING: pilot is not in tri")
 
+                if character_name not in problems:
+                    problems.append(character_name)
+
         else:
             print("belongs to {0}".format(corp_name))
             print("WARNING: pilot is not in tri (or any alliance)")
 
+        if character_name not in problems:
+            problems.append(character_name)
+
         # test token
         request_url = base_url + 'characters/{0}/wallets/?datasource=tranquility&token={1}'\
-            .format(corpid, user['esiAccessToken'])
+            .format(corpid, token)
         code, result = common.request_esi.esi(__name__, request_url, 'get')
 
         if code != 200:
@@ -125,7 +132,15 @@ def audit_supers():
         else:
             print("INFO: ESI Token is valid")
 
+            if character_name not in problems:
+                problems.append(character_name)
+
         print("---------")
+
+    print("Total {0} problem characters found.")
+
+    for char in problems:
+        print(char)
 
 
 
