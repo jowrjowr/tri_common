@@ -90,7 +90,7 @@ def audit_supers():
             result = {'code': code, 'error': error}
             return code, result
 
-        corp_name = result[0]['corporation_name']
+        corp_name = result['corporation_name']
 
         if allianceid != 0:
             request_url = base_url + 'alliances/{0}/?datasource=tranquility'.format(allianceid)
@@ -104,7 +104,7 @@ def audit_supers():
                 result = {'code': code, 'error': error}
                 return code, result
 
-            alliance_name = result[0]['alliance_name']
+            alliance_name = result['alliance_name']
 
             print("belongs to {0} in {1}".format(corp_name, alliance_name))
 
