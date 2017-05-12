@@ -31,7 +31,7 @@ def audit_supers():
     problems = []
 
     for user in users:
-        dn, character_name, character_id, corporation_id, alliance_id, token, groups = user
+        dn, [character_name, character_id, corporation_id, alliance_id, token, groups] = user
         print("Auditing \"{0}\"...".format(character_name))
 
         # get character affiliations
