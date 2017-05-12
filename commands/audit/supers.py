@@ -1,4 +1,6 @@
 def audit_supers():
+    from common.api import base_url
+    import common.request_esi
     import ldap
     import ldap.modlist
     import common.logger as _logger
@@ -18,12 +20,115 @@ def audit_supers():
     try:
         users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                    filterstr='(&(objectclass=pilot)(authGroup=trisupers))',
-                                   attrlist=['characterName', 'alliance', 'corporation', 'esiAccessToken', 'authGroup'])
+                                   attrlist=['characterName', 'uid', 'esiAccessToken', 'authGroup'])
         user_count = users.__len__()
-        _logger.log('[' + __name__ + '] total ldap super users: {}'.format(user_count), _logger.LogLevel.DEBUG)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
         return
 
+    print("Auditing {0} pilots\n----------".format(user_count))
+
+    problems = []
+
     for user in users:
-        print(user)
+        print("Auditing \"{0}\"...".format(user['characterName']))
+
+        # get character affiliations
+        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+        data = '[{}]'.format(user['uid'])
+        code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+
+        if not code == 200:
+            # something broke severely
+            _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
+                        _logger.LogLevel.ERROR)
+            error = result['error']
+            result = {'code': code, 'error': error}
+            return code, result
+
+        corpid = result[0]['corporation_id']
+        try:
+            allianceid = result[0]['alliance_id']
+        except KeyError:
+            allianceid = 0
+
+        if corpid != user['corporation']:
+            print("WARNING: ingame corporation ({0}) does not match ldap data ({1})"
+                  .format(corpid, user['corporation']))
+
+            if user['characterName'] not in problems:
+                problems.append(user['characterName'])
+
+        if allianceid != user['alliance']:
+            print("WARNING: ingame alliance ({0}) does not match ldap data ({1})"
+                  .format(allianceid, user['alliance']))
+
+            if user['characterName'] not in problems:
+                problems.append(user['characterName'])
+
+        if 'vgsupers' not in user['authGroup']:
+            print("WARNING: pilot is not in vgsupers group")
+
+        # get corp & alliance names
+        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
+        code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+        if code != 200:
+            # something broke severely
+            _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
+                        _logger.LogLevel.ERROR)
+            error = result['error']
+            result = {'code': code, 'error': error}
+            return code, result
+
+        corp_name = result[0]['corporation_name']
+
+        if allianceid != 0:
+            request_url = base_url + 'alliances/{0}/?datasource=tranquility'.format(allianceid)
+            code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+            if code != 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] alliances API error {0}: {1}'.format(code, result['error']),
+                            _logger.LogLevel.ERROR)
+                error = result['error']
+                result = {'code': code, 'error': error}
+                return code, result
+
+            alliance_name = result[0]['alliance_name']
+
+            print("belongs to {0} in {1}".format(corp_name, alliance_name))
+
+            if(alliance_name != "Triumvirate."):
+                print("WARNING: pilot is not in tri")
+
+        else:
+            print("belongs to {0}".format(corp_name))
+            print("WARNING: pilot is not in tri (or any alliance)")
+
+        # test token
+        request_url = base_url + 'characters/{0}/wallets/?datasource=tranquility&token={1}'\
+            .format(corpid, user['esiAccessToken'])
+        code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+        if code != 200:
+            if code == 403:
+                # token failed
+                print("WARNING: ESI Token is invalid")
+            else:
+                # something broke severely
+                _logger.log('[' + __name__ + '] character wallet API error {0}: {1}'.format(code, result['error']),
+                            _logger.LogLevel.ERROR)
+                error = result['error']
+                result = {'code': code, 'error': error}
+                return code, result
+        else:
+            print("INFO: ESI Token is valid")
+
+        print("---------")
+
+
+
+
+
+
