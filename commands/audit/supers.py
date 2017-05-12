@@ -70,7 +70,7 @@ def audit_supers():
 
         if allianceid != alliance_id:
             print("WARNING: ingame alliance ({0}) does not match ldap data ({1})"
-                  .format(allianceid, user['alliance']))
+                  .format(allianceid, alliance_id))
 
             if character_name not in problems:
                 problems.append(character_name)
