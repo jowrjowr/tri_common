@@ -75,6 +75,8 @@ def audit_supers():
             if character_name not in problems:
                 problems.append(character_name)
 
+        print(groups)
+
         if 'vgsupers' not in groups:
             print("WARNING: pilot is not in vgsupers group")
 
@@ -145,7 +147,7 @@ def audit_supers():
 
         print("---------")
 
-    print("Total {0} problem characters found.")
+    print("Total {0} problem characters found.".format(len(problems)))
 
     for char in problems:
         print(char)
