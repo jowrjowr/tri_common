@@ -33,11 +33,11 @@ def audit_supers():
     for user in users:
         dn, X = user
 
-        character_name = X['characterName']
-        character_id = X['uid']
-        corporation_id = X['corporation']
-        alliance_id = X['alliance']
-        token = X['esiAccessToken']
+        character_name = X['characterName'][0]
+        character_id = X['uid'][0]
+        corporation_id = X['corporation'][0]
+        alliance_id = X['alliance'][0]
+        token = X['esiAccessToken'][0]
         groups = X['authGroup']
 
         print("Auditing \"{0}\"...".format(character_name))
