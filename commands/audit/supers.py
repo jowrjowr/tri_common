@@ -31,116 +31,11 @@ def audit_supers():
     problems = []
 
     for user in users:
-        dn, [character_name, character_id, corporation_id, alliance_id, token, groups] = user
-        print("Auditing \"{0}\"...".format(character_name))
+        dn, X = user
 
-        # get character affiliations
-        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
-        data = '[{}]'.format(character_id)
-        code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+        print(X)
 
-        if not code == 200:
-            # something broke severely
-            _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
-                        _logger.LogLevel.ERROR)
-            error = result['error']
-            result = {'code': code, 'error': error}
-            return code, result
 
-        corpid = result[0]['corporation_id']
-        try:
-            allianceid = result[0]['alliance_id']
-        except KeyError:
-            allianceid = 0
-
-        if corpid != corporation_id:
-            print("WARNING: ingame corporation ({0}) does not match ldap data ({1})"
-                  .format(corpid, corporation_id))
-
-            if character_name not in problems:
-                problems.append(character_name)
-
-        if allianceid != alliance_id:
-            print("WARNING: ingame alliance ({0}) does not match ldap data ({1})"
-                  .format(allianceid, user['alliance']))
-
-            if character_name not in problems:
-                problems.append(character_name)
-
-        if 'vgsupers' not in groups:
-            print("WARNING: pilot is not in vgsupers group")
-
-        # get corp & alliance names
-        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
-        code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-        if code != 200:
-            # something broke severely
-            _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
-                        _logger.LogLevel.ERROR)
-            error = result['error']
-            result = {'code': code, 'error': error}
-            return code, result
-
-        corp_name = result[0]['corporation_name']
-
-        if allianceid != 0:
-            request_url = base_url + 'alliances/{0}/?datasource=tranquility'.format(allianceid)
-            code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-            if code != 200:
-                # something broke severely
-                _logger.log('[' + __name__ + '] alliances API error {0}: {1}'.format(code, result['error']),
-                            _logger.LogLevel.ERROR)
-                error = result['error']
-                result = {'code': code, 'error': error}
-                return code, result
-
-            alliance_name = result[0]['alliance_name']
-
-            print("belongs to {0} in {1}".format(corp_name, alliance_name))
-
-            if(alliance_name != "Triumvirate."):
-                print("WARNING: pilot is not in tri")
-
-                if character_name not in problems:
-                    problems.append(character_name)
-
-        else:
-            print("belongs to {0}".format(corp_name))
-            print("WARNING: pilot is not in tri (or any alliance)")
-
-        if character_name not in problems:
-            problems.append(character_name)
-
-        # test token
-        request_url = base_url + 'characters/{0}/wallets/?datasource=tranquility&token={1}'\
-            .format(corpid, token)
-        code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-        if code != 200:
-            if code == 403:
-                # token failed
-                print("WARNING: ESI Token is invalid")
-            else:
-                # something broke severely
-                _logger.log('[' + __name__ + '] character wallet API error {0}: {1}'.format(code, result['error']),
-                            _logger.LogLevel.ERROR)
-                error = result['error']
-                result = {'code': code, 'error': error}
-                return code, result
-        else:
-            print("INFO: ESI Token is valid")
-
-            if character_name not in problems:
-                problems.append(character_name)
-
-        print("---------")
-
-    print("Total {0} problem characters found.")
-
-    for char in problems:
-        print(char)
 
 
 
