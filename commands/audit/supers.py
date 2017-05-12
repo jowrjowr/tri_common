@@ -38,7 +38,7 @@ def audit_supers():
         corporation_id = X['corporation'][0].decode('utf-8')
         alliance_id = X['alliance'][0].decode('utf-8')
         token = X['esiAccessToken'][0].decode('utf-8')
-        groups = X['authGroup'].decode('utf-8')
+        groups = X['authGroup']
 
         print("Auditing \"{0}\"...".format(character_name))
 
