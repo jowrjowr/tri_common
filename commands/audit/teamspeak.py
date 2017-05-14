@@ -55,7 +55,7 @@ def ts3_logs(ts3conn):
     stop = False
     logcount = -1 #off-by-one because i inject a line
 
-    while position > 0 or stop == False:
+    while position > 0 and stop == False:
         # a small position offset so i can start/stop cleanly
         if position == 1:
             position = 0
