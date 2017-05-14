@@ -32,7 +32,6 @@ def audit_teamspeak():
     ts3conn.use(sid=_ts3.TS_SERVER_ID)
 
     ts3_logs(ts3conn)
-    return
     ts3_monitoring(ts3conn)
     ts3_validate_users(ts3conn)
     ts3_validate_groups(ts3conn)
@@ -261,7 +260,6 @@ async def group_validate(ts3_groupid):
     for user in resp.parsed:
         user_id = user['cldbid']
         loop.run_until_complete(user_validate(user_id))
-    loop.close()
 
 async def user_validate(ts3_userid):
 
