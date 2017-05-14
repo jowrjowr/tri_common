@@ -149,18 +149,21 @@ def add_arguments(parser):
         help='log level',
     )
 
-def securitylog(function, charid, ipaddress, action):
+def securitylog(function, action, charid=None, charname=None, ipaddress=None, date=None):
     # log stuff into the security table
-    
+
     import MySQLdb as mysql
     import common.credentials.database as _database
     import common.logger as _logger
     from common.api import base_url
     import common.request_esi
+    import time
+    import urllib
 
-    # file logging
+    if date == None:
+        date = time.time()
 
-    _logger.log('[{0}] {1} @ {2}: {3}'.format(function, charid, ipaddress, action),_logger.LogLevel.INFO)
+    friendly_time = time.asctime( time.localtime(date) )
 
     # mysql logging
 
@@ -173,33 +176,52 @@ def securitylog(function, charid, ipaddress, action):
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
     cursor = sql_conn.cursor()
-    
-    # get character name if a charid is supplied
-    if not charid == None and not charid == 'unknown':
+
+    # try to get character id if a charname (but no charid) is supplied
+
+    if not charname == None and charid == None:
+        query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
+        query = urllib.parse.urlencode(query)
+        esi_url = base_url + 'search/?' + query
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+        # not going to hardfail here, search is fuzzier than other endpoints
+
+        try:
+            charid = result['character'][0]
+        except KeyError as error:
+            _logger.log('[' + function + '] unable to identify charname: {0}'.format(charname), _logger.LogLevel.WARNING)
+            charid = None
+
+
+    # try to get character name if a charid (but no charname) is supplied
+    if charname == None and not charid == None:
         esi_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
         if not code == 200:
-            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
             return False
         try:
             charname = result['name']
         except KeyError as error:
-            _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
             charname = None
-    else:
-        charname = None
-        charid = None
+
+    # log to file
+
+    _logger.log('[{0}] {1}: {2} ({3}) @ {4}: {5}'.format(function, friendly_time, charname, charid, ipaddress, action),_logger.LogLevel.INFO)
 
     # log to security table
-    
+
     try:
-        query = 'INSERT INTO Security (charID, charName, IP, action) VALUES(%s, %s, %s, %s)'
+        query = 'INSERT INTO Security (charID, charName, IP, action, date) VALUES(%s, %s, %s, %s, FROM_UNIXTIME(%s))'
         cursor.execute(query, (
             charid,
             charname,
             ipaddress,
             action,
+            date,
         ),)
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)

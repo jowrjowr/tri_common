@@ -32,6 +32,7 @@ def audit_teamspeak():
     ts3conn.use(sid=_ts3.TS_SERVER_ID)
 
     ts3_logs(ts3conn)
+    return
     ts3_monitoring(ts3conn)
     ts3_validate_users(ts3conn)
     ts3_validate_groups(ts3conn)
@@ -40,26 +41,78 @@ def ts3_logs(ts3conn):
 
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
+    import common.credentials.ldap as _ldap
 
     import ts3
+    import time
+    import re
+
+    # parse ts3 server logs and dump useful things into security log
+
+    # we start from a zero position and work our way back to a checkpoint in the log
+
+    position = 1
+    stop = False
+    logcount = -1 #off-by-one because i inject a line
+
+    while position > 0 or stop == False:
+        # a small position offset so i can start/stop cleanly
+        if position == 1:
+            position = 0
+
+        try:
+            resp = ts3conn.logview(lines=100, reverse=1, begin_pos=position)
+        except ts3.query.TS3QueryError as err:
+            _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
+        for line in resp.parsed:
+            if 'last_pos' in line.keys():
+                file_size = line['file_size']
+                last_pos = line['last_pos']
+                position = int(last_pos)
+                _logger.log('[' + __name__ + '] ts3 log size: {0}, last position: {1}'.format(file_size, last_pos),_logger.LogLevel.DEBUG)
+            if 'l' in line.keys():
+                logcount += 1
+                entry = line['l']
+                # parse the log
+                date, level, target, server, logline = entry.split('|', 4)
+
+                # stop processing logs as this is where we last were
+                if logline == 'checkpoint':
+                    stop = True
+                    position = 0
+                    break
+
+                # convert the date into epoch
+
+                # example date: 2017-05-13 14:34:58.223587
+
+                date = time.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+                date = time.mktime(date)
+
+                # regex out login events
+
+                # example line:
+                # client connected 'Sightless 1'(id:1615) from 135.23.200.132:50743
+
+                loginmatch = re.match( r"^client connected \'(.*)\'\(id:(.*)\) from (.*):(.*)$", logline, re.M)
+                if loginmatch:
+                    charname = loginmatch.group(1)
+                    clientid = loginmatch.group(2)
+                    ip = loginmatch.group(3)
+
+                    # dump the result into the security log
+                    _logger.securitylog(__name__, 'ts3 login', charname=charname, ipaddress=ip, date=date)
 
 
-    # parse ts3 server logs and dump them into the security table as relevant
+    _logger.log('[' + __name__ + '] new ts3 log entries: {0}'.format(logcount),_logger.LogLevel.INFO)
 
-    start = 0
-
+    # add index to log file
     try:
-        resp = ts3conn.logview(lines=10, reverse=0, begin_pos=start)
+        resp = ts3conn.logadd(loglevel=4, logmsg='checkpoint')
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.WARNING)
-#    print(dir(resp))
+        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
 
-#    print(resp.parsed)
-#    print(resp.parsed[0]['last_pos'])
 
-#    return
-
-    return
 def ts3_monitoring(ts3conn):
 
     from common.graphite import sendmetric
@@ -181,7 +234,6 @@ async def group_validate(ts3_groupid):
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
 
-    import time
     import ts3
     import asyncio
 
@@ -202,13 +254,14 @@ async def group_validate(ts3_groupid):
     try:
         resp = ts3conn.servergroupclientlist(sgid=ts3_groupid)
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
 
     loop = asyncio.get_event_loop()
 
     for user in resp.parsed:
         user_id = user['cldbid']
         loop.run_until_complete(user_validate(user_id))
+    loop.close()
 
 async def user_validate(ts3_userid):
 
@@ -272,7 +325,7 @@ async def user_validate(ts3_userid):
         resp = ts3conn.clientlist()
         clients = resp.parsed
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
 
     try:
         resp = ts3conn.clientdbinfo(cldbid=ts3_userid)
