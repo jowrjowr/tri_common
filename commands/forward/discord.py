@@ -75,7 +75,7 @@ def horde_parser(message):
     try:
         text = message.content
 
-        author_clean = str(message.author)
+        author_clean = message.author
 
         mentions = [mention for mention in text.split() if mention.startswith('@')]
 
