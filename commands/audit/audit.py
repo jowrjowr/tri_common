@@ -7,6 +7,7 @@ from commands.audit.teamspeak import audit_teamspeak
 from commands.audit.core import audit_core
 from commands.audit.coregroups import audit_coregroups
 from commands.audit.bothunt import audit_bothunt
+from commands.audit.forums import audit_forums
 from commands.audit.supers import audit_supers
 
 def audit_all():
@@ -18,8 +19,8 @@ def audit_all():
     audit_teamspeak()
     _logger.log('[' + __name__ + '] core group audit', _logger.LogLevel.DEBUG)
     audit_coregroups()
-    _logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
-    audit_bothunt()
+    #_logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
+    #audit_bothunt()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -28,6 +29,17 @@ class parseaction(argparse.Action):
         super(parseaction, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, value, option_string=None):
         setattr(namespace, self.dest, value)
+
+        # setup logging
+        if namespace.logname == None:
+            filename = "maint"
+        else:
+            filename = namespace.logname
+
+        _logger.LogSetup(namespace.loglevel, filename, namespace.logdir)
+
+        # do actual things
+
         if value == 'all':
             audit_all()
         elif value == 'jabber':
@@ -40,6 +52,8 @@ class parseaction(argparse.Action):
             audit_coregroups()
         elif value == 'bothunt':
             audit_bothunt()
+        elif value == 'forums':
+            audit_forums()
         elif value == 'supers':
             audit_supers()
 
@@ -47,6 +61,6 @@ def add_arguments(parser):
     parser.add_argument("--audit",
         nargs=0,
         action=parseaction,
-        choices=['jabber','teamspeak','core','coregroups','bothunt','all', 'supers'],
+        choices=[ 'jabber', 'teamspeak', 'core', 'coregroups', 'forums', 'bothunt', 'supers', 'all' ],
         help='core service auditing',
     )

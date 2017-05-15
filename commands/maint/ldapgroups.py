@@ -29,6 +29,9 @@ def maint_ldapgroups():
     # form an dict of groups with each entry being
     # an array of user DNs that will populate the ldap group
 
+    # do not update the following groups:
+    skip = [ 'internal' ]
+
     newgroupmembers = defaultdict(list)
 
     for user in users:
@@ -37,6 +40,9 @@ def maint_ldapgroups():
         groups = list(map(lambda x: x.decode('utf-8'), groups))
         for group in groups:
             newgroupmembers[group].append(dn)
+
+    for item in skip:
+        del newgroupmembers[item]
 
     # now iterate through each group, and ldapmodify
 

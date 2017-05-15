@@ -16,7 +16,7 @@ def auth_evesso():
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    _logger.securitylog(__name__, 'unknown', ipaddress, 'SSO login initiated')
+    _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
 
     # setup the redirect url for the first stage of oauth flow
     scope = ['publicData', 'characterAccountRead']
@@ -125,7 +125,7 @@ def auth_evesso_callback():
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    _logger.securitylog(__name__, charid, ipaddress, 'SSO callback completed')
+    _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
 
     if status == False:
         if details == 'error':
@@ -133,11 +133,11 @@ def auth_evesso_callback():
             message = 'SORRY. There was an issue registering. Try again.'
         if details == 'banned':
             _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
-            _logger.securitylog(__name__, charid, ipaddress, 'banned user tried to register')
+            _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'nope.avi'
         if details == 'public':
             _logger.log('[' + __name__ + '] non-blue user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
-            _logger.securitylog(__name__, charid, ipaddress, 'non-blue user tried to register')
+            _logger.securitylog(__name__, 'non-blue user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'Sorry, you have to be in vanguard to register for vanguard services'
         else:
             # lol should never happen
@@ -159,12 +159,12 @@ def auth_evesso_callback():
     if details == 'registered':
         # user is blue and already in the system. just refresh the api tokens.
         _logger.log('[' + __name__ + '] user {0} ({1}) already registered'.format(charid, charname),_logger.LogLevel.INFO)
-        _logger.securitylog(__name__, charid, ipaddress, 'user logged in')
+        _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress)
         storetokens(charid, access_token, refresh_token)
     else:
         _logger.log('[' + __name__ + '] user {0} ({1}) not registered'.format(charid, charname),_logger.LogLevel.INFO)
         # user is blue but unregistered
-        _logger.securitylog(__name__, charid, ipaddress, 'user registered')
+        _logger.securitylog(__name__, 'core user registered', charid=charid, ipaddress=ipaddress)
         registeruser(charid, access_token, refresh_token)
         # maybe setup services here?
 
