@@ -3,6 +3,7 @@
 import time
 import discord
 import asyncio
+import random
 import re as _re
 
 import common.credentials.discord as _discord
@@ -11,40 +12,39 @@ import common.logger as _logger
 def start_discord(username, password, covername, handler, discord_queue):
 
     prefix = '[' + __name__ + '][' + username + '] '
-
-    _logger.log(prefix + 'starting up', _logger.LogLevel.INFO)
+    wait = random.randint(1,10)
+    _logger.log(prefix + 'starting up. waiting {0} seconds'.format(wait), _logger.LogLevel.INFO)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = discord.Client(loop=loop,cache_auth=False)
 
     @client.event
     async def on_ready():
-        _logger.log(prefix + 'connected to discord', _logger.LogLevel.DEBUG)
+        _logger.log(prefix + 'discord connected', _logger.LogLevel.DEBUG)
+        loginmsg = '```diff' + '\n' + '+ {0} online```'.format(covername)
+        discord_queue.put(loginmsg)
+
+    @client.event
+    async def on_server_remove():
+        _logger.log(prefix + 'discord disconnected', _logger.LogLevel.DEBUG)
+        loginmsg = '```diff' + '\n' + '+ {0} offline```'.format(covername)
+        discord_queue.put(loginmsg)
 
     @client.event
     async def on_message(message):
 
-        #now = time.localtime(None)
-        #now_friendly = time.strftime("%Y-%m-%d @ %H:%M:%S %z", now)
-        #header = '[' + str(covername) + ']'
-        #header = header + '\t' + 'Time: {0}, covername: {1}'.format(str(now_friendly), covername)
-        #header = header + '\n'
-        #header = header + '----------' + '\n'
-
         if message.mention_everyone:
-            #body = 'FROM: {0}, DISCORD SERVER: {1}, CHANNEL: #{2} \n'.format(str(message.author),str(message.server), str(message.channel))
-            #body = body + str(message.content).replace('@','#') + '\n'
-            #discord_queue.put(header + body)
-
             discord_queue.put(parse_message(str(covername), message))
 
     try:
         client.run(username, password)
     except Exception as error:
         _logger.log(prefix + 'Discord connection error: ' + str(error), _logger.LogLevel.ERROR)
+        loginmsg = '```diff' + '\n' + '- {0} offline```'.format(covername)
+        discord_queue.put(loginmsg)
 
 def parse_message(cover, message):
-    if cover == "low effort horde spy":
+    if cover == "horde":
         body = horde_parser(message)
     elif cover == "GOTG":
         body = gotg_parser(message)

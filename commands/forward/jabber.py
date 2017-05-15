@@ -16,7 +16,7 @@ class JabberForwarder(ClientXMPP):
         ClientXMPP.__init__(self, jid, password)
 
         self.queue = queue
-        self.identifier = covername
+        self.covername = covername
         self.handler = handler
         self.status = 'away'
         self.priority = '100' # -127 to 127 range, higher = more priority over multiple clients
@@ -49,8 +49,8 @@ class JabberForwarder(ClientXMPP):
     def header(self):
         now = time.localtime(None)
         now_friendly = time.strftime("%Y-%m-%d @ %H:%M:%S %z", now)
-        prefix = '[' + str(self.identifier) + ']'
-        prefix = prefix + '\t' + 'Time: {0}, covername: {1}'.format(str(now_friendly), self.identifier)
+        prefix = '[' + str(self.covername) + ']'
+        prefix = prefix + '\t' + 'Time: {0}, covername: {1}'.format(str(now_friendly), self.covername)
         prefix = prefix + '\n'
         prefix = prefix + '----------' + '\n'
         return prefix
@@ -72,10 +72,12 @@ class JabberForwarder(ClientXMPP):
 
     def failure(self, event):
         _logger.log(self.logprefix + 'Unable to login user',_logger.LogLevel.ERROR)
-        self.queue.put(self.header() + 'Unable to login user')
+        loginmsg = '```diff' + '\n' + '- {0} offline```'.format(self.covername)
+        self.queue.put(loginmsg)
     def offline(self, event):
         _logger.log(self.logprefix + 'User offline. Reconnecting',_logger.LogLevel.WARNING)
-        self.queue.put(self.header() + 'User offline. Reconnecting.')
+        loginmsg = '```diff' + '\n' + '- {0} offline```'.format(self.covername)
+        self.queue.put(loginmsg)
         self.disconnect(reconnect=True, wait=False, send_close=False)
     def nothing(self, event):
         pass
@@ -92,8 +94,9 @@ class JabberForwarder(ClientXMPP):
 
             try:
                 if xml['presence']['status'] == 'Online':
+                    loginmsg = '```diff' + '\n' + '- {0} duplicate login```'.format(self.covername)
+                    self.queue.put(loginmsg)
                     _logger.log(self.logprefix + 'Duplicate login',_logger.LogLevel.WARNING)
-                    self.queue.put(self.header() + 'Duplicate login')
             except KeyError:
                 # for some reason not every presence has status?
                 pass
@@ -115,6 +118,8 @@ class JabberForwarder(ClientXMPP):
             pass
         finally:
             self.send_presence(ptype=self.status, ppriority=self.priority)
+            loginmsg = '```diff' + '\n' + '+ {0} online```'.format(self.covername)
+            self.queue.put(loginmsg)
             _logger.log(self.logprefix + 'User online',_logger.LogLevel.INFO)
 
 
@@ -132,7 +137,7 @@ class JabberForwarder(ClientXMPP):
             self.logprefix + ': {0}: {1}'.format(presence_from[0],event['body']),
             _logger.LogLevel.INFO
         )
-        self.queue.put(parse_message(self.identifier, presence_from[0],event['body']))
+        self.queue.put(parse_message(self.covername, presence_from[0],event['body']))
 
 def start_jabber(jid, password, covername, handler, discord_queue):
     _logger.log('[' + __name__ + '] starting spy {0}'.format(jid), _logger.LogLevel.INFO)
@@ -152,7 +157,7 @@ def start_jabber(jid, password, covername, handler, discord_queue):
 def parse_message(cover, presence_from, message):
     if cover == "fcon":
         body = fcon_parser(presence_from, message)
-    elif cover == "brave_spy":
+    elif cover == "brave":
         body = brave_parser(presence_from, message)
     elif cover == "test":
         body = test_parser(presence_from, message)

@@ -54,7 +54,7 @@ def forward():
     # asynchronously, while sending messages into a queue that also operates
     # in an async fashion.
 
-    pool = ThreadPoolExecutor(count + 1)
+    pool = ThreadPoolExecutor(count + 5)
     discord_queue = Queue()
 
     for row in rows:
@@ -74,7 +74,7 @@ def forward():
     while True:
         _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.DEBUG)
         item = discord_queue.get()
-        item = str(item) + '\n' + '----------'
+        _logger.log('[' + __name__ + '] new discord queue item', _logger.LogLevel.INFO)
         pool.submit(discord_forward, item)
         discord_queue.task_done()
         time.sleep(1)
