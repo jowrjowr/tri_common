@@ -26,7 +26,7 @@ def sashslack(message, group):
         channel = slack_mapping[group]
     except KeyError as error:
         # if there isn't a designated mapping, don't forward the message at all
-        _logger.log('[' + __name__ + '] broadcast to group {0} not sent to sash slack'.format(group),_logger.LogLevel.DEBUG)
+        _logger.log('[' + __name__ + '] broadcast to group {0} not sent to sash slack'.format(group),_logger.LogLevel.INFO)
         return False
 
     slack = SlackClient(_sash.slacktoken)
