@@ -72,9 +72,9 @@ def forward():
             pool.submit(start_jabber, jid, password, covername, handler, discord_queue)
 
     while True:
-        _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.DEBUG)
+        _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.INFO)
         item = discord_queue.get()
-        _logger.log('[' + __name__ + '] new discord queue item', _logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] new discord queue item'.format(item), _logger.LogLevel.INFO)
         pool.submit(discord_forward, item)
         discord_queue.task_done()
         time.sleep(1)
