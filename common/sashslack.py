@@ -1,0 +1,45 @@
+def sashslack(message, group):
+    # SASH IS SPECIAL. THE FUNCTIONALITY PERSISTS.
+
+    import common.credentials.sash as _sash
+    import common.logger as _logger
+    from slackclient import SlackClient
+
+    message = '<!channel>' + '\n' + message
+
+    # map the sash slack channels to appropriate groups
+
+    slack_mapping = {
+        'public':       '#ops',
+        'vanguard':     '#ops',
+        'triumvirate':  '#ops',
+        'trisupers':    '#hot_soup',
+        'vgsupers':     '#hot_soup',
+        'leadership':   '#corporate_management',
+        '500percent':   '#jf_pilots',
+        'triprobers':   '#hole_probers',
+        'blackops':     '#black_ops',
+    }
+
+    # not every group has a slask channel
+    try:
+        channel = slack_mapping[group]
+    except KeyError as error:
+        # if there isn't a designated mapping, don't forward the message at all
+        _logger.log('[' + __name__ + '] broadcast to group {0} not sent to sash slack'.format(group),_logger.LogLevel.DEBUG)
+        return False
+
+    slack = SlackClient(_sash.slacktoken)
+
+    response = slack.api_call('chat.postMessage',
+        channel=channel,
+        text=message,
+        reply_broadcast='true'
+    )
+
+    if response['ok'] == True:
+        _logger.log('[' + __name__ + '] broadcast to group {0} sent to sash slack channel {1}'.format(group, channel),_logger.LogLevel.DEBUG)
+        return True
+    else:
+        _logger.log('[' + __name__ + '] unable to broadcast message to group {0}: {1}'.format(group, response['error']),_logger.LogLevel.DEBUG)
+        return False
