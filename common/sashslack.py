@@ -34,12 +34,11 @@ def sashslack(message, group):
     response = slack.api_call('chat.postMessage',
         channel=channel,
         text=message,
-        reply_broadcast='true'
     )
 
     if response['ok'] == True:
-        _logger.log('[' + __name__ + '] broadcast to group {0} sent to sash slack channel {1}'.format(group, channel),_logger.LogLevel.DEBUG)
+        _logger.log('[' + __name__ + '] broadcast to group {0} sent to sash slack channel {1}'.format(group, channel),_logger.LogLevel.INFO)
         return True
     else:
-        _logger.log('[' + __name__ + '] unable to broadcast message to group {0}: {1}'.format(group, response['error']),_logger.LogLevel.DEBUG)
+        _logger.log('[' + __name__ + '] unable to broadcast message to group {0}: {1}'.format(group, response['error']),_logger.LogLevel.ERROR)
         return False
