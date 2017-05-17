@@ -16,7 +16,7 @@ def core_isblue():
 
     if 'id' not in request.args:
         _logger.log('[' + __name__ + '] no id', _logger.LogLevel.WARNING)
-        js = json.dumps({ 'code': 500, 'error': 'need an id to check'})
+        js = json.dumps({ 'error': 'need an id to check'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -26,7 +26,7 @@ def core_isblue():
         id = int(request.args['id'])
     except ValueError:
         _logger.log('[' + __name__ + '] invalid id: "{0}"'.format(request.args['id']), _logger.LogLevel.WARNING)
-        js = json.dumps({ 'code': 500, 'error': 'id parameter must be integer'})
+        js = json.dumps({ 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -35,10 +35,10 @@ def core_isblue():
     request_url = base_url + 'universe/names/?datasource=tranquility'
     data = '[{}]'.format(id)
     _logger.log('[' + __name__ + '] determining type of id {0}'.format(id),_logger.LogLevel.DEBUG)
-    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     if not code == 200:
-        _logger.log('[' + __name__ + '] unable to get id type information for {0}: {1}'.format(id, result['error']),_logger.LogLevel.ERROR)
-        js = json.dumps({ 'code': code, 'error': result['error'] })
+        _logger.log('[' + __name__ + '] unable to get id type information for {0}: {1}'.format(id, result),_logger.LogLevel.ERROR)
+        js = json.dumps({ 'error': result })
         resp = Response(js, status=code, mimetype='application/json')
         return resp
 
@@ -76,7 +76,7 @@ def test_char(charid):
     # get character affiliations
     request_url = base_url + 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     _logger.log('[' + __name__ + '] affiliations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:

@@ -45,7 +45,7 @@ def audit_supers():
         # get character affiliations
         request_url = base_url + 'characters/affiliation/?datasource=tranquility'
         data = '[{}]'.format(character_id)
-        code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
 
         if not code == 200:
             # something broke severely
