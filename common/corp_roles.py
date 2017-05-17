@@ -1,6 +1,8 @@
 import enum
 
 # from ccp snowedin
+# these are the roles that can be returned by the roles endpoint
+
 class Corp_roles(enum.Enum):
    Director = 1
    Personnel_Manager = 128
