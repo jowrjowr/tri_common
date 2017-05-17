@@ -1,5 +1,7 @@
-#!/usr/bin/python3
+from flask import request
+from tri_api import app
 
+@app.route('/core/jumpbridge', methods=['GET'])
 def core_jumpbridge():
 
     from flask import request, Response, send_file

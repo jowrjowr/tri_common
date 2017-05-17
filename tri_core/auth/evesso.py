@@ -1,3 +1,7 @@
+from flask import request
+from tri_api import app
+
+@app.route('/auth/eve/register', methods=['GET'])
 def auth_evesso():
     from flask import request, url_for, Response, session, redirect, make_response, request
     from requests_oauthlib import OAuth2Session
@@ -44,7 +48,7 @@ def auth_evesso():
     return redirect(auth_url, code=302)
 
 
-
+@app.route('/auth/eve/callback', methods=['GET'])
 def auth_evesso_callback():
 
     from flask import request, url_for, Response, session, redirect, make_response

@@ -1,3 +1,7 @@
+from flask import request
+from tri_api import app
+
+@app.route('/core/isblue', methods=['GET'])
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
