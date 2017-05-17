@@ -28,7 +28,7 @@ def auth_evesso():
     scope += ['esi-corporations.read_corporation_membership.v1', 'esi-location.read_location.v1']
     scope += ['esi-location.read_ship_type.v1', 'esi-skills.read_skillqueue.v1', 'esi-skills.read_skills.v1']
     scope += ['esi-universe.read_structures.v1', 'esi-corporations.read_structures.v1', 'esi-search.search_structures.v1']
-
+    scope += ['esi-characters.read_corporation_roles.v1']
     oauth_session = OAuth2Session(
         client_id=client_id,
         scope=scope,
