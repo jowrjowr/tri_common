@@ -72,7 +72,7 @@ def do_esi(function, url, method, charid=None, data=None):
 
     # do the request, but catch exceptions for connection issues
 
-    timeout = 10
+    timeout = 5
     try:
 
         # test first that eve is online. this will fail if ESI or EVE are down.
@@ -82,7 +82,7 @@ def do_esi(function, url, method, charid=None, data=None):
         request = requests.get(status_url, headers=headers, timeout=2)
         # we don't really care about the response past 200-or-not
         if not request.status_code == 200:
-            _logger.log('[' + function + '] EVE offline / ESI down', _logger.LogLevel.ERROR)
+            _logger.log('[' + function + '] EVE offline / ESI down', _logger.LogLevel.WARNING)
             sendmetric(function, 'esi', 'request', 'offline', 1)
             try:
                 result = json.loads(str(request.text))
@@ -102,19 +102,19 @@ def do_esi(function, url, method, charid=None, data=None):
 
     except requests.exceptions.ConnectionError as err:
         sendmetric(function, 'esi', 'request', 'connection_error', 1)
-        _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection error: ' + str(err)})
     except requests.exceptions.ReadTimeout as err:
         sendmetric(function, 'esi', 'request', 'read_timeout', 1)
-        _logger.log('[' + function + '] ESI connection read timeout: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI connection read timeout: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection read timeout: ' + str(err)})
     except requests.exceptions.Timeout as err:
         sendmetric(function, 'esi', 'request','timeout' , 1)
-        _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
         sendmetric(function, 'esi', 'request', 'general_error', 1)
-        _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'General error: ' + str(err)})
 
     # need to also check that the api thinks this was success.
@@ -123,8 +123,8 @@ def do_esi(function, url, method, charid=None, data=None):
         sendmetric(function, 'esi', 'request', 'failure', 1)
         # don't bother to log 404s
         if not request.status_code == 404:
-            _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.ERROR)
-            _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.ERROR)
+            _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.WARNING)
+            _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.WARNING)
     else:
         sendmetric(function, 'esi', 'request', 'success', 1)
 
@@ -169,6 +169,6 @@ def esi(function, url, method='get', charid=None, data=None):
         else:
             return(code, result)
     sendmetric(function, 'esi', 'request', 'retry_maxed', 1)
-    _logger.log('[' + function + '] ESI call failed {0} times. giving up. '.format(retry_max), _logger.LogLevel.ERROR)
+    _logger.log('[' + function + '] ESI call failed {0} times. giving up. '.format(retry_max), _logger.LogLevel.WARNING)
     # return the last code/result
     return(code, result)
