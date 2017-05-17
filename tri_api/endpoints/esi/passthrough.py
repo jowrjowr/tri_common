@@ -15,17 +15,17 @@ def core_esi_passthrough(url):
 
     # a wrapper around standard ESI requests for things like php core
 
-    if 'id' not in request.args:
-        _logger.log('[' + __name__ + '] no id parameter', _logger.LogLevel.WARNING)
-        js = json.dumps({ 'error': 'need an id to authenticate using'})
+    if 'charid' not in request.args:
+        _logger.log('[' + __name__ + '] no charid parameter', _logger.LogLevel.WARNING)
+        js = json.dumps({ 'error': 'need an charid to authenticate using'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
     try:
-        id = int(request.args['id'])
+        charid = int(request.args['charid'])
     except ValueError:
-        _logger.log('[' + __name__ + '] invalid id: "{0}"'.format(request.args['id']), _logger.LogLevel.WARNING)
-        js = json.dumps({ 'error': 'id parameter must be integer'})
+        _logger.log('[' + __name__ + '] invalid charid: "{0}"'.format(request.args['charid']), _logger.LogLevel.WARNING)
+        js = json.dumps({ 'error': 'charid parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
@@ -36,9 +36,9 @@ def core_esi_passthrough(url):
         parameters[key] = request.args[key]
 
     # the id parameter is just something i use internally
-    del(parameters['id'])
+    del(parameters['charid'])
 
-    _logger.log('[' + __name__ + '] esi passthrough request for charid {0}: {1}'.format(request.args['id'], url), _logger.LogLevel.DEBUG)
+    _logger.log('[' + __name__ + '] esi passthrough request for charid {0}: {1}'.format(request.args['charid'], url), _logger.LogLevel.DEBUG)
 
     # snag the user's ldap token
 
@@ -52,7 +52,7 @@ def core_esi_passthrough(url):
         return resp
 
     try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(uid={0}))'.format(id), attrlist=['esiAccessToken'])
+        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(uid={0}))'.format(charid), attrlist=['esiAccessToken'])
         user_count = result.__len__()
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to fetch ldap information: {}'.format(error),_logger.LogLevel.ERROR)
@@ -61,7 +61,7 @@ def core_esi_passthrough(url):
         return resp
     # this shouldn't happen often tbh
     if user_count == 0:
-        js = json.dumps({ 'error': 'no id for uid'.format(id)})
+        js = json.dumps({ 'error': 'no token for uid {}'.format(id)})
         resp = Response(js, status=404, mimetype='application/json')
         return resp
 
