@@ -44,6 +44,10 @@ def core_esi_passthrough(url):
 
     esi_url = base_url + url + '?' + parameterstring
 
-    code, result = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)
+    if request.method == 'GET':
+        code, result = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)
+    if request.method == 'POST':
+        code, result = common.request_esi.esi(__name__, esi_url, method='post', charid=charid, data=request.get_data())
+
     resp = Response(json.dumps(result), status=code, mimetype='application/json')
     return resp
