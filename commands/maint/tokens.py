@@ -1,77 +1,62 @@
 def maint_tokens():
 
+    from tri_core.common.storetokens import storetokens
     import common.logger as _logger
-    import common.database as _database
     import common.maint.discord.refresh as _discordrefresh
     import common.maint.eve.refresh as _everefresh
-    import MySQLdb as mysql
+    import common.credentials.ldap as _ldap
+    import ldap
     import json
     import time
     import datetime
 
-    _logger.log('[' + __name__ + '] refreshing tokens',_logger.LogLevel.INFO)
+    # bindings
 
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
-        sql_conn = mysql.connect(
-            database=_database.DB_DATABASE,
-            user=_database.DB_USERNAME,
-            password=_database.DB_PASSWORD,
-            host=_database.DB_HOST)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
         return
 
-    cursor = sql_conn.cursor()
-    now = time.time()
-
-    # pick some cutoff that's really far so we refresh everything for now
-    later = int(now) + 86400000
-
-    # purge damaged tokens before i grab something i can't use
-
-    query = 'DELETE FROM CrestTokens WHERE refreshToken IS NULL'
+    # grab each token from ldap
 
     try:
-        row = cursor.execute(query,)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        # search specifically for users with a defined uid (everyone, tbh) and a defined refresh token (not everyone)
+        result = ldap_conn.search_s(
+            'ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(&(objectclass=pilot)(uid=*)(esiRefreshToken=*))',
+            attrlist=['esiRefreshToken', 'uid']
+        )
+        token_count = result.__len__()
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to fetch ldap information: {}'.format(error),_logger.LogLevel.ERROR)
         return
 
-    # grab non-crippletokens
-    # how do null refresh tokens even get installed?!
+    _logger.log('[' + __name__ + '] ldap users with defined refresh tokens: {0}'.format(token_count),_logger.LogLevel.INFO)
 
-    query = 'SELECT charID, refreshToken FROM CrestTokens WHERE refreshToken IS NOT NULL'
+    evetokens = dict()
 
-    try:
-        row = cursor.execute(query,)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return
-    _logger.log('[' + __name__ + '] eve SSO token count: {0}'.format(row), _logger.LogLevel.INFO)
+    for object in result:
+        dn, info = object
+        rtoken = info['esiRefreshToken'][0].decode('utf-8')
+        uid = info['uid'][0].decode('utf-8')
+        evetokens[dn] = dict()
+        evetokens[dn]['rtoken'] = rtoken
+        evetokens[dn]['uid'] = uid
 
-    rows = cursor.fetchall()
-
-    cursor.close()
     # work with each individual token
 
     eve_broketokens = 0
     discord_broketokens = 0
 
-    for row in rows:
+    for user in evetokens:
+        dn = user
+        charid = evetokens[user]['uid']
+        old_rtoken = evetokens[user]['rtoken']
 
-        charid = int(row[0])
-        old_rtoken = row[1].decode("utf-8")
-        tokent = 'eve'
-
-        # right now it's just the eve ESI tokens, but i'm leaving the multi-token
-        # refresh machinery in place for when we do discord
-
-        if tokent == 'discord':
-            query = 'UPDATE SpyTokens SET accessToken=%s, refreshToken=%s, validUntil=%s WHERE id=%s'
-            result = _discordrefresh.refresh_token(old_rtoken)
-        if tokent == 'eve':
-            query = 'UPDATE CrestTokens SET accessToken=%s, refreshToken=%s, validUntil=FROM_UNIXTIME(%s) WHERE charID=%s'
-            result = _everefresh.refresh_token(old_rtoken)
+        result = _everefresh.refresh_token(old_rtoken)
 
         try:
             atoken = result['access_token']
@@ -84,25 +69,39 @@ def maint_tokens():
             # or not. whichever.
             eve_broketokens = eve_broketokens + 1
             _logger.log('[' + __name__ + '] nonfunctional token for charid {0}: {1}'.format(charid, result), _logger.LogLevel.WARNING)
-            continue
+            atoken = None
+            rtoken = None
+            expires = None
 
-        cursor = sql_conn.cursor()
-        try:
-            row = cursor.execute(
-                query, (
-                    atoken,
-                    rtoken,
-                    expires,
-                    charid,
-                )
-            )
-        except Exception as errmsg:
-            _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-            return('MySQL error :(')
-        finally:
-            cursor.close()
-    _logger.log('[' + __name__ + '] eve token breakage count: {}'.format(eve_broketokens), _logger.LogLevel.INFO)
+        # store the tokens. don't bother with empty results.
 
-    # all the tokens are updated
-    sql_conn.commit()
-    sql_conn.close()
+        if rtoken == None:
+            # purge the entry from the ldap user
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'esiAccessToken', None ))
+
+            # for some reason sometimes there is only one of the access/refresh tokens even though they should come in pairs
+            try:
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge atoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'esiRefreshToken', None ))
+            try:
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge rtoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+            _logger.log('[' + __name__ + '] invalid token entries purged for user {}'.format(dn), _logger.LogLevel.INFO)
+        else:
+            # store the valid reuslt
+            result, value = storetokens(charid, atoken, rtoken)
+
+            if result == True:
+                _logger.log('[' + __name__ + '] token entries updated for user {}'.format(dn), _logger.LogLevel.DEBUG)
+            else:
+                _logger.log('[' + __name__ + '] unable to store tokens for user {}'.format(dn), _logger.LogLevel.ERROR)
+
+    _logger.log('[' + __name__ + '] invalid tokens purged: {}'.format(eve_broketokens), _logger.LogLevel.INFO)
+

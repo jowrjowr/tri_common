@@ -11,7 +11,7 @@ def refresh_token(old_rtoken):
     base_url = 'https://login.eveonline.com'
     token_url = base_url + '/oauth/token'
     base_auth_url = base_url + '/oauth/authorize'
-    redirect = _eve.redirect
+    redirect = _eve.redirect_url
 
     extra = {
         'client_id': _eve.client_id,

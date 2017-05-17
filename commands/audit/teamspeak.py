@@ -40,7 +40,6 @@ def ts3_logs(ts3conn):
 
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
 
     import ts3
     import time
