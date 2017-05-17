@@ -4,36 +4,18 @@ from tri_api import app
 @app.route('/core/structures', methods=['GET'])
 def core_structures():
 
-    from flask import Flask, request, url_for, json, Response
+    from flask import Flask, request, Response
     from joblib import Parallel, delayed
 
+    from common.api import base_url
     import common.logger as _logger
-    import MySQLdb as mysql
-    import common.database as DATABASE
     import common.request_esi
-    import requests
     import json
-
-    # CONSTANTS TO MOVE OUT
-    baseurl = 'https://esi.tech.ccp.is/latest/'
-
-    # attempt mysql connection (abort in case of failure)
-    try:
-        sql_conn = mysql.connect(
-            database=DATABASE.DB_DATABASE,
-            user=DATABASE.DB_USERNAME,
-            password=DATABASE.DB_PASSWORD,
-            host=DATABASE.DB_HOST)
-    except mysql.Error as err:
-        js = json.dumps({ 'code': -1, 'error': 'unable to connect to mysql: ' + str(err)})
-        _logger.log('[' + __name__ + '] unable to connect to mysql:'.format(err), _logger.LogLevel.ERROR)
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
 
     # get all the structure shit for the char in question
 
     if 'id' not in request.args:
-        js = json.dumps({ 'code': -1, 'error': 'need an id to check'})
+        js = json.dumps({ 'error': 'need an id to check'})
         _logger.log('[' + __name__ + '] need an id to check', _logger.LogLevel.WARNING)
         resp = Response(js, status=401, mimetype='application/json')
         return resp
@@ -45,53 +27,55 @@ def core_structures():
     try:
         id = int(request.args['id'])
     except ValueError:
-        js = json.dumps({ 'code': -1, 'error': 'id parameter must be integer'})
         _logger.log('[' + __name__ + '] id parameters must be integer: {0}'.format(id), _logger.LogLevel.WARNING)
+        js = json.dumps({ 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
-    cursor = sql_conn.cursor()
-    query = 'SELECT accessToken FROM CrestTokens WHERE charID = %s'
-
-    try:
-        row_count = cursor.execute(query, (id,))
-
-        # no row, no token, nothing to do.
-        if row_count == 0:
-            cursor.close()
-            js = json.dumps({ 'code': -1, 'error': 'no token for charid ' + str(id) })
-            _logger.log('[' + __name__ + '] no token for charid: {0}'.format(charid), _logger.LogLevel.WARNING)
-            resp = Response(js, status=404, mimetype='application/json')
-            return resp
-
-        row = cursor.fetchone()
-        atoken = row[0].decode("utf-8")
-
-    except Exception as errmsg:
-        cursor.close()
-        js = json.dumps({ 'code': -1, 'error': 'mysql broke: ' + str(errmsg)})
-        _logger.log('[' + __name__ + '] mysql broke:'.format(errmsg), _logger.LogLevel.ERROR)
+    # query character roles to determine if they are allowed to look at corp structures
+    request_url = base_url + 'characters/{0}/roles/?datasource=tranquility'.format(id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', charid=id)
+    if not code == 200:
+        error = 'unable to get character roles for {0}: ({1}) {2}'.format(id, code, result['error'])
+        _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.ERROR)
+        js = json.dumps({ 'error': error})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
+    # this should be enough? not sure what CEO gives you
+
+    allowed = False
+    allowed_roles = ['Director', 'Station_Manager']
+
+    for role in result:
+        if role in allowed_roles:
+            allowed = True
+
+    if allowed == False:
+        error = 'insufficient corporate roles to access this endpoint.'
+        _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.INFO)
+        js = json.dumps({ 'error': error})
+        resp = Response(js, status=403, mimetype='application/json')
+        return resp
+    else:
+        _logger.log('[' + __name__ + '] sufficient roles to view corp structure information',_logger.LogLevel.DEBUG)
+
     # get corpid
-    request_url = baseurl + 'characters/affiliation/?datasource=tranquility'
+    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(id)
-    code, result = common.request_esi.esi(__name__, request_url, 'post', data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
 
     corpid = result[0]['corporation_id']
 
-    esi_url = baseurl + 'corporations/' + str(corpid)
+    esi_url = base_url + 'corporations/' + str(corpid)
     esi_url = esi_url + '/structures?datasource=tranquility'
-    esi_url = esi_url + '&token=' + atoken
 
-    # get all structures that this token has access to
-    print(esi_url)
-    # do the request, but catch exceptions for connection issues
-    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get')
+    # get all structures that this user has access to
+
+    code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get', charid=id)
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(result_parsed['error']), _logger.LogLevel.ERROR)
@@ -113,17 +97,15 @@ def core_structures():
 
     for object in result_parsed:
         structure_id = object['structure_id']
-        structures[structure_id] = structure_parse(baseurl, atoken, object, structure_id)
-    sql_conn.close()
+        structures[structure_id] = structure_parse(id, object, structure_id)
     return json.dumps(structures)
 
-def structure_parse(baseurl, atoken, object, structure_id):
+def structure_parse(charid, object, structure_id):
 
     import common.logger as _logger
-    import MySQLdb as mysql
+    from common.api import base_url
     import common.database as DATABASE
     import common.request_esi
-    import requests
     import json
 
     structure = {}
@@ -136,11 +118,10 @@ def structure_parse(baseurl, atoken, object, structure_id):
 
     structure['structure_id'] = structure_id
 
-    esi_url = baseurl + 'universe/structures/' + str(structure_id)
+    esi_url = base_url + 'universe/structures/' + str(structure_id)
     esi_url = esi_url + '?datasource=tranquility'
-    esi_url = esi_url + '&token=' + atoken
 
-    code, data = common.request_esi.esi(__name__, esi_url, 'get')
+    code, data = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
@@ -164,7 +145,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     # get structure type name
 
     typeid = data['type_id']
-    esi_url = baseurl + 'universe/types/' + str(typeid)
+    esi_url = base_url + 'universe/types/{0}'.format(typeid)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, typedata = common.request_esi.esi(__name__, esi_url, 'get')
@@ -185,7 +166,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
     # step 1: get name and constellation
 
     system_id = data['solar_system_id']
-    esi_url = baseurl + 'universe/systems/' + str(system_id)
+    esi_url = base_url + 'universe/systems/{0}/'.format(system_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
@@ -206,7 +187,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
 
     # step 2: get the constellation info
 
-    esi_url = baseurl + 'universe/constellations/'+str(constellation_id)
+    esi_url = base_url + 'universe/constellations/{0}'.format(constellation_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
@@ -225,7 +206,7 @@ def structure_parse(baseurl, atoken, object, structure_id):
         return structure
 
     # step 3: get region name
-    esi_url = baseurl + 'universe/regions/'+str(region_id)
+    esi_url = base_url + 'universe/regions/{0}/'.format(region_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
