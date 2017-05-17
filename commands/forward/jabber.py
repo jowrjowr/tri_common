@@ -175,7 +175,7 @@ def fcon_parser(presence_from, message):
 
         target = footer[-2].split(' @ ')[0][1:-1]
 
-        author = ' to '.join(footer[:-2]).split('broadcast from')[1]
+        author = ' to '.join(footer[:-2]).split('broadcast from')[1].lstrip()
 
         return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
             .format(author, presence_from, target, str(text).replace('@', '#'))
@@ -199,13 +199,13 @@ def brave_parser(presence_from, message):
 
 def test_parser(presence_from, message):
     try:
-        text = "\n".join(message.splitlines()[:-1])
+        text = "\n".join(message.splitlines()[1:-1])
 
         footer = message.splitlines()[-1].split(' to ')
 
         target = footer[-1].split(' @ ')[0]
 
-        author = ' to '.join(footer[:-1]).split('SENT BY')[1]
+        author = ' to '.join(footer[:-1]).split('SENT BY')[1].lstrip()
 
         return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
             .format(author, presence_from, target, str(text).replace('@', '#'))
