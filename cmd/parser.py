@@ -36,7 +36,7 @@ def init_parser():
 
     :returns ArgumentParser: argument parser object
     """
-    import commands as commands
+    import cmd as commands
     from argparse import ArgumentParser
     from importlib import import_module
     from inspect import getmembers, isclass
