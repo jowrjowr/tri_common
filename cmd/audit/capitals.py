@@ -1,6 +1,6 @@
 from cmd import Command as _Command
 
-class ESIError(Exception):
+class _ESIError(Exception):
     pass
 
 class Capitals(_Command):
@@ -53,7 +53,7 @@ class Capitals(_Command):
 
             try:
                 result = capital_check(character_id, kwargs['argument'])
-            except ESIError:
+            except _ESIError:
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.WARNING)
 
@@ -93,7 +93,7 @@ def capital_check(char_id, location_id):
         _logger.log('[' + __name__ + '] character assets API error for char {0} ({1}: {2})'
                     .format(char_id, code, result['error']),
                     _logger.LogLevel.ERROR)
-        raise ESIError
+        raise _ESIError
 
     for item in result:
         if item['location_id'] == location_id:
