@@ -66,6 +66,9 @@ class Capitals(_Command):
                                 .format(character_id, corporation_id), _logger.LogLevel.WARNING)
                     bad_users[character_id] = result
 
+                _logger.log('[' + __name__ + '] audit success for {0}/{1}'.format(character_id, corporation_id),
+                            _logger.LogLevel.INFO)
+
             except _ESIError:
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.WARNING)
