@@ -53,21 +53,22 @@ class Capitals(_Command):
 
             try:
                 result = capital_check(character_id, kwargs['argument'])
+
+                c_count = result['Chimera'] + result['Nidhoggur']
+                d_count = result['Naglfar'] + result['Phoenix']
+                f_count = result['Minokawa']
+
+                _logger.log('[' + __name__ + '] pilot {0}/{1} owns {2} carriers, {3} dreads and {4} fax'
+                            .format(character_id, corporation_id, c_count, d_count, f_count), _logger.LogLevel.INFO)
+
+                if c_count == 0 or d_count == 0 or f_count == 0:
+                    _logger.log('[' + __name__ + '] adding pilot {0}/{1} to bads list'
+                                .format(character_id, corporation_id), _logger.LogLevel.WARNING)
+                    bad_users[character_id] = result
+
             except _ESIError:
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.WARNING)
-
-            c_count = result['Chimera'] + result['Nidhoggur']
-            d_count = result['Naglfar'] + result['Phoenix']
-            f_count = result['Minokawa']
-
-            _logger.log('[' + __name__ + '] pilot {0}/{1} owns {2} carriers, {3} dreads and {4} fax'
-                        .format(character_id, corporation_id, c_count, d_count, f_count), _logger.LogLevel.INFO)
-
-            if c_count == 0 or d_count == 0 or f_count == 0:
-                _logger.log('[' + __name__ + '] adding pilot {0}/{1} to bads list'
-                            .format(character_id, corporation_id), _logger.LogLevel.WARNING)
-                bad_users[character_id] = result
 
         return kwargs
 
@@ -77,7 +78,7 @@ def capital_check(char_id, location_id):
     import common.request_esi
     import common.logger as _logger
 
-    request_url = base_url + 'characters/{0}/assets/?datasource=tranquility'
+    request_url = base_url + 'characters/{0}/assets/?datasource=tranquility'.format(char_id)
     code, result = common.request_esi.esi(__name__, request_url, 'get', charid=char_id)
 
     count = {
