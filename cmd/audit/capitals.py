@@ -58,12 +58,11 @@ class Capitals(_Command):
                 d_count = result['Naglfar'] + result['Phoenix']
                 f_count = result['Minokawa']
 
-                _logger.log('[' + __name__ + '] pilot {0}/{1} owns {2} carriers, {3} dreads and {4} fax'
-                            .format(character_id, corporation_id, c_count, d_count, f_count), _logger.LogLevel.INFO)
+                print('pilot {0}/{1} owns {2} carriers, {3} dreads and {4} fax'
+                            .format(character_id, corporation_id, c_count, d_count, f_count))
 
                 if c_count == 0 or d_count == 0 or f_count == 0:
-                    _logger.log('[' + __name__ + '] adding pilot {0}/{1} to bads list'
-                                .format(character_id, corporation_id), _logger.LogLevel.WARNING)
+                    print('adding pilot {0}/{1} to bads list'.format(character_id, corporation_id))
                     bad_users[character_id] = result
 
                 _logger.log('[' + __name__ + '] audit success for {0}/{1}'.format(character_id, corporation_id),
@@ -96,7 +95,7 @@ def capital_check(char_id, location_id):
         # something broke severely
         _logger.log('[' + __name__ + '] character assets API error for char {0} ({1}: {2})'
                     .format(char_id, code, result['error']),
-                    _logger.LogLevel.ERROR)
+                    _logger.LogLevel.INFO)
         raise _ESIError
 
     for item in result:
