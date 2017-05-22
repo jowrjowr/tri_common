@@ -103,6 +103,7 @@ def capital_check(char_id, location_id):
         #if item['location_id'] == location_id:
             if item['type_id'] == 23915:
                 count['Chimera'] += 1
+                print(item['location_id'])
             elif item['type_id'] == 24483:
                 count['Nidhoggur'] += 1
             elif item['type_id'] == 19722:
