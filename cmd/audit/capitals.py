@@ -11,7 +11,7 @@ class SetLocation(_Command):
     @staticmethod
     def execute(**kwargs):
         kwargs['location'] = kwargs['argument']
-
+        print(kwargs)
         return kwargs
 
 class Capitals(_Command):
@@ -25,6 +25,8 @@ class Capitals(_Command):
         import ldap.modlist
         import common.logger as _logger
         import common.credentials.ldap as _ldap
+
+        print(kwargs)
 
         _logger.log('[' + __name__ + '] auditing tri capitals', _logger.LogLevel.INFO)
 
