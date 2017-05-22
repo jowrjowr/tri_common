@@ -48,7 +48,8 @@ class Capitals(_Command):
                                        filterstr='(&(objectclass=pilot)(authGroup={0}))'.format(kwargs['argument']),
                                        attrlist=['characterName', 'uid', 'corporation', 'alliance', 'esiAccessToken',
                                                  'authGroup'])
-            _logger.log('[' + __name__ + '] auditing {} tri pilots'.format(users.__len__()), _logger.LogLevel.INFO)
+            _logger.log('[' + __name__ + '] auditing {0} pilots for location {1}'
+                        .format(users.__len__(), kwargs['location']), _logger.LogLevel.WARNING)
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             return
