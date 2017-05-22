@@ -99,7 +99,8 @@ def capital_check(char_id, location_id):
         raise _ESIError
 
     for item in result:
-        if item['location_id'] == location_id:
+        if True:
+        #if item['location_id'] == location_id:
             if item['type_id'] == 23915:
                 count['Chimera'] += 1
             elif item['type_id'] == 24483:
