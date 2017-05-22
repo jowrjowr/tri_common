@@ -79,9 +79,9 @@ class Capitals(_Command):
                 d_count = result['Naglfar'] + result['Phoenix']
                 f_count = result['Minokawa']
 
-                gc_count += c_count
-                gd_count += d_count
-                gf_count += f_count
+                gc_count =+ c_count
+                gd_count =+ d_count
+                gf_count =+ f_count
 
                 if c_count == 0 or d_count == 0 or f_count == 0:
                     bad_users[character_id] = result
@@ -93,7 +93,7 @@ class Capitals(_Command):
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.ERROR)
 
-        print("Total Carriers: {0}\n Total Dreads: {1}\n Total FAX: {2}"
+        print("Total Carriers: {0}\nTotal Dreads: {1}\nTotal FAX: {2}"
               .format(gc_count, gd_count, gf_count))
 
         print("Out of {0} pilots, {1} do not meet the requirements.".format(users.__len__(), len(bad_users)))
