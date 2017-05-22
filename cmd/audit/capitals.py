@@ -26,6 +26,11 @@ class Capitals(_Command):
         import common.logger as _logger
         import common.credentials.ldap as _ldap
 
+        if 'location' not in kwargs:
+            _logger.log('[' + __name__ + '] missing location',
+                        _logger.LogLevel.ERROR)
+            return
+
         _logger.log('[' + __name__ + '] auditing tri capitals', _logger.LogLevel.INFO)
 
         ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
