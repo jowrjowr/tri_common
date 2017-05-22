@@ -43,7 +43,7 @@ class Capitals(_Command):
             dn, x = user
 
             character_id = int(x['uid'][0].decode('utf-8'))
-            character_name = int(x['characterName'][0].decode('utf-8'))
+            character_name = x['characterName'][0].decode('utf-8')
             corporation_id = int(x['corporation'][0].decode('utf-8'))
             alliance_id = int(x['alliance'][0].decode('utf-8'))
 
