@@ -95,10 +95,9 @@ class Capitals(_Command):
                 if c_count == 0 or d_count == 0 or f_count == 0:
                     bad_users[character_id] = result
 
-
-
-                print('[' + __name__ + '] pilot {0}/{1} owns {2}|{3}|{4}'.format(character_id, corporation_id,
-                                                                                       c_count, d_count, f_count))
+                _logger.log('[' + __name__ + '] pilot {0}/{1} owns {2}|{3}|{4}'.format(character_id, corporation_id,
+                                                                                       c_count, d_count, f_count),
+                            _logger.LogLevel.INFO)
 
             except _ESIError:
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
