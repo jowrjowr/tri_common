@@ -31,6 +31,13 @@ class Capitals(_Command):
                         _logger.LogLevel.ERROR)
             return
 
+        try:
+            int(kwargs['location'])
+        except:
+            _logger.log('[' + __name__ + '] location must be a number',
+                        _logger.LogLevel.ERROR)
+            return
+
         _logger.log('[' + __name__ + '] auditing tri capitals', _logger.LogLevel.INFO)
 
         ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
@@ -49,7 +56,7 @@ class Capitals(_Command):
                                        attrlist=['characterName', 'uid', 'corporation', 'alliance', 'esiAccessToken',
                                                  'authGroup'])
             _logger.log('[' + __name__ + '] auditing {0} pilots for location {1}'
-                        .format(users.__len__(), kwargs['location']), _logger.LogLevel.WARNING)
+                        .format(users.__len__(), kwargs['location']), _logger.LogLevel.INFO)
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             return
@@ -132,7 +139,7 @@ def capital_check(char_id, location_id):
         raise _ESIError
 
     for item in result:
-        if item['location_id'] == location_id:
+        if item['location_id'] == int(location_id):
             if item['type_id'] == 23915:
                 count['Chimera'] += 1
             elif item['type_id'] == 24483:
