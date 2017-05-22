@@ -88,6 +88,11 @@ class Capitals(_Command):
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.ERROR)
 
+        print("Total Carriers: {0}\n Total Dreads: {1}\n Total FAX: {2}"
+              .format(gc_count, gd_count, gf_count))
+
+        print("Out of {0} pilots, {1} do not meet the requirements.".format(users.__len__(), len(bad_users)))
+
         return kwargs
 
 
