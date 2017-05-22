@@ -88,9 +88,9 @@ class Capitals(_Command):
                 d_count = result['Naglfar'] + result['Phoenix']
                 f_count = result['Minokawa']
 
-                gc_count =+ c_count
-                gd_count =+ d_count
-                gf_count =+ f_count
+                gc_count = gc_count + c_count
+                gd_count = gd_count + d_count
+                gf_count = gf_count + f_count
 
                 if c_count == 0 or d_count == 0 or f_count == 0:
                     bad_users[character_id] = result
