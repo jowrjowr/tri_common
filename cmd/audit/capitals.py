@@ -29,7 +29,7 @@ class Capitals(_Command):
         # fetch all tri users
         try:
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                       filterstr='(&(objectclass=pilot)(authGroup=trisupers))',
+                                       filterstr='(&(objectclass=pilot)(authGroup=triumvirate))',
                                        attrlist=['characterName', 'uid', 'corporation', 'alliance', 'esiAccessToken',
                                                  'authGroup'])
             _logger.log('[' + __name__ + '] auditing {} tri pilots'.format(users.__len__()), _logger.LogLevel.INFO)
