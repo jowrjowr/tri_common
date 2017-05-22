@@ -43,10 +43,11 @@ class Capitals(_Command):
             dn, x = user
 
             character_id = int(x['uid'][0].decode('utf-8'))
+            character_name = int(x['characterName'][0].decode('utf-8'))
             corporation_id = int(x['corporation'][0].decode('utf-8'))
             alliance_id = int(x['alliance'][0].decode('utf-8'))
 
-            _logger.log('[' + __name__ + '] auditing {0}/{1}'.format(character_id, corporation_id),
+            _logger.log('[' + __name__ + '] auditing {0}'.format(character_name),
                         _logger.LogLevel.INFO)
 
             # TODO: Implement alt tokens
@@ -58,19 +59,18 @@ class Capitals(_Command):
                 d_count = result['Naglfar'] + result['Phoenix']
                 f_count = result['Minokawa']
 
-                print('pilot {0}/{1} owns {2} carriers, {3} dreads and {4} fax'
-                            .format(character_id, corporation_id, c_count, d_count, f_count))
+                print('pilot {0} owns {1} carriers, {2} dreads and {3} fax'
+                            .format(character_name, c_count, d_count, f_count))
 
                 if c_count == 0 or d_count == 0 or f_count == 0:
-                    print('adding pilot {0}/{1} to bads list'.format(character_id, corporation_id))
+                    print('adding pilot {0} to bads list'.format(character_name))
                     bad_users[character_id] = result
 
                 _logger.log('[' + __name__ + '] audit success for {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.INFO)
 
             except _ESIError:
-                _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
-                            _logger.LogLevel.WARNING)
+                print("failed to audit {0}".format(character_name))
 
         return kwargs
 
