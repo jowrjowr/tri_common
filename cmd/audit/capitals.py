@@ -88,9 +88,8 @@ class Capitals(_Command):
 
 
 
-                _logger.log('[' + __name__ + '] pilot {0}/{1} owns {2}|{3}|{4}'.format(character_id, corporation_id,
-                                                                                       c_count, d_count, f_count),
-                            _logger.LogLevel.INFO)
+                print('[' + __name__ + '] pilot {0}/{1} owns {2}|{3}|{4}'.format(character_id, corporation_id,
+                                                                                       c_count, d_count, f_count))
 
             except _ESIError:
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
