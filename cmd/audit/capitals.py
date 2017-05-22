@@ -3,10 +3,21 @@ from cmd import Command as _Command
 class _ESIError(Exception):
     pass
 
+class SetLocation(_Command):
+    arg = "LOCATION"
+    help = "selection location"
+    group = "general"
+
+    @staticmethod
+    def execute(**kwargs):
+        kwargs['location'] = kwargs['argument']
+
+        return kwargs
+
 class Capitals(_Command):
-    arg = "LOCATIONID"
-    help = "audit tri capitals"
-    group = "tri_audit"
+    arg = "AUTHGROUP"
+    help = "audit capitals from selected group"
+    group = "vg_audit"
 
     @staticmethod
     def execute(**kwargs):
@@ -29,7 +40,7 @@ class Capitals(_Command):
         # fetch all tri users
         try:
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                       filterstr='(&(objectclass=pilot)(authGroup=triumvirate))',
+                                       filterstr='(&(objectclass=pilot)(authGroup={0}))'.format(kwargs['argument']),
                                        attrlist=['characterName', 'uid', 'corporation', 'alliance', 'esiAccessToken',
                                                  'authGroup'])
             _logger.log('[' + __name__ + '] auditing {} tri pilots'.format(users.__len__()), _logger.LogLevel.INFO)
@@ -39,6 +50,10 @@ class Capitals(_Command):
 
         bad_users = {}
 
+        gc_count = 0
+        gd_count = 0
+        gf_count = 0
+
         for user in users:
             dn, x = user
 
@@ -47,30 +62,31 @@ class Capitals(_Command):
             corporation_id = int(x['corporation'][0].decode('utf-8'))
             alliance_id = int(x['alliance'][0].decode('utf-8'))
 
-            _logger.log('[' + __name__ + '] auditing {0}'.format(character_name),
-                        _logger.LogLevel.INFO)
+            _logger.log('[' + __name__ + '] auditing {0}/{1}'.format(character_id, corporation_id),
+                        _logger.LogLevel.DEBUG)
 
-            # TODO: Implement alt tokens
+            #TODO: Implement alt tokens
 
             try:
-                result = capital_check(character_id, kwargs['argument'])
+                result = capital_check(character_id, kwargs['location'])
 
                 c_count = result['Chimera'] + result['Nidhoggur']
                 d_count = result['Naglfar'] + result['Phoenix']
                 f_count = result['Minokawa']
 
-                print('pilot {0} owns {1} carriers, {2} dreads and {3} fax'
-                            .format(character_name, c_count, d_count, f_count))
+                gc_count += c_count
+                gd_count += d_count
+                gf_count += f_count
 
                 if c_count == 0 or d_count == 0 or f_count == 0:
-                    print('adding pilot {0} to bads list'.format(character_name))
                     bad_users[character_id] = result
 
                 _logger.log('[' + __name__ + '] audit success for {0}/{1}'.format(character_id, corporation_id),
-                            _logger.LogLevel.INFO)
+                            _logger.LogLevel.DEBUG)
 
             except _ESIError:
-                print("failed to audit {0}".format(character_name))
+                _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
+                            _logger.LogLevel.ERROR)
 
         return kwargs
 
@@ -99,11 +115,9 @@ def capital_check(char_id, location_id):
         raise _ESIError
 
     for item in result:
-        if True:
-        #if item['location_id'] == location_id:
+        if item['location_id'] == location_id:
             if item['type_id'] == 23915:
                 count['Chimera'] += 1
-                print(item['location_id'])
             elif item['type_id'] == 24483:
                 count['Nidhoggur'] += 1
             elif item['type_id'] == 19722:
