@@ -54,6 +54,7 @@ class Capitals(_Command):
             return
 
         bad_users = {}
+        bad_esi = []
 
         gc_count = 0
         gd_count = 0
@@ -95,10 +96,13 @@ class Capitals(_Command):
                 _logger.log('[' + __name__ + '] failed to audit {0}/{1}'.format(character_id, corporation_id),
                             _logger.LogLevel.ERROR)
 
+                bad_esi.append(character_id)
+
         print("Total Carriers: {0}\nTotal Dreads: {1}\nTotal FAX: {2}"
               .format(gc_count, gd_count, gf_count))
 
-        print("Out of {0} pilots, {1} do not meet the requirements.".format(users.__len__(), len(bad_users)))
+        print("Out of {0} pilots, {1} do not meet the requirements and {2} could not be audited"
+              .format(users.__len__(), len(bad_users), len(bad_esi)))
 
         return kwargs
 
