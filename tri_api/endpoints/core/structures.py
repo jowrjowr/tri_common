@@ -6,7 +6,7 @@ def core_structures():
 
     from flask import Flask, request, Response
     from joblib import Parallel, delayed
-
+    from common.check_role import check_role
     from common.api import base_url
     import common.logger as _logger
     import common.request_esi
@@ -32,28 +32,20 @@ def core_structures():
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
-    # query character roles to determine if they are allowed to look at corp structures
-    request_url = base_url + 'characters/{0}/roles/?datasource=tranquility'.format(id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', charid=id)
-    if not code == 200:
-        error = 'unable to get character roles for {0}: ({1}) {2}'.format(id, code, result['error'])
+    # check that the user has the right roles (to make the esi endpoint work)
+
+    allowed_roles = ['Director', 'Station_Manager']
+    code, result = check_role(__name__, id, allowed_roles)
+
+    if code == 'error':
+        error = 'unable to check character roles for {0}: ({1}) {2}'.format(id, code, result)
         _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': error})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
-
-    # this should be enough? not sure what CEO gives you
-
-    allowed = False
-    allowed_roles = ['Director', 'Station_Manager']
-
-    for role in result:
-        if role in allowed_roles:
-            allowed = True
-
-    if allowed == False:
+    elif code == False:
         error = 'insufficient corporate roles to access this endpoint.'
-        _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] ' + error,_logger.LogLevel.INFO)
         js = json.dumps({ 'error': error})
         resp = Response(js, status=403, mimetype='application/json')
         return resp
