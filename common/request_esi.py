@@ -1,4 +1,4 @@
-def do_esi(function, url, method, charid=None, data=None):
+def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
 
     import requests
     import common.logger as _logger
@@ -95,9 +95,11 @@ def do_esi(function, url, method, charid=None, data=None):
 
         if method == 'post':
             headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+            headers.update(extraheaders)
             request = session.post(url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
             headers = {'Accept': 'application/json'}
+            headers.update(extraheaders)
             request = session.get(url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
@@ -144,7 +146,7 @@ def do_esi(function, url, method, charid=None, data=None):
     return(request.status_code, result)
 
 
-def esi(function, url, method='get', charid=None, data=None):
+def esi(function, url, method='get', charid=None, data=None, extraheaders=dict()):
     from common.graphite import sendmetric
     import common.logger as _logger
     import time
@@ -158,7 +160,7 @@ def esi(function, url, method='get', charid=None, data=None):
     while (retry_count < retry_max):
         if retry_count > 0:
             _logger.log('[' + function + '] ESI retry {0} of {1}'.format(retry_count, retry_max), _logger.LogLevel.WARNING)
-        code, result = do_esi(function, url, method, charid, data)
+        code, result = do_esi(function, url, method, charid, data, extraheaders)
         # the only thing that's worth retrying are on 5xx errors, everything else is game
 
         if code >= 500:
