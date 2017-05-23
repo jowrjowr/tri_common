@@ -4,6 +4,7 @@ def makesession(charid, token):
     import common.request_esi
     import common.credentials.core as _core
     import common.database as _database
+    from common.api import base_url
 
     import base64
     import urllib.parse
@@ -20,8 +21,6 @@ def makesession(charid, token):
     from Crypto.Cipher import AES
 
     key = _core.key
-    baseurl = 'https://esi.tech.ccp.is/latest/'
-    headers = {'Accept': 'application/json'}
 
     # construct the user's session. this is how you auth to core.
     # we're mimicing laravel structure exactly. it is finikiy.
@@ -51,18 +50,14 @@ def makesession(charid, token):
 
     # first, get the user data.
 
-    esi_url = baseurl + 'characters/' + str(charid) + '/?datasource=tranquility'
+    esi_url = base_url + 'characters/' + str(charid) + '/?datasource=tranquility'
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            return False
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            return False
+        # something broke severely
+        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return False
 
     charname = result['name']
     payload['charName'] = charname
@@ -79,40 +74,33 @@ def makesession(charid, token):
     # the scope controls whether you are tri or a tri blue
     # this in turn controls various access levels
 
+    # this is legacy code for laravel - python services determine access in different ways.
+
     if payload['allianceID'] == 933731581:
         # "tri alliance only" scope
         payload['scope'] = 2
     else:
         payload['scope'] = 1
 
-    esi_url = baseurl + 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
+    esi_url = base_url + 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /corporations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            return False
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            return False
+        # something broke severely
+        _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return False
 
     payload['corpName'] = result['corporation_name']
 
     if not payload['allianceID'] == False:
-        esi_url = baseurl + 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
+        esi_url = base_url + 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
         _logger.log('[' + __name__ + '] /alliances output: {}'.format(result), _logger.LogLevel.DEBUG)
 
         if not code == 200:
-            if code == 404:
-                # 404s aren't worth logging
-                return False
-            else:
-                # something broke severely
-                _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-                return False
+            _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return False
         payload['allianceName'] = result['alliance_name']
     else:
         payload['allianceName'] = None
