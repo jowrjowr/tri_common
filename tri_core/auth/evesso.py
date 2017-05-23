@@ -5,7 +5,7 @@ from tri_api import app
 def auth_evesso():
     from flask import request, url_for, Response, session, redirect, make_response, request
     from requests_oauthlib import OAuth2Session
-
+    from tri_core.common.scopes import scope
     import common.credentials.eve as _eve
     import common.logger as _logger
 
@@ -23,16 +23,7 @@ def auth_evesso():
     _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
 
     # setup the redirect url for the first stage of oauth flow
-    scope = ['publicData', 'characterAccountRead']
-    scope += ['characterChatChannelsRead', 'characterClonesRead', 'characterContactsRead']
-    scope += ['characterLocationRead', 'characterNotificationsRead', 'characterSkillsRead']
-    scope += ['characterStatsRead', 'corporationAssetsRead', 'corporationContactsRead']
-    scope += ['corporationContractsRead', 'corporationMembersRead', 'corporationStructuresRead']
-    scope += ['esi-clones.read_clones.v1', 'esi-characters.read_contacts.v1']
-    scope += ['esi-corporations.read_corporation_membership.v1', 'esi-location.read_location.v1']
-    scope += ['esi-location.read_ship_type.v1', 'esi-skills.read_skillqueue.v1', 'esi-skills.read_skills.v1']
-    scope += ['esi-universe.read_structures.v1', 'esi-corporations.read_structures.v1', 'esi-search.search_structures.v1']
-    scope += ['esi-characters.read_corporation_roles.v1']
+
     oauth_session = OAuth2Session(
         client_id=client_id,
         scope=scope,
@@ -53,9 +44,10 @@ def auth_evesso_callback():
 
     from flask import request, url_for, Response, session, redirect, make_response
     from requests_oauthlib import OAuth2Session
-    
+    from tri_core.common.scopes import scope
     from tri_core.common.register import registeruser
     from tri_core.common.storetokens import storetokens
+    from common.check_scope import check_scope
 
     import common.logger as _logger
     import common.credentials.eve as _eve
@@ -126,20 +118,48 @@ def auth_evesso_callback():
 
     status, details = _testing.usertest(charid)
 
+
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
     _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
 
+    # store the tokens regardless of their status. we're greedy.
+    storetokens(charid, access_token, refresh_token)
+
+    # verify that the atoken we get actually has the correct scopes that we requested
+    # just in case someone got cute and peeled some off.
+
+    code, result = check_scope(__name__, charid, scope, atoken=access_token)
+
+    if code == 'error':
+        # something in the check broke
+        _logger.log('[' + __name__ + '] error in testing scopes for {0}: {1}'.format(charid, result),_logger.LogLevel.ERROR)
+        message = 'SORRY, internal error. Try again.'
+        response = make_response(message)
+        return response
+
+    elif code == False:
+        # the user peeled something off the scope list. naughty.
+        _logger.log('[' + __name__ + '] user {0} modified scope list. missing: {1}'.format(charid, result),_logger.LogLevel.WARNING)
+        _logger.securitylog(__name__, 'core login scope modification', charid=charid, ipaddress=ipaddress)
+        message = "Don't tinker with the scope list, please. If you have an issue with it, talk to vanguard leadership."
+        response = make_response(message)
+        return response
+    elif code == True:
+        # scopes validate
+        _logger.log('[' + __name__ + '] user {0} has expected scopes'.format(charid, result),_logger.LogLevel.DEBUG)
+
+
     if status == False:
         if details == 'error':
             _logger.log('[' + __name__ + '] error in testing user {0}'.format(charid),_logger.LogLevel.ERROR)
-            message = 'SORRY. There was an issue registering. Try again.'
-        if details == 'banned':
+            message = 'SORRY, internal error. Try again.'
+        elif details == 'banned':
             _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
             _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'nope.avi'
-        if details == 'public':
+        elif details == 'public':
             _logger.log('[' + __name__ + '] non-blue user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
             _logger.securitylog(__name__, 'non-blue user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'Sorry, you have to be in vanguard to register for vanguard services'
@@ -164,7 +184,6 @@ def auth_evesso_callback():
         # user is blue and already in the system. just refresh the api tokens.
         _logger.log('[' + __name__ + '] user {0} ({1}) already registered'.format(charid, charname),_logger.LogLevel.INFO)
         _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress)
-        storetokens(charid, access_token, refresh_token)
     else:
         _logger.log('[' + __name__ + '] user {0} ({1}) not registered'.format(charid, charname),_logger.LogLevel.INFO)
         # user is blue but unregistered
