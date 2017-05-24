@@ -16,6 +16,7 @@ def makesession(charid, token):
     import hmac
     import hashlib
     import time
+    import redis
 
     from Crypto import Random
     from Crypto.Cipher import AES
@@ -117,6 +118,7 @@ def makesession(charid, token):
     sessionid = sessionid[:40]
 
     # feed the session data into the session table
+    # mysql is just to make laravel happy
 
     try:
         sql_conn = mysql.connect(
@@ -155,6 +157,27 @@ def makesession(charid, token):
         cursor.close()
         sql_conn.commit()
         sql_conn.close()
+
+    # store the session id + payload into redis
+
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    try:
+        r.client_list()
+    except redis.exceptions.ConnectionError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except redis.exceptions.ConnectionRefusedError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except Exception as err:
+        logger.error('[' + __name__ + '] Redis generic error: ' + str(err))
+
+    try:
+        # store the session in redis and set it to timeout in a week
+        r.set(sessionid, payload)
+        expires = 86400 * 7 # 1 week
+        r.expire(sessionid, expires)
+    except Exception as err:
+        _logger.log('[' + __name__ + '] Redis error: ' + str(err), _logger.LogLevel.ERROR)
+
 
     # construct the encrypted cookie contents, which consists of three things:
     # the initialization vector for AES, a sha256 hash, and the AES encrypted session id
