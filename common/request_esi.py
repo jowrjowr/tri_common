@@ -72,7 +72,7 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
 
     # do the request, but catch exceptions for connection issues
 
-    timeout = 5
+    timeout = 2
     try:
 
         # test first that eve is online. this will fail if ESI or EVE are down.
