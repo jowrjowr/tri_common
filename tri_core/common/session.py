@@ -219,3 +219,86 @@ def makesession(charid, token):
     cookie = cookie.decode('utf-8')
 
     return cookie
+
+def readsession(cookie):
+    import common.logger as _logger
+    import common.credentials.core as _core
+
+    import phpserialize
+    import hmac
+    import hashlib
+    import re
+    import json
+    import redis
+
+    from phpserialize import loads as _phploads
+    from base64 import b64encode, b64decode
+    from Crypto import Random
+    from Crypto.Cipher import AES
+
+    # this is the same as makesession() but in reverse, basically
+
+    key = b64decode(_core.key)
+
+    # so a bit of decoding first, in reverse to makesession()
+    # i can't for the life of me find the right decoding library for this...
+    cookie = re.sub('%3(d|D)', '=', cookie)
+
+    cookie = b64decode(cookie)
+    cookie = cookie.decode('utf-8')
+    cookie = json.loads(cookie)
+
+    # validate the hash
+    # the hash message format is what laravel uses. i would not do it quite this way normally.
+
+    digest_msg = cookie['iv'].encode('utf-8') + cookie['value'].encode('utf-8')
+
+    # the cookie object is the hex digest of the hmac
+    calculated_digest = hmac.new(key, msg=digest_msg, digestmod=hashlib.sha256).hexdigest()
+    cookie_digest = cookie['mac']
+
+    if not calculated_digest == cookie_digest:
+        return False
+
+    # from here onwards the contents of the cookie can be absolutely trusted as coming from
+    # us, as the contents are shas256 hashed (and checked) as well as being aes encrypted
+
+    iv = b64decode(cookie['iv'])
+    value = b64decode(cookie['value'])
+
+    # decrypt the value object into the session key
+
+    try:
+        aes = AES.new(key, AES.MODE_CBC, iv)
+        session = aes.decrypt(value)
+        session = phpserialize.loads(session)
+        session = session.decode('utf-8')
+    except Exception as error:
+        _logger.log('[' + __name__ + '] unable to decrypt & unserialize session data: ' + str(err), _logger.LogLevel.WARNING)
+        return False
+
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    try:
+        r.client_list()
+    except redis.exceptions.ConnectionError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except redis.exceptions.ConnectionRefusedError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except Exception as err:
+        _logger.log('[' + __name__ + '] Redis generic error: ' + str(err), _logger.LogLevel.ERROR)
+
+    # retrieve the payload from the redis store
+
+    payload = r.get(session)
+
+    if payload == None:
+        _logger.log('[' + __name__ + '] unable to retrive session data: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    # dismantle the payload
+
+    payload = b64decode(payload)
+    payload = _phploads(payload)
+
+    return payload
+
