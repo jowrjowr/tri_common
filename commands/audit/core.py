@@ -166,9 +166,7 @@ async def user_validate(charid, charname):
     # purge from relevant tables that key off charID
     # the SRP and Security tables are deliberately left out.
 
-    tables = [
-        'CrestTokens','Skills','SuperUsers','Teamspeak','Users','UsersSettings','sessions'
-    ]
+    tables = [ 'CrestTokens','SuperUsers','Teamspeak','Users','UsersSettings' ]
 
 
     for table in tables:

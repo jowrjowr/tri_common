@@ -3,9 +3,26 @@ from tri_api import app
 
 @app.route('/auth/eve/register', methods=['GET'])
 def auth_evesso():
-    from flask import request, url_for, Response, session, redirect, make_response, request
+    return evesso(isalt=False, altof=None)
+
+@app.route('/auth/eve/register_alt', methods=['GET'])
+def auth_evesso_alt():
+    from flask import request, make_response
+    from tri_core.common.session import readsession
+
+    cookie = request.cookies.get('tri_core')
+
+    if cookie == None:
+        return make_response('You need to be logged in with your main in order to register an alt')
+
+    payload = readsession(cookie)
+    return evesso(isalt=True, altof=payload['charID'])
+
+def evesso(isalt, altof):
+    from flask import request, Response, session, redirect, make_response
     from requests_oauthlib import OAuth2Session
     from tri_core.common.scopes import scope
+    from tri_core.common.session import readsession
     import common.credentials.eve as _eve
     import common.logger as _logger
 
@@ -20,7 +37,10 @@ def auth_evesso():
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
+    if isalt == True:
+        _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
+    else:
+        _logger.securitylog(__name__, 'SSO login (alt of {0}) initiated'.format(altof), ipaddress=ipaddress)
 
     # setup the redirect url for the first stage of oauth flow
 
@@ -36,8 +56,15 @@ def auth_evesso():
     )
     auth_url, state = oauth_session.authorization_url(base_auth_url)
     session['oauth_state'] = state
-    return redirect(auth_url, code=302)
 
+    # store alt parameters
+
+    session['isalt'] = isalt
+
+    # technically altof will be any previous cookie which can be the same main char. this will be used.
+    session['altof'] = altof
+
+    return redirect(auth_url, code=302)
 
 @app.route('/auth/eve/callback', methods=['GET'])
 def auth_evesso_callback():
@@ -73,7 +100,13 @@ def auth_evesso_callback():
     # the user has (ostensibly) authenticated with the application, now
     # the access token can be fetched
 
-    _logger.log('[' + __name__ + '] eve SSO callback received',_logger.LogLevel.INFO)
+    isalt = session.get('isalt');
+    altof = session.get('altof');
+
+    if altof == None:
+        _logger.log('[' + __name__ + '] SSO callback received',_logger.LogLevel.INFO)
+    else:
+        _logger.log('[' + __name__ + '] SSO callback (previous core login under charid {0}) received'.format(altof),_logger.LogLevel.INFO)
 
     oauth_session = OAuth2Session(
         client_id=client_id,
@@ -118,11 +151,13 @@ def auth_evesso_callback():
 
     status, details = _testing.usertest(charid)
 
-
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
+    if isalt == True:
+        _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
+    else:
+        _logger.securitylog(__name__, 'SSO callback (alt) completed', charid=charid, ipaddress=ipaddress)
 
     # store the tokens regardless of their status. we're greedy.
     storetokens(charid, access_token, refresh_token)
@@ -150,6 +185,15 @@ def auth_evesso_callback():
         # scopes validate
         _logger.log('[' + __name__ + '] user {0} has expected scopes'.format(charid, result),_logger.LogLevel.DEBUG)
 
+    # for an alt, all we want to do is make the ldap entry and call it a day.
+
+    if isalt == True:
+        code, result = registeruser(charid, access_token, refresh_token, isalt, altof)
+        if code == True:
+            message = 'your alt has been successfully registered.'
+        else:
+            message = 'there was a problem registering your alt. try again.'
+        return make_response(message)
 
     if status == False:
         if details == 'error':
@@ -174,7 +218,7 @@ def auth_evesso_callback():
     # construct the session and declare victory
 
     try:
-        cookie = _session.makesession(charid, access_token)
+        cookie = _session.makesession(charid, access_token, alt=False)
         _logger.log('[' + __name__ + '] created session for user: {0} (charid {1})'.format(charname, charid),_logger.LogLevel.INFO)
     except Exception as error:
         _logger.log('[' + __name__ + '] unable to construct session for charid {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)

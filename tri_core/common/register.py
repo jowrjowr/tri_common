@@ -1,6 +1,6 @@
-def registeruser(charid, atoken, rtoken):
+def registeruser(charid, atoken, rtoken, isalt, altof):
     # put the barest skeleton of information into ldap/mysql
-    
+
     import common.logger as _logger
     import common.credentials.database as _database
     import tri_core.common.testing as _testing
@@ -22,7 +22,11 @@ def registeruser(charid, atoken, rtoken):
     # get character affiliations
 
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    _logger.log('[' + __name__ + '] registering user {}'.format(charid),_logger.LogLevel.INFO)
+
+    if isalt == False:
+        _logger.log('[' + __name__ + '] registering user {}'.format(charid),_logger.LogLevel.INFO)
+    else:
+        _logger.log('[' + __name__ + '] registering user {0} (alt of {1})'.format(charid, altof),_logger.LogLevel.INFO)
 
     try:
         sql_conn = mysql.connect(
@@ -34,7 +38,7 @@ def registeruser(charid, atoken, rtoken):
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return(False, 'error')
-    
+
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
         ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
@@ -130,7 +134,7 @@ def registeruser(charid, atoken, rtoken):
         return(False, 'error')
 
     # store user data in users table
-    query =  'INSERT INTO Users (charID, charName, corpID, corpName, allianceID, allianceName, ServiceUsername, ServicePassword, isMain, isAlt)'
+    query =  'REPLACE INTO Users (charID, charName, corpID, corpName, allianceID, allianceName, ServiceUsername, ServicePassword, isMain, isAlt)'
     query += 'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
     try:
@@ -157,10 +161,9 @@ def registeruser(charid, atoken, rtoken):
         cursor.close()
         sql_conn.commit()
         sql_conn.close()
-        
+
     # store in LDAP
-    
-    
+
     cn = charname.replace(" ", '')
     cn = cn.replace("'", '')
     cn = cn.lower()
@@ -180,8 +183,12 @@ def registeruser(charid, atoken, rtoken):
     user['rtoken'] = rtoken
     user['password_hash'] = password_hash
 
+    # alt storage
+    if isalt == True:
+        user['altof'] = altof
+
     # sort out basic auth groups
-    
+
     authgroups = ['public', 'vanguard'] # default level of access for blues
     if 'allianceid' in user.keys():
         if user['allianceid'] == 933731581:
@@ -200,8 +207,7 @@ def registeruser(charid, atoken, rtoken):
                 group = str(group).encode('utf-8')
                 newgroups.append(group)
             user['authgroup'] = newgroups
-    
-    
+
     # build the ldap object
     attrs = []
     attrs.append(('objectClass', ['top'.encode('utf-8'), 'pilot'.encode('utf-8'), 'simpleSecurityObject'.encode('utf-8'), 'organizationalPerson'.encode('utf-8')]))
@@ -217,12 +223,47 @@ def registeruser(charid, atoken, rtoken):
     attrs.append(('esiRefreshToken', [user['rtoken']]))
     attrs.append(('userPassword', [user['password_hash']]))
 
+    if isalt == True:
+        attrs.append(('altOf', [user['altof']]))
+
+    # build out the modification in case
+    mod_attrs = []
+    for attr in attrs:
+        attribute = (ldap.MOD_REPLACE,) + attr
+        mod_attrs.append(attribute)
+
+    # check if it exists
+    # ldap doesn't really have a replace into like mysql...
+
     try:
-        result = ldap_conn.add_s(dn, attrs)
-    except Exception as e:
-        _logger.log('[' + __name__ + '] unable to register user {0} in ldap: {1}'.format(charid, e), _logger.LogLevel.ERROR)
+        # search specifically for users with a defined uid (everyone, tbh) and a defined refresh token (not everyone)
+        result = ldap_conn.search_s(
+            'ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(uid={})'.format(charid),
+        )
+        record_count = result.__len__()
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to fetch ldap information for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')
-    _logger.log('[' + __name__ + '] new user {0} ({1}) registered (ldap)'.format(charid, charname), _logger.LogLevel.ERROR)
+
+    if record_count == 0:
+        try:
+            result = ldap_conn.add_s(dn, attrs)
+        except Exception as e:
+            _logger.log('[' + __name__ + '] unable to register user {0} in ldap: {1}'.format(charid, e), _logger.LogLevel.ERROR)
+            return(False, 'error')
+    else:
+        try:
+            result = ldap_conn.modify_s(dn, mod_attrs)
+        except Exception as e:
+            _logger.log('[' + __name__ + '] unable to update existing user {0} in ldap: {1}'.format(charid, e), _logger.LogLevel.ERROR)
+            return(False, 'error')
+
+    if isalt == True:
+        _logger.log('[' + __name__ + '] new user {0} ({1}) (alt of {2}) registered (ldap)'.format(charid, charname, altof), _logger.LogLevel.INFO)
+    else:
+        _logger.log('[' + __name__ + '] new user {0} ({1}) registered (ldap)'.format(charid, charname), _logger.LogLevel.INFO)
 
     return(True, 'success')
 

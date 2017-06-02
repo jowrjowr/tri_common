@@ -1,4 +1,4 @@
-def makesession(charid, token):
+def makesession(charid, token, alt=False):
 
     import common.logger as _logger
     import common.request_esi
@@ -298,7 +298,7 @@ def readsession(cookie):
     # dismantle the payload
 
     payload = b64decode(payload)
-    payload = _phploads(payload)
+    payload = _phploads(payload, decode_strings=True)
 
     return payload
 
