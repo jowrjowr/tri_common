@@ -102,8 +102,8 @@ class Corporation(_Command):
         except:
             return
 
-        member_id_list = [member['character_id'] for member in member_list]
-        user_id_list = [int(user[1]['uid'][0].decode('utf-8')) for user in users]
+        member_id_list = [str(member['character_id']) for member in member_list]
+        user_id_list = [str(user[1]['uid'][0].decode('utf-8')) for user in users]
 
         missing_members = list(set(member_id_list) - set(user_id_list))
 
@@ -118,7 +118,7 @@ class Corporation(_Command):
             if not code == 200:
                 # something broke severely
                 _logger.log('[' + __name__ + '] character/names API error for ids {0} ({1}: {2})'
-                            .format(', '.join(str(ids)), code, result['error']),
+                            .format(', '.join(ids), code, result['error']),
                             _logger.LogLevel.ERROR)
 
                 raise Exception
