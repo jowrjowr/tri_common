@@ -169,10 +169,10 @@ class Corporation(_Command):
 
                 main_obj = mains[str(main)]
 
-                print(main_obj)
+                print([alt[1] for alt in main_obj['alts']])
 
-                print("Main {0}; Alts: {1}"
-                      .format(main_obj['main'][1], ', '.join(str([alt[1] for alt in main_obj['alts']]))))
+                print("\t{0} [{1}]"
+                      .format(main_obj['main'][1], ', '.join([alt[1] for alt in main_obj['alts']])))
 
 
         kwargs['mains-{0}'.format(kwargs['argument'])] = mains
