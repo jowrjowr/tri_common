@@ -94,13 +94,15 @@ class Corporation(_Command):
 
                 raise Exception
 
+            return result
+
         # get member list
         try:
             member_list = get_member_list(users, kwargs['argument'])
         except:
             return
 
-        print(member_list)
+        print([member['character_id'] for member in member_list])
         print(users)
 
 
