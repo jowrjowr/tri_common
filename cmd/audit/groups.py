@@ -103,7 +103,11 @@ class Corporation(_Command):
             return
 
         member_id_list = [member['character_id'] for member in member_list]
-        print(users[0][1]['uid'])
+        user_id_list = [user[1]['uid'].decode('utf-8') for user in users]
+
+        missing_members = []
+
+        print(user_id_list)
 
 
 
