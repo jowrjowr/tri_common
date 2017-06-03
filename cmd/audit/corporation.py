@@ -17,7 +17,7 @@ class Corporation(_Command):
             from common.api import base_url
             import common.request_esi
 
-            request_url = base_url + 'corporations/(0}/?datasource=tranquility'.format(corp_id)
+            request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corp_id)
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if code == 403:
