@@ -166,9 +166,11 @@ class Corporation(_Command):
             print('Mains: {0}'.format(len(mains)))
 
             for main in mains:
-                print(main)
+
+                main_obj = mains[str(main)]
+
                 print("Main {0}; Alts: {1}"
-                      .format(main['main'][1], ', '.join(str([alt[1] for alt in main['alts']]))))
+                      .format(main_obj['main'][1], ', '.join(str([alt[1] for alt in main_obj['alts']]))))
 
 
         kwargs['mains-{0}'.format(kwargs['argument'])] = mains
