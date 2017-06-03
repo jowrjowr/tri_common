@@ -47,3 +47,23 @@ class Corporation(_Command):
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error), _logger.LogLevel.ERROR)
 
+
+
+        # get corporation members from ldap
+        try:
+            users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
+                                       filterstr='(&(objectclass=pilot)(corporation={0}))'.format(kwargs['argument']),
+                                       attrlist=['characterName', 'uid', 'corporation', 'esiAccessToken',
+                                                 'authGroup', 'altOf'])
+            _logger.log('[' + __name__ + '] auditing {0} pilots from {1}'
+                        .format(users.__len__(), kwargs['argument']), _logger.LogLevel.INFO)
+
+
+        except ldap.LDAPError as error:
+            _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
+            return
+
+        print("Auditing {0} [{1]] ({2}/{3})"
+              .format(corp['corporation_name'], corp['ticker'], users.__len__()), corp['member_count'])
+
+
