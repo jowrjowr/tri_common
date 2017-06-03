@@ -145,16 +145,16 @@ class Corporation(_Command):
 
         for user in users:
             if 'altOf' not in user[1]:
-                main_id = user['uid'][0].decode('utf-8')
-                main_name =  user['characterName'][0].decode('utf-8')
+                main_id = user[1]['uid'][0].decode('utf-8')
+                main_name =  user[1]['characterName'][0].decode('utf-8')
 
                 if main_id not in mains:
                     mains[main_id] = {'main': [main_id, main_name], 'alts': []}
                 else:
                     mains[main_id]['main'] = [main_id, main_name]
             else:
-                alt_id = user['uid'][0].decode('utf-8')
-                main_id = user['altOf'][0].decode('utf-8')
+                alt_id = user[1]['uid'][0].decode('utf-8')
+                main_id = user[1]['altOf'][0].decode('utf-8')
 
                 if main_id not in mains:
                     mains[main_id] = {'main': None, 'alts': [alt_id]}
