@@ -154,17 +154,17 @@ class Corporation(_Command):
                     mains[main_id]['main'] = [main_id, main_name]
             else:
                 alt_id = user[1]['uid'][0].decode('utf-8')
+                alt_name = user[1]['characterName'][0].decode('utf-8')
                 main_id = user[1]['altOf'][0].decode('utf-8')
 
                 if main_id not in mains:
-                    mains[main_id] = {'main': None, 'alts': [alt_id]}
+                    mains[main_id] = {'main': None, 'alts': [[alt_id, alt_name]]}
                 else:
-                    mains[main_id]['alts'].append(alt_id)
+                    mains[main_id]['alts'].append([alt_id, alt_name])
 
         if kwargs.get('verbose', True):
             print('Mains: {0}'.format(len(mains)))
 
-            print(mains)
             for main in mains:
                 print("Main {0}; Alts: {1}"
                       .format(main['main'][1], ', '.join(str([alt[1] for alt in main['alts']]))))
