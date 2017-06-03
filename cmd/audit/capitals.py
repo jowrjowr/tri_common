@@ -134,7 +134,7 @@ def capital_check(char_id, location_id):
         # something broke severely
         _logger.log('[' + __name__ + '] character assets API error for char {0} ({1}: {2})'
                     .format(char_id, code, result['error']),
-                    _logger.LogLevel.INFO)
+                    _logger.LogLevel.ERROR)
         raise _ESIError
 
     for item in result:
