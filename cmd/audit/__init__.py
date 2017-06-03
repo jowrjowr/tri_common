@@ -1,2 +1,2 @@
 from .capitals import *
-from .corporation import *
+from .groups import *
