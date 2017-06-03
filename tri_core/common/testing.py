@@ -213,7 +213,12 @@ def usertest(charid):
     # see if the user is already in the database, one way or the other.
     
     try:
-        user = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(uid={0}))'.format(charid), attrlist=['accountStatus'])
+        user = ldap_conn.search_s(
+            'ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(&(objectclass=pilot)(uid={0}))'.format(charid),
+            attrlist=['accountStatus', 'altOf']
+        )
         user_count = len(user)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to fetch ldap user: {}'.format(error),_logger.LogLevel.ERROR)
@@ -245,6 +250,13 @@ def usertest(charid):
     # always single-valued, will always be there if an ldap object exists
     status = user[0][1]['accountStatus'][0]
     status = status.decode('utf-8')
+    try:
+        altof = user[0][1]['altOf'][0]
+        altof = altof.decode('utf-8')
+        isalt = True
+    except Exception as e:
+        altof = None
+        isalt = False
 
     if status == 'banned':
         # user is banned. 
