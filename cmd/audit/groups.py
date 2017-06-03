@@ -66,4 +66,55 @@ class Corporation(_Command):
         print("Auditing {0} [{1}] ({2}/{3})"
               .format(corp['corporation_name'], corp['ticker'], users.__len__(), corp['member_count']))
 
+        # grab first char id of list and grab corp member list and output missing tokens
+        def get_member_list(users, corp_id):
+            from common.api import base_url
+            import common.request_esi
+
+            if users.__len__() > 0:
+                user = users[0]
+                _, x = user
+                char_id = int(x['uid'][0].decode('utf-8'))
+            else:
+                _logger.log('[' + __name__ + '] corporation {0} has no ldap entries'
+                            .format(kwargs['argument']), _logger.LogLevel.ERROR)
+
+                print("No members found.")
+
+                raise Exception
+
+            request_url = base_url + 'corporations/{0}/members/?datasource=tranquility'.format(corp_id)
+            code, result = common.request_esi.esi(__name__, request_url, 'get', charid=char_id)
+
+            if not code == 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] corporation/members API error for corp {0} ({1}: {2})'
+                            .format(corp_id, code, result['error']),
+                            _logger.LogLevel.ERROR)
+
+                raise Exception
+
+        # get member list
+        try:
+            member_list = get_member_list(users, kwargs['argument'])
+        except:
+            return
+
+        member_id_list = [member['character_id'] for member in member_list]
+        user_id_list = [user['uid'] for user in users]
+        missing_members = []
+        missing_member_names = []
+
+        for member_id in member_id_list:
+            if member_id not in user_id_list:
+                missing_members.append(member_id)
+
+        for missing_member in missing_members:
+            for user in users:
+                if user['uid'] == missing_member:
+                    missing_member_names.append(user['characterName'])
+
+        print("Missing Tokens: {0}".format(', '.join(missing_member_names)))
+
+
 
