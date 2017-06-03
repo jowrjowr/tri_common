@@ -144,7 +144,7 @@ class Corporation(_Command):
         mains = {}
 
         for user in users:
-            if 'altOf' not in user[1]:
+            if 'altOf' not in user[1] and user[1]['altOf'] != user[1]['uid']:
                 main_id = user[1]['uid'][0].decode('utf-8')
                 main_name =  user[1]['characterName'][0].decode('utf-8')
 
@@ -169,13 +169,9 @@ class Corporation(_Command):
 
                 main_obj = mains[str(main)]
 
-                print(main_obj['main'])
-
                 print("\t{0} [{1}]"
                       .format(main_obj['main'][1], ', '.join([alt[1] for alt in main_obj['alts']])))
 
-
         kwargs['mains-{0}'.format(kwargs['argument'])] = mains
-
 
         return kwargs
