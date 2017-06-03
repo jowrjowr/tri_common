@@ -169,7 +169,7 @@ class Corporation(_Command):
 
                 main_obj = mains[str(main)]
 
-                print([alt[1] for alt in main_obj['alts']])
+                print(main_obj['main'])
 
                 print("\t{0} [{1}]"
                       .format(main_obj['main'][1], ', '.join([alt[1] for alt in main_obj['alts']])))
