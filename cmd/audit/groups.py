@@ -112,7 +112,7 @@ class Corporation(_Command):
             from common.api import base_url
             import common.request_esi
 
-            request_url = base_url + 'characters/names/{0}/?datasource=tranquility'.format('\n'.join(ids[1:5]))
+            request_url = base_url + 'characters/names/{0}/?datasource=tranquility'.format('\n'.join(ids))
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if not code == 200:
@@ -125,6 +125,6 @@ class Corporation(_Command):
 
             return result
 
-        missing_members_names = get_member_names(missing_members)
+        missing_members_names = get_member_names(missing_members[0:1])
 
         print("Missing Tokens: {0}".format(', '.join([char['character_name'] for char in missing_members_names])))
