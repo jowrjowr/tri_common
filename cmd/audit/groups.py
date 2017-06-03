@@ -102,8 +102,8 @@ class Corporation(_Command):
         except:
             return
 
-        print([member['character_id'] for member in member_list])
-        print(users)
+        member_id_list = [member['character_id'] for member in member_list]
+        print(users[0])
 
 
 
