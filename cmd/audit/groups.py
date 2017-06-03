@@ -130,7 +130,7 @@ class CorporationTokens(_Command):
             return result
 
         try:
-            missing_members_names = get_member_names(missing_members)
+            missing_members_names = sorted(get_member_names(missing_members))
         except:
             return
 
