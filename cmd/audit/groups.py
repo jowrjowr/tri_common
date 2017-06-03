@@ -100,21 +100,8 @@ class Corporation(_Command):
         except:
             return
 
-        member_id_list = [member['character_id'] for member in member_list]
-        user_id_list = [user['uid'] for user in users]
-        missing_members = []
-        missing_member_names = []
-
-        for member_id in member_id_list:
-            if member_id not in user_id_list:
-                missing_members.append(member_id)
-
-        for missing_member in missing_members:
-            for user in users:
-                if user['uid'] == missing_member:
-                    missing_member_names.append(user['characterName'])
-
-        print("Missing Tokens: {0}".format(', '.join(missing_member_names)))
+        print(member_list)
+        print(users)
 
 
 
