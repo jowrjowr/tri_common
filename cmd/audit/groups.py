@@ -1,6 +1,6 @@
 from cmd import Command as _Command
 
-class Corporation(_Command):
+class CorporationTokens(_Command):
     arg = "CORP_ID"
     help = "audit corporation"
     group = "vg_audit"
@@ -63,8 +63,9 @@ class Corporation(_Command):
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             return
 
-        print("Auditing {0} [{1}] ({2}/{3})"
-              .format(corp['corporation_name'], corp['ticker'], users.__len__(), corp['member_count']))
+        if kwargs.get('verbose', True):
+            print("Auditing {0} [{1}] ({2}/{3})"
+                  .format(corp['corporation_name'], corp['ticker'], users.__len__(), corp['member_count']))
 
         # grab first char id of list and grab corp member list and output missing tokens
         def get_member_list(users, corp_id):
@@ -105,7 +106,7 @@ class Corporation(_Command):
         member_id_list = [str(member['character_id']) for member in member_list]
         user_id_list = [str(user[1]['uid'][0].decode('utf-8')) for user in users]
 
-        missing_members = list(set(member_id_list) - set(user_id_list))
+        missing_members = sorted(list(set(member_id_list) - set(user_id_list)))
 
         # get character names from missing IDs
         def get_member_names(ids):
@@ -133,4 +134,9 @@ class Corporation(_Command):
         except:
             return
 
-        print("Missing Tokens: {0}".format(', '.join([char['character_name'] for char in missing_members_names])))
+        if kwargs.get('verbose', True):
+            print("Missing Tokens: {0}".format(', '.join([char['character_name'] for char in missing_members_names])))
+
+        kwargs['missing-{0}'.format(kwargs['argument'])] = missing_members_names
+
+        return kwargs
