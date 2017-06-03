@@ -63,7 +63,7 @@ class Corporation(_Command):
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             return
 
-        print("Auditing {0} [{1]] ({2}/{3})"
+        print("Auditing {0} [{1}] ({2}/{3})"
               .format(corp['corporation_name'], corp['ticker'], users.__len__(), corp['member_count']))
 
 
