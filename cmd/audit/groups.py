@@ -144,15 +144,7 @@ class Corporation(_Command):
         mains = {}
 
         for user in users:
-            if 'altOf' not in user[1] and user[1]['altOf'] != user[1]['uid']:
-                main_id = user[1]['uid'][0].decode('utf-8')
-                main_name =  user[1]['characterName'][0].decode('utf-8')
-
-                if main_id not in mains:
-                    mains[main_id] = {'main': [main_id, main_name], 'alts': []}
-                else:
-                    mains[main_id]['main'] = [main_id, main_name]
-            else:
+            if 'altOf' in user[1] and user[1]['altOf'] != user[1]['uid']:
                 alt_id = user[1]['uid'][0].decode('utf-8')
                 alt_name = user[1]['characterName'][0].decode('utf-8')
                 main_id = user[1]['altOf'][0].decode('utf-8')
@@ -161,6 +153,14 @@ class Corporation(_Command):
                     mains[main_id] = {'main': None, 'alts': [[alt_id, alt_name]]}
                 else:
                     mains[main_id]['alts'].append([alt_id, alt_name])
+            else:
+                main_id = user[1]['uid'][0].decode('utf-8')
+                main_name =  user[1]['characterName'][0].decode('utf-8')
+
+                if main_id not in mains:
+                    mains[main_id] = {'main': [main_id, main_name], 'alts': []}
+                else:
+                    mains[main_id]['main'] = [main_id, main_name]
 
         if kwargs.get('verbose', True):
             print('Mains: {0}'.format(len(mains)))
