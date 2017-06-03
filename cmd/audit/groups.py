@@ -167,6 +167,7 @@ class Corporation(_Command):
             for main in mains:
                 print("Main {0}; Alts: {1}".format(main['main'][1], ', '.join([alt[1] for alt in main['alts']])))
 
+        kwargs['mains-{0}'.format(kwargs['argument'])] = mains
 
 
         return kwargs
