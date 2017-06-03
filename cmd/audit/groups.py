@@ -118,7 +118,7 @@ class Corporation(_Command):
             if not code == 200:
                 # something broke severely
                 _logger.log('[' + __name__ + '] character/names API error for ids {0} ({1}: {2})'
-                            .format(', '.join(ids), code, result['error']),
+                            .format(', '.join(str(ids)), code, result['error']),
                             _logger.LogLevel.ERROR)
 
                 raise Exception
