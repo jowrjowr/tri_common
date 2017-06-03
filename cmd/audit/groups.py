@@ -112,7 +112,7 @@ class Corporation(_Command):
             from common.api import base_url
             import common.request_esi
 
-            request_url = base_url + 'characters/names/{0}/?datasource=tranquility'.format('\n'.join(ids))
+            request_url = base_url + 'characters/names/{0}/?datasource=tranquility'.format('%2C'.join(ids))
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if not code == 200:
