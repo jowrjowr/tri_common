@@ -164,8 +164,11 @@ class Corporation(_Command):
         if kwargs.get('verbose', True):
             print('Mains: {0}'.format(len(mains)))
 
+            print(mains)
             for main in mains:
-                print("Main {0}; Alts: {1}".format(main['main'][1], ', '.join(str([alt[1] for alt in main['alts']]))))
+                print("Main {0}; Alts: {1}"
+                      .format(main['main'][1], ', '.join(str([alt[1] for alt in main['alts']]))))
+
 
         kwargs['mains-{0}'.format(kwargs['argument'])] = mains
 
