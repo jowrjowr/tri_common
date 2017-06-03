@@ -1,6 +1,6 @@
 from cmd import Command as _Command
 
-class CorporationTokens(_Command):
+class Corporation(_Command):
     arg = "CORP_ID"
     help = "audit corporation"
     group = "vg_audit"
@@ -139,5 +139,34 @@ class CorporationTokens(_Command):
                   .format(', '.join(sorted([char['character_name'] for char in missing_members_names]))))
 
         kwargs['missing-{0}'.format(kwargs['argument'])] = missing_members_names
+
+        # on to mains
+        mains = {}
+
+        for user in users:
+            if 'altOf' not in user[1]:
+                main_id = int(user['uid'][0].decode('utf-8'))
+                main_name =  user['characterName'][0].decode('utf-8')
+
+                if main_id not in mains:
+                    mains[main_id] = {'main': [main_id, main_name], 'alts': []}
+                else:
+                    mains[main_id]['main'] = [main_id, main_name]
+            else:
+                alt_id = int(user['uid'][0].decode('utf-8'))
+                main_id = int(user['altOf'][0].decode('utf-8'))
+
+                if main_id not in mains:
+                    mains[main_id] = {'main': None, 'alts': [alt_id]}
+                else:
+                    mains[main_id]['alts'].append(alt_id)
+
+        if kwargs.get('verbose', True):
+            print('Mains: {0}'.format(len(mains)))
+
+            for main in mains:
+                print("Main {0}; Alts: {1}".format(main['main'][1], ', '.join([alt[1] for alt in main['alts']])))
+
+
 
         return kwargs
