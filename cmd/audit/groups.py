@@ -54,7 +54,7 @@ class Corporation(_Command):
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                        filterstr='(&(objectclass=pilot)(corporation={0}))'.format(kwargs['argument']),
                                        attrlist=['characterName', 'uid', 'corporation', 'esiAccessToken',
-                                                 'authGroup', 'altOf'])
+                                                 'authGroup', 'altOf']).sort()
             _logger.log('[' + __name__ + '] auditing {0} pilots from {1}'
                         .format(users.__len__(), kwargs['argument']), _logger.LogLevel.INFO)
 
@@ -168,6 +168,8 @@ class Corporation(_Command):
             for main in mains:
 
                 main_obj = mains[str(main)]
+
+                print(main_obj)
 
                 print("Main {0}; Alts: {1}"
                       .format(main_obj['main'][1], ', '.join(str([alt[1] for alt in main_obj['alts']]))))
