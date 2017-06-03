@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+
 def run():
     from cmd import init_parser
     from json import loads
