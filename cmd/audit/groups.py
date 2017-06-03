@@ -54,7 +54,7 @@ class Corporation(_Command):
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                        filterstr='(&(objectclass=pilot)(corporation={0}))'.format(kwargs['argument']),
                                        attrlist=['characterName', 'uid', 'corporation', 'esiAccessToken',
-                                                 'authGroup', 'altOf']).sort()
+                                                 'authGroup', 'altOf'])
             _logger.log('[' + __name__ + '] auditing {0} pilots from {1}'
                         .format(users.__len__(), kwargs['argument']), _logger.LogLevel.INFO)
 
