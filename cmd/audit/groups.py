@@ -106,7 +106,7 @@ class CorporationTokens(_Command):
         member_id_list = [str(member['character_id']) for member in member_list]
         user_id_list = [str(user[1]['uid'][0].decode('utf-8')) for user in users]
 
-        missing_members = sorted(list(set(member_id_list) - set(user_id_list)))
+        missing_members = list(set(member_id_list) - set(user_id_list))
 
         # get character names from missing IDs
         def get_member_names(ids):
@@ -130,12 +130,13 @@ class CorporationTokens(_Command):
             return result
 
         try:
-            missing_members_names = sorted(get_member_names(missing_members))
+            missing_members_names = get_member_names(missing_members)
         except:
             return
 
         if kwargs.get('verbose', True):
-            print("Missing Tokens: {0}".format(', '.join([char['character_name'] for char in missing_members_names])))
+            print("Missing Tokens: {0}"
+                  .format(', '.join(sorted([char['character_name'] for char in missing_members_names]))))
 
         kwargs['missing-{0}'.format(kwargs['argument'])] = missing_members_names
 
