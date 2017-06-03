@@ -64,6 +64,6 @@ class Corporation(_Command):
             return
 
         print("Auditing {0} [{1]] ({2}/{3})"
-              .format(corp['corporation_name'], corp['ticker'], users.__len__()), corp['member_count'])
+              .format(corp['corporation_name'], corp['ticker'], users.__len__(), corp['member_count']))
 
 
