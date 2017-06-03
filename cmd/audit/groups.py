@@ -120,11 +120,14 @@ class Corporation(_Command):
                 _logger.log('[' + __name__ + '] character/names API error for ids {0} ({1}: {2})'
                             .format(', '.join(ids), code, result['error']),
                             _logger.LogLevel.ERROR)
+                _logger.log('[' + __name__ + '] request_url: {0}'
+                            .format(request_url),
+                            _logger.LogLevel.ERROR)
 
                 raise Exception
 
             return result
 
-        missing_members_names = get_member_names(missing_members[0:1])
+        missing_members_names = get_member_names(missing_members)
 
         print("Missing Tokens: {0}".format(', '.join([char['character_name'] for char in missing_members_names])))
