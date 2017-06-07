@@ -232,7 +232,7 @@ def auth_evesso_callback():
         _logger.log('[' + __name__ + '] user {0} ({1}) not registered'.format(charid, charname),_logger.LogLevel.INFO)
         # user is blue but unregistered
         _logger.securitylog(__name__, 'core user registered', charid=charid, ipaddress=ipaddress)
-        registeruser(charid, access_token, refresh_token)
+        code, result = registeruser(charid, access_token, refresh_token, isalt=False, altof=None)
         # maybe setup services here?
 
     expire_date = datetime.datetime.now()
