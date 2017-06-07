@@ -40,7 +40,7 @@ def check_scope(function, charid, scopes, atoken=None):
     extraheaders = {'Authorization': 'Bearer ' + atoken }
     code, result = common.request_esi.esi(__name__, verify_url, method='get', extraheaders=extraheaders)
     if not code == 200:
-        _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
         return 'error', 'broken verify request'
     charscopes = result['Scopes']
 
