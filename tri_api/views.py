@@ -17,6 +17,4 @@ app.add_url_rule('/hello', 'hello', hello_world)
 from tri_core.pages.main import page_main
 app.add_url_rule('/pages/', 'main', page_main)
 app.add_url_rule('/pages/main', 'main', page_main)
-from tri_core.pages.blacklist import page_blacklist
-app.add_url_rule('/pages/blacklist', 'blacklist', page_blacklist)
 
