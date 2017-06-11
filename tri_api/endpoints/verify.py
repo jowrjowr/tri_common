@@ -51,7 +51,7 @@ def verify():
         if 'altOf' in udata:
             try:
                 users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                           filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf']),
+                                           filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf'][0].decode('utf-8')),
                                            attrlist=['uid', 'altOf'])
 
                 _logger.log('[' + __name__ + '] user length: {0} [{1}]'.format(users.__len__(), users),
