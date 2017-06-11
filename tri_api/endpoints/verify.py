@@ -67,7 +67,7 @@ def verify():
                 raise
 
         main_char_id = int(udata['uid'][0].decode('utf-8'))
-        main_char_name = int(udata['characterName'][0].decode('utf-8'))
+        main_char_name = udata['characterName'][0].decode('utf-8')
 
         js = dumps({'character_id': main_char_id})
         return Response(js, status=200, mimetype='application/json')
