@@ -52,7 +52,7 @@ def verify():
             try:
                 users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                            filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf']),
-                                           attrlist=['uid'])
+                                           attrlist=['uid', 'altOf'])
                 _, udata = users[0]
             except ldap.LDAPError as error:
                 _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
