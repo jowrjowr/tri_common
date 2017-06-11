@@ -12,7 +12,7 @@ def verify():
     import common.credentials.ldap as _ldap
 
     try:
-        if 'char_id' not in request.arg:
+        if 'char_id' not in request.args:
             js = dumps({'error': 'no char_id supplied'})
             return Response(js, status=401, mimetype='application/json')
 
