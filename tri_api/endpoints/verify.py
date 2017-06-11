@@ -11,51 +11,55 @@ def verify():
     import common.logger as _logger
     import common.credentials.ldap as _ldap
 
-    if 'char_id' not in request.arg:
-        js = dumps({'error': 'no char_id supplied'})
-        return Response(js, status=401, mimetype='application/json')
-
     try:
-        char_id = int(request.args['id'])
-    except ValueError:
-        js = dumps({'error': 'char_id is not an integer'})
-        return Response(js, status=401, mimetype='application/json')
+        if 'char_id' not in request.arg:
+            js = dumps({'error': 'no char_id supplied'})
+            return Response(js, status=401, mimetype='application/json')
 
-    # get ldap entry
-    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+        try:
+            char_id = int(request.args['id'])
+        except ValueError:
+            js = dumps({'error': 'char_id is not an integer'})
+            return Response(js, status=401, mimetype='application/json')
 
-    try:
-        ldap_conn.simple_bind_s(_ldap.admin_dn,
-                                _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),
-                    _logger.LogLevel.ERROR)
+        # get ldap entry
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
 
-    try:
-        users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                   filterstr='(&(objectclass=pilot)(uid={0}))'.format(char_id),
-                                   attrlist=['uid', 'altOf'])
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
-        return
+        try:
+            ldap_conn.simple_bind_s(_ldap.admin_dn,
+                                    _ldap.admin_dn_password)
+        except ldap.LDAPError as error:
+            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),
+                        _logger.LogLevel.ERROR)
 
-    if users.__len__() != 1:
-        js = dumps({'error': 'char_id: {0} returned 0 or too many entries'.format(char_id)})
-        return Response(js, status=401, mimetype='application/json')
-
-    _, udata = users[0]
-
-    if 'altOf' in udata:
         try:
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
-                                       filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf']),
-                                       attrlist=['uid'])
-            _, udata = users[0]
+                                       filterstr='(&(objectclass=pilot)(uid={0}))'.format(char_id),
+                                       attrlist=['uid', 'altOf'])
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             return
 
-    main_char_id = int(udata['uid'][0].decode('utf-8'))
+        if users.__len__() != 1:
+            js = dumps({'error': 'char_id: {0} returned 0 or too many entries'.format(char_id)})
+            return Response(js, status=404, mimetype='application/json')
 
-    js = dumps({'character_id': main_char_id})
-    return Response(js, status=200, mimetype='application/json')
+        _, udata = users[0]
+
+        if 'altOf' in udata:
+            try:
+                users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
+                                           filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf']),
+                                           attrlist=['uid'])
+                _, udata = users[0]
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
+                return
+
+        main_char_id = int(udata['uid'][0].decode('utf-8'))
+
+        js = dumps({'character_id': main_char_id})
+        return Response(js, status=200, mimetype='application/json')
+    except Exception as error:
+        js = dumps({'error': error})
+        return Response(js, status=500, mimetype='application/json')
