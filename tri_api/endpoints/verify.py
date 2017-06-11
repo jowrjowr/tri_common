@@ -17,7 +17,7 @@ def verify():
             return Response(js, status=401, mimetype='application/json')
 
         try:
-            char_id = int(request.args['id'])
+            char_id = int(request.args['char_id'])
         except ValueError:
             js = dumps({'error': 'char_id is not an integer'})
             return Response(js, status=401, mimetype='application/json')
