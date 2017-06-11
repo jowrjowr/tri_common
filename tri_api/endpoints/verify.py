@@ -38,7 +38,7 @@ def verify():
                                        attrlist=['uid', 'altOf'])
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
-            return
+            raise
 
         if users.__len__() != 1:
             js = dumps({'error': 'char_id: {0} returned 0 or too many entries'.format(char_id)})
@@ -53,15 +53,23 @@ def verify():
                 users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                            filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf']),
                                            attrlist=['uid', 'altOf'])
+
+                _logger.log('[' + __name__ + '] user length: {0} [{1}]'.format(users.__len__(), users),
+                            _logger.LogLevel.INFO)
+
+                if users.__len__() != 1:
+                    js = dumps({'error': 'char_id: {0} is altOf {1} which is not registered'.format(char_id, udata['altOf'])})
+                    return Response(js, status=404, mimetype='application/json')
+
                 _, udata = users[0]
             except ldap.LDAPError as error:
                 _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
-                return
+                raise
 
         main_char_id = int(udata['uid'][0].decode('utf-8'))
 
         js = dumps({'character_id': main_char_id})
         return Response(js, status=200, mimetype='application/json')
     except Exception as error:
-        js = dumps({'error': error})
+        js = dumps({'error': str(error)})
         return Response(js, status=500, mimetype='application/json')
