@@ -69,7 +69,10 @@ def verify():
         main_char_id = int(udata['uid'][0].decode('utf-8'))
         main_char_name = udata['characterName'][0].decode('utf-8')
 
-        js = dumps({'character_id': main_char_id})
+        js = dumps({
+            'character_id': main_char_id,
+            'character_name': main_char_name
+        })
         return Response(js, status=200, mimetype='application/json')
     except Exception as error:
         js = dumps({'error': str(error)})
