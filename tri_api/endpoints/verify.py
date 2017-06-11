@@ -35,13 +35,13 @@ def verify():
         try:
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                        filterstr='(&(objectclass=pilot)(uid={0}))'.format(char_id),
-                                       attrlist=['uid', 'altOf'])
+                                       attrlist=['uid', 'altOf', 'characterName'])
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             raise
 
         if users.__len__() != 1:
-            js = dumps({'error': 'char_id: {0} returned 0 or too many entries'.format(char_id)})
+            js = dumps({'error': 'char_id={0} returned no or too many entries'.format(char_id)})
             return Response(js, status=404, mimetype='application/json')
 
         _logger.log('[' + __name__ + '] user length: {0} [{1}]'.format(users.__len__(), users), _logger.LogLevel.INFO)
@@ -52,7 +52,7 @@ def verify():
             try:
                 users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
                                            filterstr='(&(objectclass=pilot)(uid={0}))'.format(udata['altOf'][0].decode('utf-8')),
-                                           attrlist=['uid', 'altOf'])
+                                           attrlist=['uid', 'altOf', 'characterName'])
 
                 _logger.log('[' + __name__ + '] user length: {0} [{1}]'.format(users.__len__(), users),
                             _logger.LogLevel.INFO)
@@ -67,6 +67,7 @@ def verify():
                 raise
 
         main_char_id = int(udata['uid'][0].decode('utf-8'))
+        main_char_name = int(udata['characterName'][0].decode('utf-8'))
 
         js = dumps({'character_id': main_char_id})
         return Response(js, status=200, mimetype='application/json')
