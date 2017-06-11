@@ -44,7 +44,8 @@ def verify():
             js = dumps({'error': 'char_id: {0} returned 0 or too many entries'.format(char_id)})
             return Response(js, status=404, mimetype='application/json')
 
-        _logger.log('[' + __name__ + '] user length: {}'.format(users.__len__()), _logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] user length: {0} [{1}]'.format(users.__len__(), users), _logger.LogLevel.INFO)
+
         _, udata = users[0]
 
         if 'altOf' in udata:
