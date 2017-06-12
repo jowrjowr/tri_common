@@ -90,6 +90,7 @@ def characters():
 
             json_dict['alts'].append(new_entry)
 
+        _logger.log('[' + __name__ + '] fetched characters successfully', _logger.LogLevel.INFO)
 
         js = dumps(json_dict)
         return Response(js, status=200, mimetype='application/json')
