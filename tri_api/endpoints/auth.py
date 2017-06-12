@@ -74,7 +74,12 @@ def characters():
         else:
             json_dict['main']['esi_token'] = False
 
+        _logger.log('[' + __name__ + '] main dict prepared'.format(mains.__len__(), users.__len__()),
+                    _logger.LogLevel.INFO)
+
         for user in users:
+            _logger.log('[' + __name__ + '] adding alt'.format(mains.__len__(), users.__len__()),
+                        _logger.LogLevel.INFO)
             _, alt_data = user
 
             new_entry = {}
