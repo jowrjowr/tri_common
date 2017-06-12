@@ -51,6 +51,9 @@ def characters():
             _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
             raise
 
+        _logger.log('[' + __name__ + '] found {0} mains and {1} alts'.format(mains.__len__(), users.__len__()),
+                    _logger.LogLevel.DEBUG)
+
         if mains.__len__() != 1:
             js = dumps({'error': 'no main character found for char_id={0}'.format(char_id)})
             return Response(js, status=404, mimetype='application/json')
