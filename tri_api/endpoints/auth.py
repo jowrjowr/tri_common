@@ -84,17 +84,17 @@ def characters():
 
             new_entry = {}
 
-            new_entry['main']['character_id'] = int(alt_data['uid'][0].decode('utf-8'))
-            new_entry['main']['character_name'] = alt_data['characterName'][0].decode('utf-8')
-            new_entry['main']['corporation_id'] = int(alt_data['corporation'][0].decode('utf-8'))
-            new_entry['main']['alliance_id'] = int(alt_data['alliance'][0].decode('utf-8'))
+            new_entry['character_id'] = int(alt_data['uid'][0].decode('utf-8'))
+            new_entry['character_name'] = alt_data['characterName'][0].decode('utf-8')
+            new_entry['corporation_id'] = int(alt_data['corporation'][0].decode('utf-8'))
+            new_entry['alliance_id'] = int(alt_data['alliance'][0].decode('utf-8'))
             if 'esiAccessToken' in alt_data:
-                new_entry['main']['esi_token'] = True
-                new_entry['main']['esi_token_valid'] = check_scope('acc_management',
+                new_entry['esi_token'] = True
+                new_entry['esi_token_valid'] = check_scope('acc_management',
                                                                    charid=int(alt_data['uid'][0].decode('utf-8')),
                                                                    scopes=scope)[0]
             else:
-                new_entry['main']['esi_token'] = False
+                new_entry['esi_token'] = False
 
             json_dict['alts'].append(new_entry)
 
