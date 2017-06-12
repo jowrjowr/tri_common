@@ -95,6 +95,7 @@ def characters():
         js = dumps(json_dict)
         return Response(js, status=200, mimetype='application/json')
     except Exception as error:
+        _logger.log('[' + __name__ + '] characters endpoint failed: {}'.format(error), _logger.LogLevel.ERROR)
         js = dumps({'error': str(error)})
         return Response(js, status=500, mimetype='application/json')
 
