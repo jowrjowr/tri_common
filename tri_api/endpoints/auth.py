@@ -1,7 +1,8 @@
 from flask import request
 from tri_api import app
 
-@app.route('/characters', method=['GET'])
+
+@app.route('/characters', methods=['GET'])
 def characters():
     from common.check_scope import check_scope
     from common.request_esi import esi
