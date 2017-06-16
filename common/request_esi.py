@@ -12,6 +12,7 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
     from common.api import base_url
     from common.graphite import sendmetric
 
+    useragent = 'triumvirate services - yell at saeka'
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
 
@@ -77,7 +78,7 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
 
         # test first that eve is online. this will fail if ESI or EVE are down.
 
-        headers = {'Accept': 'application/json'}
+        headers = {'Accept': 'application/json', 'User-Agent': useragent }
         status_url = base_url + 'status/?datasource=tranquility'
         request = requests.get(status_url, headers=headers, timeout=2)
         # we don't really care about the response past 200-or-not
@@ -94,11 +95,11 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
         # okay probably worked, send the request
 
         if method == 'post':
-            headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+            headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent}
             headers.update(extraheaders)
             request = session.post(url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
-            headers = {'Accept': 'application/json'}
+            headers = {'Accept': 'application/json', 'User-Agent': useragent}
             headers.update(extraheaders)
             request = session.get(url, headers=headers, timeout=timeout)
 
