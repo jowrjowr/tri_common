@@ -159,9 +159,9 @@ def groups():
         _, udata = users[0]
 
         try:
-            groups = udata['authGroup'][0].decode('utf-8')
+            groups = udata['authGroup']
 
-            js = dumps(groups)
+            js = dumps([g for g in groups])
             return Response(js, status=200, mimetype='application/json')
         except Exception as error:
             raise
