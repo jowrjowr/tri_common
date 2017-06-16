@@ -2,8 +2,8 @@ from flask import request
 from tri_api import app
 
 
-@app.route('/verify', methods=['GET'])
-def verify():
+@app.route('/auth', methods=['GET'])
+def auth():
     from flask import Response, request
     from json import dumps
 
