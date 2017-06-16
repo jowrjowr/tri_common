@@ -140,7 +140,8 @@ def groups():
                                     _ldap.admin_dn_password)
         except ldap.LDAPError as error:
             _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),
-                        _logger.LogLevel.ERROR)            raise
+                        _logger.LogLevel.ERROR)
+            raise
 
         try:
             users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
