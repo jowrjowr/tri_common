@@ -181,3 +181,53 @@ def verify():
     except Exception as error:
         js = dumps({'error': str(error)})
         return Response(js, status=500, mimetype='application/json')
+
+@app.route('/token', methods=['GET'])
+def register_token():
+    from tri_core.common.register import registeruser
+    from flask import Response, request
+    from json import dumps
+
+    try:
+        if 'char_id' not in request.args:
+            js = dumps({'error': 'no char_id supplied'})
+            return Response(js, status=401, mimetype='application/json')
+
+        if 'main_id' not in request.args:
+            js = dumps({'error': 'no main_id supplied'})
+            return Response(js, status=401, mimetype='application/json')
+
+
+        if 'atoken' not in request.args:
+            js = dumps({'error': 'no access_token supplied'})
+            return Response(js, status=401, mimetype='application/json')
+
+        if 'rtoken' not in request.args:
+            js = dumps({'error': 'no refresh_token supplied'})
+            return Response(js, status=401, mimetype='application/json')
+
+        try:
+            char_id = int(request.args['char_id'])
+            main_id = int(request.args['main_id'])
+
+            access_token = request.args['atoken']
+            refresh_token = request.args['rtoken']
+        except ValueError:
+            js = dumps({'error': 'char_id or main_id is not an integer'})
+            return Response(js, status=401, mimetype='application/json')
+
+        if char_id == main_id:
+            is_alt = False
+        else:
+            is_alt = True
+
+        code, result = registeruser(char_id, access_token, refresh_token, is_alt, main_id)
+
+        if code == False:
+            js = dumps({'error': 'failed to register char {0}'.format(char_id)})
+            return Response(js, status=500, mimetype='application/json')
+
+        return  Response(dumps({}), status=200, mimetype='application/json')
+    except Exception as error:
+        js = dumps({'error': str(error)})
+        return Response(js, status=500, mimetype='application/json')
