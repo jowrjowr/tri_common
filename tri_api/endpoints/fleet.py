@@ -45,9 +45,22 @@ def fleets():
         query = "SELECT Time, FC, FormUP, Type, authgroup FROM OpsBoard WHERE Time >= CURDATE() ORDER BY Time"
 
         try:
-            row = cursor.execute(
-                query
-            )
+            cursor.execute(query)
+
+            fleets = []
+
+            for (time, fc, form_up, type, auth) in cursor:
+                fleet = {}
+
+                fleet['time'] = time
+                fleet['fc'] = fc
+                fleet['form_up'] = time
+                fleet['type'] = type
+
+                if auth is None or auth == '':
+                    fleet['auth_group'] = 'vanguard'
+                else:
+                    fleet['auth_group'] = auth
         except Exception as errmsg:
             _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
             raise
@@ -56,17 +69,7 @@ def fleets():
             sql_conn.commit()
             sql_conn.close()
 
-        for fleet in row:
-            if fleet[4] is None:
-                fleet[4] = 'vanguard'
-
-
-        js = dumps([{'time': fleet[0],
-                     'fc': fleet[1],
-                     'form_up': fleet[2],
-                     'type': fleet[3],
-                     'auth_group': fleet[4]} for fleet in row])
-
+        js = dumps(fleets)
         return Response(js, status=200, mimetype='application/json')
     except Exception as error:
         js = dumps({'error': str(error)})
