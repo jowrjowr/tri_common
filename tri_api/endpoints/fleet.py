@@ -69,7 +69,7 @@ def fleets():
             _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
             raise
 
-        query = "SELECT Time, FC, FormUP, Type, Doctrine, Hype, PostedBy authgroup FROM OpsBoard WHERE Time >= CURTIME() ORDER BY Time"
+        query = "SELECT Time, FC, FormUP, Type, Doctrine, Hype, PostedBy, authgroup FROM OpsBoard WHERE Time >= CURTIME() ORDER BY Time"
 
         try:
             cursor.execute(query)
