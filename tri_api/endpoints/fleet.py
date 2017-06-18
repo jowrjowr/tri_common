@@ -61,6 +61,9 @@ def fleets():
                 else:
                     fleet['form_up'] = form_up
 
+                if type == "THIRD PARTY FIGHT":
+                    type = "FLEET"
+
                 fleet['type'] = type
 
                 if auth is None or auth == '':
