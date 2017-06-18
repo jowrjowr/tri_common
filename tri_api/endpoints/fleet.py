@@ -79,8 +79,8 @@ def fleets():
             for (time, fc, form_up, type, auth) in cursor:
                 fleet = {}
 
-                fleet['time_day'] = time.strftime("%Y-%m-%d")
-                fleet['time_hour'] = time.strftime("%H:%M")
+                fleet['time_short'] = time.strftime("%H%MET %m-%d")
+                fleet['time_long'] = time.strftime("%H:%M %Y-%m-%d")
 
                 fleet['fc'] = fc
                 if form_up is None or form_up == '':
