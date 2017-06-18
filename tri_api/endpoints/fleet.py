@@ -61,6 +61,8 @@ def fleets():
                     fleet['auth_group'] = 'vanguard'
                 else:
                     fleet['auth_group'] = auth
+
+                fleets.append(fleet)
         except Exception as errmsg:
             _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
             raise
