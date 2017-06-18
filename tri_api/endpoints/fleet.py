@@ -30,6 +30,33 @@ def fleets():
             js = dumps({'error': 'char_id is not an integer'})
             return Response(js, status=401, mimetype='application/json')
 
+        # assume that the char id is main
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+
+        try:
+            ldap_conn.simple_bind_s(_ldap.admin_dn,
+                                    _ldap.admin_dn_password)
+        except ldap.LDAPError as error:
+            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),
+                        _logger.LogLevel.ERROR)
+            raise
+
+        try:
+            users = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE,
+                                       filterstr='(&(objectclass=pilot)(uid={0}))'
+                                       .format(char_id),
+                                       attrlist=['authGroup'])
+        except ldap.LDAPError as error:
+            _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error), _logger.LogLevel.ERROR)
+            raise
+
+        if users.__len__() != 1:
+            js = dumps({'error': 'no main character found for char_id={0}'.format(char_id)})
+            return Response(js, status=404, mimetype='application/json')
+
+        _, udata = users[0]
+        groups = [g.decode('utf-8') for g in udata['authGroup']]
+
         # the mysql way
         try:
             sql_conn = mysql.connect(
@@ -71,7 +98,8 @@ def fleets():
                 else:
                     fleet['auth_group'] = auth
 
-                fleets.append(fleet)
+                if fleet['auth_group'] in groups:
+                    fleets.append(fleet)
         except Exception as errmsg:
             _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
             raise
