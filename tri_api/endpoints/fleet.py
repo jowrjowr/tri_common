@@ -52,9 +52,15 @@ def fleets():
             for (time, fc, form_up, type, auth) in cursor:
                 fleet = {}
 
-                fleet['time'] = time
+                fleet['time_day'] = time.strftime("%Y-%m-%d")
+                fleet['time_hour'] = time.strftime("%H:%M")
+
                 fleet['fc'] = fc
-                fleet['form_up'] = time
+                if form_up is None or form_up == '':
+                    fleet['form_up'] = "N/A"
+                else:
+                    fleet['form_up'] = form_up
+
                 fleet['type'] = type
 
                 if auth is None or auth == '':
