@@ -69,18 +69,22 @@ def fleets():
             _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
             raise
 
-        query = "SELECT Time, FC, FormUP, Type, authgroup FROM OpsBoard WHERE Time >= CURTIME() ORDER BY Time"
+        query = "SELECT Time, FC, FormUP, Type, Doctrine, Hype, PostedBy authgroup FROM OpsBoard WHERE Time >= CURTIME() ORDER BY Time"
 
         try:
             cursor.execute(query)
 
             fleets = []
 
-            for (time, fc, form_up, type, auth) in cursor:
+            for (time, fc, form_up, type, doctrine, hype, posted_by, auth) in cursor:
                 fleet = {}
 
                 fleet['time_short'] = time.strftime("%H%MET %m-%d")
                 fleet['time_long'] = time.strftime("%H:%M %Y-%m-%d")
+
+                fleet['doctrine'] = doctrine
+                fleet['hype'] = hype
+                fleet['posted_by'] = posted_by
 
                 fleet['fc'] = fc
                 if form_up is None or form_up == '':
