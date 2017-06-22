@@ -76,24 +76,6 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
     timeout = 2
     try:
 
-        # test first that eve is online. this will fail if ESI or EVE are down.
-
-        headers = {'Accept': 'application/json', 'User-Agent': useragent }
-        status_url = base_url + 'status/?datasource=tranquility'
-        request = requests.get(status_url, headers=headers, timeout=2)
-        # we don't really care about the response past 200-or-not
-        if not request.status_code == 200:
-            _logger.log('[' + function + '] EVE offline / ESI down', _logger.LogLevel.WARNING)
-            sendmetric(function, 'esi', 'request', 'offline', 1)
-            try:
-                result = json.loads(str(request.text))
-            except TypeError as error:
-                result = { 'error': 'cant convert esi response to json'}
-            finally:
-                return(500, result)
-
-        # okay probably worked, send the request
-
         if method == 'post':
             headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent}
             headers.update(extraheaders)
