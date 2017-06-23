@@ -201,8 +201,9 @@ def audit_forums():
         charid = users[charname]['charid']
 
         if users[charname]['doomheim'] == True:
-            # it does not matter what a char has setup if they are biomassed.
+            forumpurge(charname)
             continue
+
         # get forum groups
 
         cursor = sql_conn.cursor()
@@ -250,30 +251,9 @@ def audit_forums():
 
         if allianceid not in vanguard and primary_group != 2:
 
-            cursor = sql_conn.cursor()
-
             # this char is not in a vanguard alliance but has non-public forum access
-            # remove their access
 
-            # remove secondary groups
-
-            query = 'UPDATE core_members SET mgroup_others = "" WHERE name = %s'
-            try:
-                cursor.execute(query, (charname,))
-            except Exception as err:
-                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-                continue
-
-            # set them to the public group
-            query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
-            try:
-                cursor.execute(query, (charname,))
-            except Exception as err:
-                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-                continue
-
-            sql_conn.commit()
-            cursor.close()
+            forumpurge(charname)
 
             # log
 
@@ -286,4 +266,42 @@ def audit_forums():
 
     _logger.log('[' + __name__ + '] non-vanguard forum users removed: {0}'.format(non_tri),_logger.LogLevel.INFO)
 
-# infidel?
+def forumpurge (charname):
+    # remove their access
+    
+    import common.logger as _logger
+    import common.credentials.forums as _forumcreds
+    import MySQLdb as mysql
+    
+    try:
+        sql_conn = mysql.connect(
+            database=_forumcreds.mysql_db,
+            user=_forumcreds.mysql_user,
+            password=_forumcreds.mysql_pass,
+            host=_forumcreds.mysql_host)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    cursor = sql_conn.cursor()
+
+    # remove secondary groups
+
+    query = 'UPDATE core_members SET mgroup_others = "" WHERE name = %s'
+    try:
+        cursor.execute(query, (charname,))
+    except Exception as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    # set them to the public group
+    query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
+    try:
+        cursor.execute(query, (charname,))
+    except Exception as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    sql_conn.commit()
+    cursor.close()
+    return True
