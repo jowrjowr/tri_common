@@ -3,6 +3,8 @@ def audit_forums():
     import common.request_forums as _forums
     import common.logger as _logger
     import common.credentials.ldap as _ldap
+    import common.credentials.database as _database
+    import common.credentials.forums as _forumcreds
     import common.request_esi
     from common.api import base_url
     from common.graphite import sendmetric
@@ -11,16 +13,58 @@ def audit_forums():
     import json
     import urllib
     import html
-
+    import MySQLdb as mysql
     _logger.log('[' + __name__ + '] auditing forums',_logger.LogLevel.INFO)
 
-    # setup ldap
+    # setup connections
+
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
         ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
         return False
+
+    try:
+        sql_conn_core = mysql.connect(
+            database=_database.DB_DATABASE,
+            user=_database.DB_USERNAME,
+            password=_database.DB_PASSWORD,
+            host=_database.DB_HOST)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    try:
+        sql_conn = mysql.connect(
+            database=_forumcreds.mysql_db,
+            user=_forumcreds.mysql_user,
+            password=_forumcreds.mysql_pass,
+            host=_forumcreds.mysql_host)
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    # get everything from the permissions table
+
+    cursor = sql_conn_core.cursor()
+    query = 'SELECT allianceID,forum FROM Permissions'
+    forum_mappings = dict()
+
+    try:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+    finally:
+        cursor.close()
+        sql_conn_core.close()
+
+    # this maps the alliance id to the primary forum group
+
+    for row in rows:
+        forum_mappings[row[0]] = row[1]
 
     # get all the forum users and stuff them into a dict for later processing
 
@@ -38,7 +82,6 @@ def audit_forums():
         if not code == 200:
             _logger.log('[' + __name__ + '] /core/members API error {0} (page {1}): {2}'.format(code, page, response), _logger.LogLevel.ERROR)
             return False
-#        print(response)
         response = json.loads(response)
 
         if page == 1:
@@ -150,5 +193,97 @@ def audit_forums():
 
     # at this point every forum user has been mapped to their character id either via ldap or esi /search
 
-    
+    # work through each user and determine if they are correctly setup on the forums
+
+    non_tri = 0
+    for charname in users:
+
+        charid = users[charname]['charid']
+
+        if users[charname]['doomheim'] == True:
+            # it does not matter what a char has setup if they are biomassed.
+            continue
+        # get forum groups
+
+        cursor = sql_conn.cursor()
+        query = 'SELECT member_group_id, mgroup_others, ip_address FROM core_members WHERE name=%s'
+        try:
+            rowcount = cursor.execute(query, (charname,))
+            row = cursor.fetchone()
+        except Exception as err:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+            return
+
+        if rowcount == 0:
+            # this SHOULDN'T happen
+            _logger.log('[' + __name__ + '] unable to find forum user: {0}'.format(user), _logger.LogLevel.WARN)
+
+        primary_group = row[0]
+        secondary_groups = row[1].split(',')
+        forum_lastip = row[2]
+
+        # get character affiliations
+        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+        data = '[{}]'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+
+        if not code == 200:
+            # something broke severely
+            _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
+                        _logger.LogLevel.ERROR)
+            error = result['error']
+            result = {'code': code, 'error': error}
+            print('oops looking at {0}: {1} {2}'.format(charid, code, result))
+
+        corpid = result[0]['corporation_id']
+        try:
+            allianceid = result[0]['alliance_id']
+        except KeyError:
+            allianceid = 0
+
+        ## start doing checks
+
+        # only people in tri get anything other than public access on the tri forums
+        # forum public/unprivileged groupid: 2
+
+        vanguard = forum_mappings.keys()
+
+        if allianceid not in vanguard and primary_group != 2:
+
+            cursor = sql_conn.cursor()
+
+            # this char is not in a vanguard alliance but has non-public forum access
+            # remove their access
+
+            # remove secondary groups
+
+            query = 'UPDATE core_members SET mgroup_others = "" WHERE name = %s'
+            try:
+                cursor.execute(query, (charname,))
+            except Exception as err:
+                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                continue
+
+            # set them to the public group
+            query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
+            try:
+                cursor.execute(query, (charname,))
+            except Exception as err:
+                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                continue
+
+            sql_conn.commit()
+            cursor.close()
+
+            # log
+
+            _logger.securitylog(__name__, 'forum demotion', charid=charid, charname=charname, ipaddress=forum_lastip)
+            msg = 'non-vanguard character with privileged access demoted. charname: {0} ({1}), alliance: {2}, primary group: {3}, secondary group(s): {4}, last ip: {5}'.format(
+                charname, charid, allianceid, primary_group, secondary_groups, forum_lastip
+            )
+            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+            non_tri += 1
+
+    _logger.log('[' + __name__ + '] non-vanguard forum users removed: {0}'.format(non_tri),_logger.LogLevel.INFO)
+
 # infidel?
