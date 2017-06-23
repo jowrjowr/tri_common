@@ -36,11 +36,9 @@ def migrateusers():
 
     # each user will have a dictionary entry
     users = dict()
-    
     # existing users
-    
+
     # Users table
-    
     query = 'SELECT charID, ServicePassword, MainCharID FROM core.Users'
     try:
         rowcount = cursor.execute(query)
@@ -49,32 +47,31 @@ def migrateusers():
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
     print("users table count: {}".format(rowcount))
-    
+
     for row in rows:
         charid = row[0]
         if charid in users:
             user = users[charid]
         else:
             user = dict()
-            
+
         user['charid'], user['password'], user['altof'] = row
-        
         for item in list(user):
             if user[item] == None:
                 user.pop(item, None)
         users[charid] = user
-        
-    # crest tokens
 
-    query = 'SELECT charID, accessToken, refreshToken FROM core.CrestTokens'
+    # teamspeak crap
+
+    query = 'SELECT charID, UniqueID, ClientDBID FROM core.Teamspeak'
     try:
         rowcount = cursor.execute(query)
         rows = cursor.fetchall()
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
-    print("token table count: {}".format(rowcount))
-    
+    print("teamspeak table count: {}".format(rowcount))
+
     for row in rows:
 
         charid = row[0]
@@ -83,17 +80,12 @@ def migrateusers():
         else:
             user = dict()
 
-        user['charid'], user['atoken'], user['rtoken'] = row
+        user['charid'], user['ts_uid'], user['ts_dbid'] = row
 
 
         for item in list(user):
             if user[item] == None or user[item] == '':
                 user.pop(item, None)
-
-        if 'atoken' in user.keys():
-            user['atoken'] = user['atoken'].decode('utf-8')
-        if 'rtoken' in user.keys():
-            user['rtoken'] = user['rtoken'].decode('utf-8')
 
         users[charid] = user
 
@@ -155,7 +147,7 @@ def migrateusers():
     print("blacklist table count: {}".format(rowcount))
     # new blacklist table
     for row in rows:
-        
+
 
         charid = row[3]
 
@@ -177,8 +169,8 @@ def migrateusers():
             if user[item] == None or user[item] == '':
                 user.pop(item, None)
         users[charid] = user
-        
-        
+
+
     # sort common stuff
 
     # character affiliations in bulk
@@ -195,6 +187,7 @@ def migrateusers():
         request_url = 'https://esi.tech.ccp.is/latest/characters/affiliation/?datasource=tranquility'
         chunk = json.dumps(chunk)
         result = requests.post(request_url, headers=headers, data=chunk)
+        print(result.text)
         for item in result.json():
             charid = item['character_id']
             users[charid]['corpid'] = item['corporation_id']
@@ -202,46 +195,42 @@ def migrateusers():
                 users[charid]['allianceid'] = item['alliance_id']
             else:
                 users[charid]['allianceid'] = None
-    
+
     for charid in users.keys():
 
         user = users[charid]
-    
+
         # character name
-        
+
         request_url = 'https://esi.tech.ccp.is/latest/characters/{0}/?datasource=tranquility'.format(charid)
         code, result = common.request_esi.esi(__name__, request_url, 'get')
         user['charname'] = result['name']
-                
+
         # sort out scoping/authgroups
         # account status is one of the following:
-        # public (pubbie access or lack thereof), banned, or blue
+        # public (pubbie access or lack thereof), banned, blue
         # privileges delinated with authgroups
 
         user['accountstatus'] = 'blue'
-        
+
         authgroups = ['public', 'vanguard'] # default level of access for blues
-        
+
         if 'allianceid' in user.keys():
             if user['allianceid'] == 933731581:
                 # tri specific authgroup
                 authgroups.append('triumvirate')
-                
         user['authgroup'] = authgroups
-        
         # banned and confirmed
         if 'blconfirmdate' in user.keys():
             user['authgroup'] = [ 'banned' ]
             user['accountstatus'] = 'banned'
-            
         # banned but not confirmed
         if 'bldate' in user.keys() and not 'blconfirmdate' in user.keys():
-        
             user['authgroup'] = [ 'ban_pending' ]
             user['accountstatus'] = 'public'
 
         users[charid] = user
-    
+
     # groups
     query = 'SELECT jabber,Members from core.Groups WHERE idGroups < 10'
     try:
@@ -252,13 +241,15 @@ def migrateusers():
         return False
 
     print("groups count: {}".format(rowcount))
-    for row in rows:    
+    for row in rows:
         group, members = row
         members = phpserialize.loads(members)
         for key in members:
             charid = int(members[key].decode('utf-8'))
-            users[charid]['authgroup'].append(group)
-
+            try:
+                users[charid]['authgroup'].append(group)
+            except Exception as error:
+                print('unable to add group {0} to user {1}'.format(group,charid))
     print("distinct ldap users: {}".format(len(users.keys())))
     # loop through the user dict and store the user
 
@@ -285,18 +276,7 @@ def migrateusers():
                     group = str(group).encode('utf-8')
                     newgroups.append(group)
                 user['authgroup'] = newgroups
-        try:
-            #result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, "(cn={})".format('saekda'))
-            result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, "(uid={})".format(charid))
-            result_count = result.__len__()
-        except Exception as error:
-            pass
-            # not sure how to handle errors yet lol
 
-
-        if result_count == 0:
-            print('adding {0}'.format(user['charname']))
-            # no existing entry. create a new one.
             attrs = []
             attrs.append(('objectClass', ['top'.encode('utf-8'), 'pilot'.encode('utf-8'), 'simpleSecurityObject'.encode('utf-8'), 'organizationalPerson'.encode('utf-8')]))
             attrs.append(('sn', [user['cn']]))
@@ -308,13 +288,16 @@ def migrateusers():
 
             if 'password' in user.keys():
                 # existing password
-                password = user['password'].decode('utf-8')
+                try:
+                    password = user['password'].decode('utf-8')
+                except Exception as error:
+                    password = user['password']
             else:
                 # no password? you get a random one
                 password = uuid.uuid4().hex
 
             password_hash = ldap_salted_sha1.hash(password)
-            print('user: {0}, password: {1}, hash: {2}'.format(cn, str(password), password_hash)) 
+            #print('user: {0}, password: {1}, hash: {2}'.format(cn, str(password), password_hash))
             password_hash = password_hash.encode('utf-8')
             attrs.append(('userPassword', [password_hash]))
 
@@ -324,10 +307,11 @@ def migrateusers():
             if 'corpid' in user.keys():
                 attrs.append(('corporation', [user['corpid']]))
 
-            if 'atoken' in user.keys():
-                attrs.append(('esiAccessToken', [user['atoken']]))
-            if 'rtoken' in user.keys():
-                attrs.append(('esiRefreshToken', [user['rtoken']]))
+            if 'ts_uid' in user.keys():
+                attrs.append(('teamspeakuid', [user['ts_uid']]))
+            if 'ts_dbid' in user.keys():
+                attrs.append(('teamspeakdbid', [user['ts_dbid']]))
+
             # add ban
 
             # confirmed ban
@@ -349,6 +333,22 @@ def migrateusers():
             if 'altof' in user.keys():
                 attrs.append(('altOf', [user['altof']]))
 
+        try:
+            result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, "(uid={})".format(charid))
+            result_count = result.__len__()
+        except Exception as error:
+            pass
+            # not sure how to handle errors yet lol
+
+        # build the modifivation version of attributes
+        mod_attrs = []
+        for tuple in attrs:
+            mod_attrs.append( (ldap.MOD_REPLACE,) + tuple )
+
+        if result_count == 0:
+            print('adding {0}'.format(user['charname']))
+            # no existing entry. create a new one.
+
             try:
                 # will get a 105 in the result as per
                 # https://access.redhat.com/documentation/en-US/Red_Hat_Directory_Server/8.0/html/Configuration_and_Command_Reference/Configuration_Command_File_Reference-Access_Log_and_Connection_Code_Reference.html
@@ -366,7 +366,12 @@ def migrateusers():
                     print('you fucked up. {0}'.format(err_desc))
         else:
             # already an existing entry. update it?
-            pass
+
+            try:
+                print('modifying dn: {}'.format(dn))
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to update group {0} memberlist: {1}'.format(group,error),_logger.LogLevel.ERROR)
 
     sql_conn.close()
 
