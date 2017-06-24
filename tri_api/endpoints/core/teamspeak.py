@@ -4,10 +4,13 @@ from tri_api import app
 @app.route('/core/teamspeak/<charid>', methods=['DELETE', 'GET', 'POST'])
 def core_teamspeak(charid):
 
-    from flask import request, json, Response
+    from flask import request
+    import common.logger as _logger
 
+    ipaddress = request.headers['X-Real-Ip']
     # remove the TS information from a given char
     if request.method == 'DELETE':
+        _logger.securitylog(__name__, 'teamspeak identity delete', charid=charid, ipaddress=ipaddress)
         return teamspeak_DELETE(charid)
 
     # get current TS info for a charid
@@ -16,6 +19,7 @@ def core_teamspeak(charid):
 
     # update/make new teamspeak identity
     if request.method == 'POST':
+        _logger.securitylog(__name__, 'teamspeak identity creation', charid=charid, ipaddress=ipaddress)
         return teamspeak_POST(charid)
 
 def teamspeak_POST(charid):
