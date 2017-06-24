@@ -35,6 +35,16 @@ def audit_teamspeak():
     ts3_monitoring(ts3conn)
     ts3_validate_users(ts3conn)
     ts3_validate_groups(ts3conn)
+    ts3_validate_membership(ts3conn)
+
+def ts3_validate_membership(ts3conn):
+    import common.credentials.ts3 as _ts3
+    import common.logger as _logger
+
+    import ts3
+    import asyncio
+
+    # does each user with a teamspeak id have the correct assigned groups?
 
 def ts3_logs(ts3conn):
 

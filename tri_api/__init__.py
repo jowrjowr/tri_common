@@ -28,6 +28,3 @@ app.config.update({
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 import tri_api.views
-
-
-
