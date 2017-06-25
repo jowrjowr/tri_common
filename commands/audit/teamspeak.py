@@ -261,6 +261,7 @@ async def user_validate(ts_dbid):
     # validate a given user against the core database
 
     import ldap
+    import common.ldaphelpers as _ldaphelpers
     import common.credentials.ldap as _ldap
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
@@ -293,17 +294,15 @@ async def user_validate(ts_dbid):
     # purge public/banned TS
     # only matches people who should not have a TS identity
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(&(!(accountstatus=blue))(teamspeakuid=*))',
-            attrlist=['characterName', 'uid' ]
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
-        msg = 'unable to fetch ldap: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-    if result_count == 0:
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = '(&(!(accountstatus=blue))(teamspeakuid=*))'
+    attributes = ['characterName', 'uid' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+    if code == False:
+        return
+
+    if result == None:
         # nobody. no problem.
         pass
     else:
@@ -311,10 +310,9 @@ async def user_validate(ts_dbid):
         msg = '{0} unauthorized users with a TS identity'.format(result_count)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
 
-        for user in result:
-            dn, info = user
-            charid = info['uid'][0].decode('utf-8')
-            charid = int(charid)
+        for user in result.keys():
+
+            charid = int( result[user]['uid'] )
 
             # decouple their TS identities from their LDAP entry
 
@@ -322,35 +320,34 @@ async def user_validate(ts_dbid):
             mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
             mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
             try:
-                result = ldap_conn.modify_s(dn, mod_attrs)
+                ldap_conn.modify_s(dn, mod_attrs)
+                msg = 'purged TS identity from unauthorized user: {}'.format(dn)
+                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
             except ldap.LDAPError as error:
                 _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
-            msg = 'purged TS identity from unauthorized user: {}'.format(dn)
-            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
 
     # we explicitly check only for blue. this means people with non-blue status (public, banned)
     # lose their TS
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid),
-            attrlist=['characterName', 'uid' ]
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
-        msg = 'unable to fetch ldap: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid)
+    attrlist=['characterName', 'uid' ]
 
-    if not result_count == 0:
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+    if code == False:
+        return
+
+    if not result == None:
         # the dbid is matched to an ldap user
 
         orphan = False
-        dn, info = result[0]
-        charname = info['characterName'][0].decode('utf-8')
-        charid = info['uid'][0].decode('utf-8')
-        charid = int(charid)
+
+        (dn, info), = result.items()
+        charname = info['characterName']
+        charid = int( info['uid'] )
         registered_username = charname
+
     else:
         # this can happen if the TS user has an entry in the TS db but nothing in ldap
         _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
