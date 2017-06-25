@@ -47,6 +47,8 @@ def audit_core():
         cursor.close()
         sql_conn.close()
 
+    # vanguard alliance ids
+    triumvirate = 933731581
     vanguard = []
     for row in rows:
         vanguard.append(row[0])
@@ -56,7 +58,7 @@ def audit_core():
         result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
             ldap.SCOPE_SUBTREE,
             filterstr='(&(!(accountstatus=banned))(!(accountStatus=immortal)))',
-            attrlist=['uid', 'characterName', 'accountStatus' ]
+            attrlist=['uid', 'characterName', 'accountStatus', 'authGroup', 'corporation', 'alliance' ]
         )
         user_count = result.__len__()
     except ldap.LDAPError as error:
@@ -72,14 +74,29 @@ def audit_core():
         if dn == 'ou=People,dc=triumvirate,dc=rocks':
             continue
         charname = info['characterName'][0].decode('utf-8')
-        charid = info['uid'][0].decode('utf-8')
+
+        charid = int( info['uid'][0].decode('utf-8') )
+
+        try:
+            corpid = int( info['corporation'][0].decode('utf-8') )
+        except Exception as error:
+            corpid = None
+
+        try:
+            allianceid = int( info['alliance'][0].decode('utf-8') )
+        except Exception as error:
+            allianceid = None
+
         status = info['accountStatus'][0].decode('utf-8')
-        charid = int(charid)
+        groups = list(map(lambda x: x.decode('utf-8'), info['authGroup']))
 
         users[charid] = dict()
         users[charid]['charname'] = charname
         users[charid]['dn'] = dn
         users[charid]['status'] = status
+        users[charid]['groups'] = groups
+        users[charid]['ldap_corpid'] = corpid
+        users[charid]['ldap_allianceid'] = allianceid
 
     # bulk affiliations fetch
 
@@ -104,34 +121,81 @@ def audit_core():
             else:
                 users[charid]['allianceid'] = None
 
+    # groups that a non-blue user is allowed to have
+
+    safegroups = { 'public', 'ban_pending' }
+
     # loop through each user and determine the correct status
 
     for charid in users.keys():
         status = users[charid]['status']
         charname = users[charid]['charname']
         dn = users[charid]['dn']
+        groups = users[charid]['groups']
+        # user's effective managable groups
+        groups = list( set(groups) - safegroups )
+
+        # faulty data protections galore
+        try:
+            ldap_allianceid = users[charid]['ldap_allianceid']
+        except Exception as error:
+            ldap_allianceid = None
 
         try:
             allianceid = users[charid]['allianceid']
         except Exception as error:
             allianceid = None
 
-        if status == 'blue' and not allianceid in vanguard:
-            # need to adjust to public
-            update_status(dn, 'public')
+        try:
+            ldap_corpid = users[charid]['ldap_corpid']
+        except Exception as error:
+            ldap_corpid = None
 
-        if not status == 'blue' and allianceid in vanguard:
-            # need to adjust to blue
-            update_status(dn, 'blue')
+        # tinker with ldap to account for reality
 
-def update_status(dn, status):
+        if not allianceid == ldap_allianceid:
+            # update a changed alliance id
+            update_singlevalue(dn, 'alliance', str(allianceid))
+        if not corpid == ldap_corpid:
+            # update a changed corp id
+            update_singlevalue(dn, 'corporation', str(corpid))
+
+        if status == 'blue':
+            # blue in ldap
+
+            if not allianceid in vanguard:
+                # need to adjust to public
+                update_status(dn, 'public')
+                update_singlevalue(dn, 'accountStatus', 'public')
+
+            # give them the correct base authgroups
+
+            if allianceid == triumvirate and 'triumvirate' not in groups:
+                # all tri get trimvirate
+                add_value(dn, 'authGroup', 'triumvirate')
+
+            if 'vanguard' not in groups:
+                # all blue get vanguard
+                add_value(dn, 'authGroup', 'vanguard')
+
+        else:
+            # not blue in ldap, obv
+            if len(groups) > 0:
+                # purge groups off someone who has more than they should
+                # not a security issue per se, but keeps the management tools clean
+                purge_authgroups(dn, groups)
+            if allianceid in vanguard:
+                # oops. time to fix you.
+                update_singlevalue(dn, 'accountStatus', 'blue')
+
+def purge_authgroups(dn, groups):
     import common.logger as _logger
     import common.credentials.ldap as _ldap
     import json
     import ldap
     import ldap.modlist
 
-    # update the user's status to whatever
+    # remove the authGroups from a user
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
@@ -139,10 +203,61 @@ def update_status(dn, status):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
-    mod_attrs = [ (ldap.MOD_REPLACE, 'accountStatus', status.encode('utf-8') ) ]
+    mod_attrs = []
+
+    for group in groups:
+        mod_attrs.append((ldap.MOD_DELETE, 'authGroup', group.encode('utf-8')))
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)
+        _logger.log('[' + __name__ + '] extra authgroups removed from dn {0}'.format(dn),_logger.LogLevel.INFO)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} accountStatus: {1}'.format(dn,error),_logger.LogLevel.ERROR)
-    _logger.log('[' + __name__ + '] dn {0} accountStatus set to {1}'.format(dn, status),_logger.LogLevel.INFO)
+
+def update_singlevalue(dn, attribute, value):
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    import json
+    import ldap
+    import ldap.modlist
+
+    # update the user's (single valued!) attribute to value
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+
+    mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
+
+    try:
+        result = ldap_conn.modify_s(dn, mod_attrs)
+        _logger.log('[' + __name__ + '] dn {0} attribute {1} set to {2}'.format(dn, attribute, value),_logger.LogLevel.INFO)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
+
+
+def add_value(dn, attribute, value):
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    import json
+    import ldap
+    import ldap.modlist
+
+    # update the user's (single valued!) attribute to value
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+
+    mod_attrs = [ (ldap.MOD_ADD, attribute, value.encode('utf-8') ) ]
+
+    try:
+        result = ldap_conn.modify_s(dn, mod_attrs)
+        _logger.log('[' + __name__ + '] dn {0} attribute {1} set to {2}'.format(dn, attribute, value),_logger.LogLevel.INFO)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
+
