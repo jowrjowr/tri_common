@@ -1,115 +1,21 @@
-import asyncio
-import common.database as _database
-import common.logger as _logger
-import MySQLdb as mysql
-
 def audit_core():
 
     import json
     import common.request_esi
-
-    # do the needful against a given charid
-
-    _logger.log('[' + __name__ + '] auditing CORE',_logger.LogLevel.DEBUG)
-
-    # get all tri service users
-
-    try:
-        sql_conn = mysql.connect(
-            database=_database.DB_DATABASE,
-            user=_database.DB_USERNAME,
-            password=_database.DB_PASSWORD,
-            host=_database.DB_HOST)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return False
-
-    # the primary table is "Users", which everything else will key off of.
-    # no entry in Users? you are gone.
-
-    # the three tables we want to keep fully audited are:
-    # Users (core users)
-    # Teamspeak (ts3 users)
-    # CrestTokens (SSO tokens)
-
-    # there's a cost to having bullshit in those. other tables have separate auditing or are handled here.
-
-    tables = [ 'CrestTokens', 'Users', 'Teamspeak' ]
-    characters = dict()
-
-    for table in tables:
-        cursor = sql_conn.cursor()
-        query = 'SELECT charID, charName from {0}'.format(table)
-        try:
-            count = cursor.execute(query)
-            rows = cursor.fetchall()
-        except Exception as err:
-            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-            return
-        finally:
-            cursor.close()
-
-        _logger.log('[' + __name__ + '] number of users in core table {0}: {1}'.format(table,str(count)), _logger.LogLevel.INFO)
-
-        for row in rows:
-            characters[row[0]] = row[1]
-
-    sql_conn.close()
-
-    # loop and audit each individual user, but do it async because there are lots
-
-    loop = asyncio.new_event_loop()
-
-    async def validate_loop(loop, characters):
-        purgecount = 0
-        for charid, charname in characters.items():
-            task = loop.create_task(user_validate(charid, charname))
-            result = await task
-            if result == True:
-                purgecount = purgecount + 1
-        return purgecount
-
-    purgecount = loop.run_until_complete(validate_loop(loop, characters))
-    loop.close()
-
-    _logger.log('[' + __name__ + '] number of users purged: {0}'.format(purgecount), _logger.LogLevel.INFO)
-
-    return
-
-async def user_validate(charid, charname):
-
-    import common.database as _database
     import common.logger as _logger
+    import common.database as _database
+    import common.credentials.ldap as _ldap
+    import ldap
+    import ldap.modlist
+    import math
     import MySQLdb as mysql
-    import json
+    from common.api import base_url
 
-    import common.request_esi
+    # keep the ldap account status entries in sync
 
-    # is this character blue?
-    esi_url = 'https://api.triumvirate.rocks/core/isblue?id=' + str(charid)
+    _logger.log('[' + __name__ + '] auditing CORE LDAP',_logger.LogLevel.INFO)
 
-    # do the request, but catch exceptions for connection issues
-
-    code, request = common.request_esi.esi(__name__, esi_url, 'get')
-
-    if not code == 200:
-        if code == 404:
-            # 404s aren't worth logging
-            return False
-        else:
-            # something broke severely
-            _logger.log('[' + __name__ + '] isblue API error ' + str(error.code) + ': ' + str(error.message), _logger.LogLevel.ERROR)
-            return False
-
-    isblue = request['code']
-
-    if isblue == 0:
-        _logger.log('[' + __name__ + '] charid {0} ({1}) is reporting not blue.'.format(charid,charname),_logger.LogLevel.INFO)
-    elif isblue == 1:
-        return False
-    else:
-        _logger.log('[' + __name__ + '] nonsensical isblue result for charid {0} ({1}): {2}'.format(charid,charname,isblue),_logger.LogLevel.ERROR)
-        return False
+    # connections
 
     try:
         sql_conn = mysql.connect(
@@ -122,64 +28,121 @@ async def user_validate(charid, charname):
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
 
-    # now, the CCP ESI endpoint will sometimes return bullshit so a buffer for purging needs to be installed.
-    # at this point, the user in question is reported not blue. so we'll increment the strike counter, then 
-    # purge if necessary
-
-    # increment the strike counter
-
-    query = 'UPDATE Users SET strike = strike + 1 WHERE charID = %s'
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
-        cursor.execute(query, (charid,))
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+
+    # fetch vanguard alliances
+    cursor = sql_conn.cursor()
+    query = 'SELECT allianceID FROM Permissions'
+    try:
+        cursor.execute(query)
+        rows = cursor.fetchall()
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
-
-    # successful up until this point. commit.
-    sql_conn.commit()
-
-    query = 'SELECT strike FROM Users WHERE charID = %s'
-    try:
-        cursor.execute(query, (charid,))
-        result = cursor.fetchone()
-        if result == None:
-            # this should never happen but was an edge case
-            # created by testing some other things. injected bad data.
-            strike = 100
-        else:
-            strike = int(result[0])
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return False
-
-    # three strikes and you are out.
-
-    if strike <= 3:
-        # no purge. yet.
+    finally:
+        cursor.close()
         sql_conn.close()
-        return False
 
-    # here on, the user has had 3 isblue fails and is now getting purged
+    vanguard = []
+    for row in rows:
+        vanguard.append(row[0])
 
-    _logger.log('[' + __name__ + '] charid {0} ({1}) has reported not blue {2} times. fully purging'.format(charid,charname,strike),_logger.LogLevel.INFO)
+    # fetch all non-banned LDAP users
+    try:
+        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(&(!(accountstatus=banned))(!(accountStatus=immortal)))',
+            attrlist=['uid', 'characterName', 'accountStatus' ]
+        )
+        user_count = result.__len__()
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error),_logger.LogLevel.ERROR)
 
-    # purge from relevant tables that key off charID
-    # the SRP and Security tables are deliberately left out.
+    _logger.log('[' + __name__ + '] total non-banned ldap users: {}'.format(user_count),_logger.LogLevel.DEBUG)
 
-    tables = [ 'CrestTokens','SuperUsers','Teamspeak','Users','UsersSettings' ]
+    # get a list of uids for us to check affiliations with
+    users = dict()
+    for user in result:
+        dn, info = user
 
+        if dn == 'ou=People,dc=triumvirate,dc=rocks':
+            continue
+        charname = info['characterName'][0].decode('utf-8')
+        charid = info['uid'][0].decode('utf-8')
+        status = info['accountStatus'][0].decode('utf-8')
+        charid = int(charid)
 
-    for table in tables:
-        query = 'DELETE FROM ' + table + ' WHERE charID = %s'
+        users[charid] = dict()
+        users[charid]['charname'] = charname
+        users[charid]['dn'] = dn
+        users[charid]['status'] = status
+
+    # bulk affiliations fetch
+
+    data = []
+    chunksize = 750 # current ESI max is 1000 but we'll be safe
+    for charid in users.keys():
+        data.append(charid)
+    length = len(data)
+    chunks = math.ceil(length / chunksize)
+    for i in range(0, chunks):
+        chunk = data[:chunksize]
+        del data[:chunksize]
+        _logger.log('[' + __name__ + '] passing {0} items to affiliations endpoint'.format(len(chunk)), _logger.LogLevel.INFO)
+        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+        chunk = json.dumps(chunk)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk)
+        for item in result:
+            charid = item['character_id']
+            users[charid]['corpid'] = item['corporation_id']
+            if 'alliance_id' in item.keys():
+                users[charid]['allianceid'] = item['alliance_id']
+            else:
+                users[charid]['allianceid'] = None
+
+    # loop through each user and determine the correct status
+
+    for charid in users.keys():
+        status = users[charid]['status']
+        charname = users[charid]['charname']
+        dn = users[charid]['dn']
+
         try:
-            row = cursor.execute(query, (charid,))
-        except Exception as errmsg:
-            _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-            return False
-        _logger.log('[' + __name__ + '] charid {0} purged from table {1}'.format(charid, table), _logger.LogLevel.DEBUG)
-    cursor.close()
-    sql_conn.commit()
-    sql_conn.close()
-    _logger.log('[' + __name__ + '] user {0} removed from all tables'.format(charname),_logger.LogLevel.INFO)
+            allianceid = users[charid]['allianceid']
+        except Exception as error:
+            allianceid = None
 
-    return True
+        if status == 'blue' and not allianceid in vanguard:
+            # need to adjust to public
+            update_status(dn, 'public')
+
+        if not status == 'blue' and allianceid in vanguard:
+            # need to adjust to blue
+            update_status(dn, 'blue')
+
+def update_status(dn, status):
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    import json
+    import ldap
+    import ldap.modlist
+
+    # update the user's status to whatever
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+
+    mod_attrs = [ (ldap.MOD_REPLACE, 'accountStatus', status.encode('utf-8') ) ]
+
+    try:
+        result = ldap_conn.modify_s(dn, mod_attrs)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to update dn {0} accountStatus: {1}'.format(dn,error),_logger.LogLevel.ERROR)
+    _logger.log('[' + __name__ + '] dn {0} accountStatus set to {1}'.format(dn, status),_logger.LogLevel.INFO)
