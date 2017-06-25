@@ -61,34 +61,6 @@ def migrateusers():
                 user.pop(item, None)
         users[charid] = user
 
-    # teamspeak crap
-
-    query = 'SELECT charID, UniqueID, ClientDBID FROM core.Teamspeak'
-    try:
-        rowcount = cursor.execute(query)
-        rows = cursor.fetchall()
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return False
-    print("teamspeak table count: {}".format(rowcount))
-
-    for row in rows:
-
-        charid = row[0]
-        if charid in users:
-            user = users[charid]
-        else:
-            user = dict()
-
-        user['charid'], user['ts_uid'], user['ts_dbid'] = row
-
-
-        for item in list(user):
-            if user[item] == None or user[item] == '':
-                user.pop(item, None)
-
-        users[charid] = user
-
     # bans last to clobber active users "just in case"
 
     # old assed blacklist
