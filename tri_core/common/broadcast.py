@@ -90,6 +90,7 @@ def broadcast(message, group):
     # broadcast a message to all the members of a given ldap group
 
     import ldap
+    import math
     import common.logger as _logger
     import common.credentials.ldap as _ldap
     from tri_core.common.sashslack import sashslack
@@ -125,7 +126,7 @@ def broadcast(message, group):
         _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error),_logger.LogLevel.ERROR)
         return False
 
-    _logger.log('[' + __name__ + '] total users in {0}: {1}'.format(group, user_count),_logger.LogLevel.DEBUG)
+    _logger.log('[' + __name__ + '] total users in authgroup {0}: {1}'.format(group, user_count),_logger.LogLevel.INFO)
 
     users = list()
 
@@ -138,8 +139,15 @@ def broadcast(message, group):
         if cn not in skip:
             users.append(jid)
 
-    # no attempt is made to break up the users array into smaller chunks.
-    # https://docs.ejabberd.im/admin/configuration/#mod-multicast
-    # the server will error if the limits aren't set - infinite seems a fair choice.
-
-    start_jabber(users, message)
+    # break up into chunks to make [undocumented] ejabberd limitations happy
+    data = []
+    chunksize = 250
+    for user in users:
+        data.append(user)
+    length = len(data)
+    chunks = math.ceil(length / chunksize)
+    for i in range(0, chunks):
+        chunk = data[:chunksize]
+        del data[:chunksize]
+        _logger.log('[' + __name__ + '] sending broadcast to {0} user block'.format(length),_logger.LogLevel.INFO)
+        start_jabber(chunk, message)
