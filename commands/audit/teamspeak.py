@@ -34,34 +34,39 @@ def audit_teamspeak():
     ts3_logs(ts3conn)
     ts3_monitoring(ts3conn)
     ts3_validate_users(ts3conn)
-    ts3_validate_groups(ts3conn)
-    ts3_validate_membership(ts3conn)
-
-def ts3_validate_membership(ts3conn):
-    import common.credentials.ts3 as _ts3
-    import common.logger as _logger
-
-    import ts3
-    import asyncio
-
-    # does each user with a teamspeak id have the correct assigned groups?
 
 def ts3_logs(ts3conn):
 
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
-
+    import redis
     import ts3
     import time
     import re
 
     # parse ts3 server logs and dump useful things into security log
 
-    # we start from a zero position and work our way back to a checkpoint in the log
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    try:
+        r.client_list()
+    except redis.exceptions.ConnectionError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except redis.exceptions.ConnectionRefusedError as err:
+        _logger.log('[' + __name__ + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
+    except Exception as err:
+        logger.error('[' + __name__ + '] Redis generic error: ' + str(err))
+
+    # we start from a zero position and work our way back to a checkpoint in redis
+
+    try:
+        checkpoint = r.get('ts_log_checkpoint')
+        checkpoint = float(checkpoint.decode('utf-8'))
+    except Exception as err:
+        _logger.log('[' + __name__ + '] Redis error: ' + str(err), _logger.LogLevel.ERROR)
 
     position = 1
     stop = False
-    logcount = -1 #off-by-one because i inject a line
+    logcount = 0
 
     while position > 0 and stop == False:
         # a small position offset so i can start/stop cleanly
@@ -84,11 +89,6 @@ def ts3_logs(ts3conn):
                 # parse the log
                 date, level, target, server, logline = entry.split('|', 4)
 
-                # stop processing logs as this is where we last were
-                if logline == 'checkpoint':
-                    stop = True
-                    position = 0
-                    break
 
                 # convert the date into epoch
 
@@ -96,6 +96,12 @@ def ts3_logs(ts3conn):
 
                 date = time.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
                 date = time.mktime(date)
+
+                # stop processing logs as this is where we last were
+                if date <= checkpoint:
+                    stop = True
+                    position = 0
+                    break
 
                 # regex out login events
 
@@ -114,11 +120,13 @@ def ts3_logs(ts3conn):
 
     _logger.log('[' + __name__ + '] new ts3 log entries: {0}'.format(logcount),_logger.LogLevel.INFO)
 
-    # add index to log file
+    # set the redis checkpoint time for the next run
+
+    checkpoint = time.time()
     try:
-        resp = ts3conn.logadd(loglevel=4, logmsg='checkpoint')
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
+        r.set('ts_log_checkpoint', checkpoint)
+    except Exception as err:
+        _logger.log('[' + __name__ + '] Redis error: ' + str(err), _logger.LogLevel.ERROR)
 
 
 def ts3_monitoring(ts3conn):
@@ -148,7 +156,7 @@ def ts3_monitoring(ts3conn):
         return
 
     # useful metrics as per the ts3 server query guide
-    
+
     metrics = [ 'connection_bandwidth_sent_last_minute_total', 'connection_bandwidth_received_last_minute_total', ]
 
     for metric in metrics:
@@ -192,128 +200,81 @@ def ts3_validate_users(ts3conn):
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
         return
 
-
     loop = asyncio.new_event_loop()
+
+    clients = []
 
     for user in resp.parsed:
         serviceuser = user['client_nickname']
         if serviceuser in skip:
             # we don't want to waste time on internal users
             continue
-        _logger.log('[' + __name__ + '] Validating ts3 user {0}'.format(serviceuser),_logger.LogLevel.DEBUG)
-        ts3_userid = user['cldbid']
-        loop.run_until_complete(user_validate(ts3_userid))
+        clients.append(int(user['cldbid']))
 
-    return loop.close()
-
-def ts3_validate_groups(ts3conn):
-
-    import common.logger as _logger
-    import ts3
-
-    # iterate through ts3 groups and validate assigned users
-
-    # don't validate certain groups:
-    skip = [ '8' ]
-
-    loop = asyncio.new_event_loop()
+    # get the rest of the clients out of the various groups, then de-dupe
 
     try:
         resp = ts3conn.servergrouplist()
+        groups = resp.parsed
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
         return
 
-    for group in resp.parsed:
-        groupname = group['name']
-        groupid = group['sgid']
+    for group in groups:
+        # dig out all the users in each group
+        groupid = int(group['sgid'])
+
+        skip = [ 8 ]
+
         if groupid in skip:
+            # TS does NOT like looking into default groups (?)
             continue
-        _logger.log('[' + __name__ + '] Validating ts3 group ({0}) {1}'.format(groupid, groupname),_logger.LogLevel.DEBUG)
-        loop.run_until_complete(group_validate(groupid))
+        try:
+            resp = ts3conn.servergroupclientlist(sgid=group['sgid'])
+            result = resp.parsed
+        except ts3.query.TS3QueryError as err:
+            _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
+            return
+        for client in result:
+            clients.append(int(client['cldbid']))
+
+    # deduplicate using set and filter out dbids that have to be skipped
+
+    # server query, basically
+    skip = [ 1 ]
+
+    clients = set(clients) - set(skip)
+    clients = list(clients)
+
+    clientcount = len(clients)
+    _logger.log('[' + __name__ + '] distinct ts3 client identities: {0}'.format(clientcount),_logger.LogLevel.DEBUG)
+
+    for client in clients:
+
+        _logger.log('[' + __name__ + '] Validating ts3 user {0}'.format(client),_logger.LogLevel.DEBUG)
+        loop.run_until_complete(user_validate(client))
 
     return loop.close()
 
-
-
-async def group_validate(ts3_groupid):
-
-    # iterate through a given ts3 group and validate each individual userid
-    import common.credentials.ts3 as _ts3
-    import common.logger as _logger
-
-    import ts3
-    import asyncio
-
-    try:
-        # Note, that the client will wait for the response and raise a
-        # **TS3QueryError** if the error id of the response is not 0.
-        ts3conn = ts3.query.TS3Connection(_ts3.TS_HOST)
-        ts3conn.login(
-            client_login_name=_ts3.TS_USER,
-            client_login_password=_ts3.TS_PASSWORD
-        )
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] unable to connect to TS3: {0}'.format(err.resp.error["msg"]),_logger.LogLevel.ERROR)
-        return
-
-    ts3conn.use(sid=_ts3.TS_SERVER_ID)
-
-    try:
-        resp = ts3conn.servergroupclientlist(sgid=ts3_groupid)
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
-
-    loop = asyncio.get_event_loop()
-
-    for user in resp.parsed:
-        user_id = user['cldbid']
-        loop.run_until_complete(user_validate(user_id))
-
-async def user_validate(ts3_userid):
+async def user_validate(ts_dbid):
 
     # validate a given user against the core database
-    import MySQLdb as mysql
-    import common.credentials.database as _database
+
+    import ldap
+    import common.credentials.ldap as _ldap
     import common.credentials.ts3 as _ts3
     import common.logger as _logger
-
     import time
     import ts3
 
-    # do not validate certain user ids
-    # uid 1: admin
-    skip = [ '1' ]
-
-    for skip_id in skip:
-        if skip_id == ts3_userid:
-            return
-    try:
-        sql_conn = mysql.connect(
-            database=_database.DB_DATABASE,
-            user=_database.DB_USERNAME,
-            password=_database.DB_PASSWORD,
-            host=_database.DB_HOST)
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return
-
-    cursor = sql_conn.cursor()
-    query = 'SELECT ClientDBID,charName FROM Teamspeak WHERE ClientDBID = %s'
+    from tri_core.common.tsgroups import teamspeak_groups
 
     try:
-        activecount = cursor.execute(query, (ts3_userid,))
-        if activecount == 0:
-            registered_username = None
-        else:
-            registered_username = cursor.fetchone()[1]
-    except Exception as errmsg:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        return False
-    finally:
-        cursor.close()
-        sql_conn.close()
-
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'LDAP connection error: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
 
     try:
         # Note, that the client will wait for the response and raise a
@@ -328,17 +289,88 @@ async def user_validate(ts3_userid):
         return
 
     ts3conn.use(sid=_ts3.TS_SERVER_ID)
+
+    # purge public/banned TS
+    # only matches people who should not have a TS identity
+
+    try:
+        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(&(!(accountstatus=blue))(teamspeakuid=*))',
+            attrlist=['characterName', 'uid' ]
+        )
+        result_count = result.__len__()
+    except ldap.LDAPError as error:
+        msg = 'unable to fetch ldap: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+    if result_count == 0:
+        # nobody. no problem.
+        pass
+    else:
+        # some ppl are banned/whatever and have a TS identity!
+        msg = '{0} unauthorized users with a TS identity'.format(result_count)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+
+        for user in result:
+            dn, info = user
+            charid = info['uid'][0].decode('utf-8')
+            charid = int(charid)
+
+            # decouple their TS identities from their LDAP entry
+
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
+            try:
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+            msg = 'purged TS identity from unauthorized user: {}'.format(dn)
+            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+
+    # we explicitly check only for blue. this means people with non-blue status (public, banned)
+    # lose their TS
+
+    try:
+        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
+            ldap.SCOPE_SUBTREE,
+            filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid),
+            attrlist=['characterName', 'uid' ]
+        )
+        result_count = result.__len__()
+    except ldap.LDAPError as error:
+        msg = 'unable to fetch ldap: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+
+    if not result_count == 0:
+        # the dbid is matched to an ldap user
+
+        orphan = False
+        dn, info = result[0]
+        charname = info['characterName'][0].decode('utf-8')
+        charid = info['uid'][0].decode('utf-8')
+        charid = int(charid)
+        registered_username = charname
+    else:
+        # this can happen if the TS user has an entry in the TS db but nothing in ldap
+        _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
+        registered_username = None
+        orphan = True
+
     try:
         resp = ts3conn.clientlist()
         clients = resp.parsed
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts_dbid, err),_logger.LogLevel.WARNING)
+
+
+    # this should never fail since the dbid we have is fed from the ts3 client list upstream
 
     try:
-        resp = ts3conn.clientdbinfo(cldbid=ts3_userid)
+        resp = ts3conn.clientdbinfo(cldbid=ts_dbid)
         user = resp.parsed
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts3_userid, err),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts_dbid, err),_logger.LogLevel.WARNING)
 
 
     user_nick = user[0]['client_nickname']
@@ -354,7 +386,7 @@ async def user_validate(ts3_userid):
         clid = client['clid']
         cldbid = client['client_database_id']
         client_username = client['client_nickname']
-        if cldbid == ts3_userid and client_username != registered_username:
+        if cldbid == ts_dbid and client_username != registered_username:
             # online user has a username that does not match records.
             # "encourage" fixing this.
             reason = 'Please use your main character name as your teamspeak nickname, without any tags'
@@ -365,12 +397,20 @@ async def user_validate(ts3_userid):
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
 
+    if orphan == False:
 
-    if activecount == 1:
-        # a nonzero return means the ts3 user is linked to an active core user
-        #
-        # we're done auditing this user. the user has a core entry and the correct
-        # username he registered with.
+        # the user has a core entry and the correct username they registered with.
+
+        _logger.log('[' + __name__ + '] charid {0} validated non-orphan'.format(charid),_logger.LogLevel.DEBUG)
+
+        # do a TS group validate
+
+        code, result = teamspeak_groups(charid)
+
+        if code == False:
+            msg = 'unable to setup teamspeak groups for {0}: {1}'.format(charname, result)
+            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+
         return
 
     # oops orphan. we hate orphans.
@@ -385,6 +425,7 @@ async def user_validate(ts3_userid):
         user_nick,created_iso,lastconnected_iso,user_lastip,user_conns
     ), _logger.LogLevel.WARNING)
 
+    _logger.securitylog(__name__, 'orphan ts3 user purge', charname=user_nick, date=user_lastconn, ipaddress=user_lastip)
 
     # remove orphan ts3 users
 
@@ -395,7 +436,7 @@ async def user_validate(ts3_userid):
     for client in clients:
         clid = client['clid']
         cldbid = client['client_database_id']
-        if cldbid == ts3_userid:
+        if cldbid == ts_dbid:
             try:
                 reason = 'You are detached from CORE. Please configure services.'
                 resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
@@ -406,7 +447,7 @@ async def user_validate(ts3_userid):
     # now remove the client from the ts3 database
 
     try:
-        resp = ts3conn.clientdbdelete(cldbid=ts3_userid)
+        resp = ts3conn.clientdbdelete(cldbid=ts_dbid)
         _logger.log('[' + __name__ + '] ts3 user {0} removed'.format(user_nick),_logger.LogLevel.WARNING)
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
