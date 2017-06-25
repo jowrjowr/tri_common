@@ -4,10 +4,7 @@ def audit_core():
     import common.request_esi
     import common.logger as _logger
     import common.database as _database
-    import common.credentials.ldap as _ldap
     import common.ldaphelpers as _ldaphelpers
-    import ldap
-    import ldap.modlist
     import math
     import MySQLdb as mysql
     from common.api import base_url
@@ -28,12 +25,6 @@ def audit_core():
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
-
-    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-    try:
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
     # fetch vanguard alliances
     cursor = sql_conn.cursor()
