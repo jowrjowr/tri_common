@@ -1,3 +1,62 @@
+def ldap_search(function, dn, filter, attributes):
+
+    import ldap
+    import ldap.modlist
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    from flask import Response, request
+
+    # initialize connections
+
+    try:
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'LDAP connection error: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False, msg
+
+    try:
+        result = ldap_conn.search_s(
+            dn,
+            ldap.SCOPE_SUBTREE,
+            filterstr=filter,
+            attrlist=attributes,
+        )
+        result_count = result.__len__()
+    except ldap.LDAPError as error:
+        msg = 'unable to fetch ldap information: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False, msg
+
+    if result_count == 0:
+        # treating only hard fails as failure
+        return True, None
+
+    # construct the response
+    response = dict()
+    for object in result:
+        # split off the dn/info pair
+        dn, info = object
+        details = dict()
+
+        for attribute in attributes:
+            # we won't always get the desired attribute
+            try:
+                # only return an array for multiple items
+                # or authGroup, a helpful typecast
+                if len(info[attribute]) > 1 or attribute == 'authGroup':
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                else:
+                    details[attribute] = info[attribute][0].decode('utf-8')
+            except Exception as error:
+                _logger.log('[' + function + '] dn {0} missing attribute {1}'.format(dn, attribute),_logger.LogLevel.DEBUG)
+                details[attribute] = None
+
+        response[dn] = details
+
+    return True, response
+
 def purge_authgroups(dn, groups):
     import common.logger as _logger
     import common.credentials.ldap as _ldap

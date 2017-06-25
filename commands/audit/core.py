@@ -55,56 +55,29 @@ def audit_core():
         vanguard.append(row[0])
 
     # fetch all non-banned LDAP users
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(&(!(accountstatus=banned))(!(accountStatus=immortal)))',
-            attrlist=['uid', 'characterName', 'accountStatus', 'authGroup', 'corporation', 'alliance' ]
-        )
-        user_count = result.__len__()
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error),_logger.LogLevel.ERROR)
 
-    _logger.log('[' + __name__ + '] total non-banned ldap users: {}'.format(user_count),_logger.LogLevel.DEBUG)
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = '(&(!(accountstatus=banned))(!(accountStatus=immortal)))'
+    attributes = ['uid', 'characterName', 'accountStatus', 'authGroup', 'corporation', 'alliance' ]
+    code, users = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
-    # get a list of uids for us to check affiliations with
-    users = dict()
-    for user in result:
-        dn, info = user
+    if code == False:
+        return
+    else:
+        result_count = len(users)
 
-        if dn == 'ou=People,dc=triumvirate,dc=rocks':
-            continue
-        charname = info['characterName'][0].decode('utf-8')
-
-        charid = int( info['uid'][0].decode('utf-8') )
-
-        try:
-            corpid = int( info['corporation'][0].decode('utf-8') )
-        except Exception as error:
-            corpid = None
-
-        try:
-            allianceid = int( info['alliance'][0].decode('utf-8') )
-        except Exception as error:
-            allianceid = None
-
-        status = info['accountStatus'][0].decode('utf-8')
-        groups = list(map(lambda x: x.decode('utf-8'), info['authGroup']))
-
-        users[charid] = dict()
-        users[charid]['charname'] = charname
-        users[charid]['dn'] = dn
-        users[charid]['status'] = status
-        users[charid]['groups'] = groups
-        users[charid]['ldap_corpid'] = corpid
-        users[charid]['ldap_allianceid'] = allianceid
+    _logger.log('[' + __name__ + '] total non-banned ldap users: {}'.format(result_count),_logger.LogLevel.DEBUG)
 
     # bulk affiliations fetch
 
     data = []
     chunksize = 750 # current ESI max is 1000 but we'll be safe
-    for charid in users.keys():
-        data.append(charid)
+    for user in users.keys():
+        try:
+            charid = int( users[user]['uid'] )
+            data.append(charid)
+        except Exception as error:
+            pass
     length = len(data)
     chunks = math.ceil(length / chunksize)
     for i in range(0, chunks):
@@ -115,63 +88,82 @@ def audit_core():
         chunk = json.dumps(chunk)
         code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk)
         for item in result:
+
+            # locate the dn from the charid
             charid = item['character_id']
-            users[charid]['corpid'] = item['corporation_id']
+            for user in users.keys():
+                try:
+                    ldap_charid = int( users[user]['uid'] )
+                except Exception as error:
+                    ldap_charid = None
+
+                if ldap_charid == charid:
+                    #print('matched dn {0} to uid {1} ldap charid {2}'.format(user, charid, ldap_charid))
+                    dn = user
+
+            users[dn]['esi_corp'] = item['corporation_id']
             if 'alliance_id' in item.keys():
-                users[charid]['allianceid'] = item['alliance_id']
+                users[dn]['esi_alliance'] = item['alliance_id']
             else:
-                users[charid]['allianceid'] = None
+                users[dn]['esi_alliance'] = None
 
     # groups that a non-blue user is allowed to have
 
-    safegroups = { 'public', 'ban_pending' }
+    safegroups = set([ 'public', 'ban_pending' ])
 
     # loop through each user and determine the correct status
 
-    for charid in users.keys():
-        status = users[charid]['status']
-        charname = users[charid]['charname']
-        dn = users[charid]['dn']
-        groups = users[charid]['groups']
+    for user in users.keys():
+        dn = user
+
+        if users[user]['uid'] == None:
+            continue
+
+        charid = int(users[user]['uid'])
+        status = users[user]['accountStatus']
+        charname = users[user]['characterName']
+        groups = users[user]['authGroup']
+
+        # bad data protection
+        try:
+            esi_allianceid = users[user]['esi_alliance']
+        except:
+            esi_allianceid = None
+        try:
+            ldap_allianceid = int(users[user]['alliance'])
+        except:
+            ldap_allianceid = None
+        try:
+            esi_corpid = users[user]['esi_corp']
+        except:
+            esi_corpid = None
+        try:
+            ldap_corpid = int(users[user]['corporation'])
+        except:
+            ldap_corpid = None
         # user's effective managable groups
         groups = list( set(groups) - safegroups )
 
-        # faulty data protections galore
-        try:
-            ldap_allianceid = users[charid]['ldap_allianceid']
-        except Exception as error:
-            ldap_allianceid = None
-
-        try:
-            allianceid = users[charid]['allianceid']
-        except Exception as error:
-            allianceid = None
-
-        try:
-            ldap_corpid = users[charid]['ldap_corpid']
-        except Exception as error:
-            ldap_corpid = None
-
         # tinker with ldap to account for reality
 
-        if not allianceid == ldap_allianceid:
+        if not esi_allianceid == ldap_allianceid:
             # update a changed alliance id
-            update_singlevalue(dn, 'alliance', str(allianceid))
-        if not corpid == ldap_corpid:
+            _ldaphelpers.update_singlevalue(dn, 'alliance', str(esi_allianceid))
+        if not esi_corpid == ldap_corpid:
             # update a changed corp id
-            update_singlevalue(dn, 'corporation', str(corpid))
+            _ldaphelpers.update_singlevalue(dn, 'corporation', str(esi_corpid))
 
         if status == 'blue':
             # blue in ldap
 
-            if not allianceid in vanguard:
+            if not esi_allianceid in vanguard:
                 # need to adjust to public
                 _ldaphelpers.update_status(dn, 'public')
                 _ldaphelpers.update_singlevalue(dn, 'accountStatus', 'public')
 
             # give them the correct base authgroups
 
-            if allianceid == triumvirate and 'triumvirate' not in groups:
+            if esi_allianceid == triumvirate and 'triumvirate' not in groups:
                 # all tri get trimvirate
                 _ldaphelpers.add_value(dn, 'authGroup', 'triumvirate')
 
@@ -185,7 +177,7 @@ def audit_core():
                 # purge groups off someone who has more than they should
                 # not a security issue per se, but keeps the management tools clean
                 _ldaphelpers.purge_authgroups(dn, groups)
-            if allianceid in vanguard:
+            if esi_allianceid in vanguard:
                 # oops. time to fix you.
                 _ldaphelpers.update_singlevalue(dn, 'accountStatus', 'blue')
 
