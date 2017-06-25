@@ -2,7 +2,6 @@ import common.logger as _logger
 import asyncio
 import argparse
 
-from commands.audit.jabber import audit_jabber
 from commands.audit.teamspeak import audit_teamspeak
 from commands.audit.core import audit_core
 from commands.audit.bothunt import audit_bothunt
@@ -12,8 +11,6 @@ from commands.audit.supers import audit_supers
 def audit_all():
     _logger.log('[' + __name__ + '] core audit', _logger.LogLevel.DEBUG)
     audit_core()
-    _logger.log('[' + __name__ + '] jabber audit', _logger.LogLevel.DEBUG)
-    audit_jabber()
     _logger.log('[' + __name__ + '] teamspeak audit', _logger.LogLevel.DEBUG)
     audit_teamspeak()
     #_logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
@@ -39,8 +36,6 @@ class parseaction(argparse.Action):
 
         if value == 'all':
             audit_all()
-        elif value == 'jabber':
-            audit_jabber()
         elif value == 'teamspeak':
             audit_teamspeak()
         elif value == 'core':
@@ -56,6 +51,6 @@ def add_arguments(parser):
     parser.add_argument("--audit",
         nargs=0,
         action=parseaction,
-        choices=[ 'jabber', 'teamspeak', 'core', 'coregroups', 'forums', 'bothunt', 'supers', 'all' ],
+        choices=[ 'teamspeak', 'core', 'forums', 'bothunt', 'supers', 'all' ],
         help='core service auditing',
     )
