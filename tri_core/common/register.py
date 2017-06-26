@@ -108,31 +108,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     serviceuser = serviceuser.replace("'", '')
     servicepass = uuid.uuid4().hex[:8]
 
-    # now dump it all into mysql
-    # store our new shiny access token in the user token database
-
-    query =  'REPLACE INTO CrestTokens (charID, isValid, accessToken, refreshToken, charName, corpID, corpName, allianceID, allianceName) '
-    query += 'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)'
-
-    try:
-        row = cursor.execute(
-            query, (
-                charid,
-                1,
-                atoken,
-                rtoken,
-                charname,
-                corpid,
-                corpname,
-                allianceid,
-                alliancename,
-            ),
-        )
-        _logger.log('[' + __name__ + '] user {0} tokens registered (mysql)'.format(charid), _logger.LogLevel.INFO)
-    except Exception as errmsg:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        return(False, 'error')
-
     # store user data in users table
     query =  'REPLACE INTO Users (charID, charName, corpID, corpName, allianceID, allianceName, ServiceUsername, ServicePassword, isMain, isAlt)'
     query += 'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
