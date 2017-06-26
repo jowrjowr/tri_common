@@ -143,6 +143,8 @@ def core_group_members(group):
     import json
     import common.logger as _logger
     import common.ldaphelpers as _ldaphelpers
+    import common.request_esi
+    from common.api import base_url
     from flask import Response, request
 
     # get the list of group members for this group
@@ -153,7 +155,7 @@ def core_group_members(group):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(authGroup={})'.format(group)
-    attrlist=['characterName', 'authGroup', 'uid' ]
+    attrlist=['characterName', 'authGroup', 'uid', 'corporation', 'alliance', 'teamspeakdbid', 'esiAccessToken' ]
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
     if code == False:
@@ -175,11 +177,55 @@ def core_group_members(group):
     response['count'] = len(result)
     response['users'] = []
 
-    for user in result:
+    for user in result.keys():
+
+        details = result[user]
+        print(details)
 
         info = dict()
-        info['uid'] = int( result[user]['uid'] )
-        info['charname' ] = result[user]['characterName']
+        info['uid'] = int( details['uid'] )
+        info['charname'] = details['characterName']
+
+        # alliance name
+        allianceid = int( details['alliance'] )
+        info['allianceid'] = allianceid
+
+        request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
+
+        code, esi_result = common.request_esi.esi(__name__, request_url, 'get')
+
+        if not code == 200:
+            _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, esi_result['error']), _logger.LogLevel.ERROR)
+            info['alliance_name'] = 'Unknown'
+        else:
+            info['alliance_name'] = esi_result['alliance_name']
+
+        # corp name
+
+        corpid = int( details['corporation'] )
+        info['corpid'] = corpid
+        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
+        code, esi_result = common.request_esi.esi(__name__, request_url, 'get')
+
+        if code != 200:
+            _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, esi_result['error']),_logger.LogLevel.ERROR)
+            info['corp_name'] = 'Unknown'
+        else:
+            info['corp_name'] = esi_result['corporation_name']
+
+        # ESI token status
+        token = details['esiAccessToken']
+        if token == None:
+            info['esi_token'] = False
+        else:
+            info['esi_token'] = True
+
+        # comms status
+        teamspeak = details['teamspeakdbid']
+        if teamspeak == None:
+            info['teamspeak'] = False
+        else:
+            info['teamspeak'] = True
 
         response['users'].append(info)
 
