@@ -1,10 +1,6 @@
 # the scope list imported by SSO
 
-scope = ['publicData', 'characterAccountRead']
-scope += ['characterChatChannelsRead', 'characterClonesRead', 'characterContactsRead']
-scope += ['characterLocationRead', 'characterNotificationsRead', 'characterSkillsRead']
-scope += ['characterStatsRead', 'corporationAssetsRead', 'corporationContactsRead']
-scope += ['corporationContractsRead', 'corporationMembersRead', 'corporationStructuresRead']
+scope = ['publicData']
 scope += ['esi-clones.read_clones.v1', 'esi-characters.read_contacts.v1']
 scope += ['esi-corporations.read_corporation_membership.v1', 'esi-location.read_location.v1']
 scope += ['esi-location.read_ship_type.v1', 'esi-skills.read_skillqueue.v1', 'esi-skills.read_skills.v1']
