@@ -25,6 +25,7 @@ def group_DELETE(group, charid):
     import ldap.modlist
     import common.logger as _logger
     import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     from flask import Response, request
 
     # initialize connections
@@ -40,28 +41,26 @@ def group_DELETE(group, charid):
 
     # find the user. partly to get the dn, partly to validate.
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(uid={})'.format(charid),
-            attrlist=['characterName', 'authGroup' ]
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(uid={})'.format(charid)
+    attrlist=['characterName', 'authGroup' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
         return Response(js, status=500, mimetype='application/json')
 
-    if result_count == 0:
+
+    if result == None:
         msg = 'charid {0} not in ldap'.format(charid)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
-
         return Response(js, status=404, mimetype='application/json')
 
-    dn, info = result[0]
-    charname = info['characterName'][0].decode('utf-8')
+
+    (dn, info), = result.items()
 
     # modify the user
 
@@ -85,6 +84,7 @@ def group_ADD(group, charid):
     import ldap.modlist
     import common.logger as _logger
     import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     from flask import Response, request
 
     # initialize connections
@@ -100,28 +100,26 @@ def group_ADD(group, charid):
 
     # find the user. partly to get the dn, partly to validate.
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(uid={})'.format(charid),
-            attrlist=['characterName', 'authGroup' ]
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(uid={})'.format(charid)
+    attrlist=['characterName', 'authGroup' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
         return Response(js, status=500, mimetype='application/json')
 
-    if result_count == 0:
+
+    if result == None:
         msg = 'charid {0} not in ldap'.format(charid)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
-
         return Response(js, status=404, mimetype='application/json')
 
-    dn, info = result[0]
-    charname = info['characterName'][0].decode('utf-8')
+
+    (dn, info), = result.items()
 
     # modify the user
 
@@ -143,63 +141,45 @@ def group_ADD(group, charid):
 def core_group_members(group):
 
     import json
-    import ldap
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     from flask import Response, request
 
     # get the list of group members for this group
 
     ipaddress = request.headers['X-Real-Ip']
 
-    # initialize connections
-
-    try:
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        msg = 'LDAP connection error: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-        js = json.dumps({ 'error': msg })
-        return Response(js, status=500, mimetype='application/json')
-
     # snag groups
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(authGroup={})'.format(group),
-            attrlist=['characterName', 'uid']
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(authGroup={})'.format(group)
+    attrlist=['characterName', 'authGroup', 'uid' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
         return Response(js, status=500, mimetype='application/json')
 
-    if result_count == 0:
-        msg = 'group {0} not in ldap'.format(error)
+
+    if result == None:
+        msg = 'charid {0} not in ldap'.format(charid)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
-
         return Response(js, status=404, mimetype='application/json')
 
     # construct the response object
 
     response = dict()
-    response['count'] = result_count
+    response['count'] = len(result)
     response['users'] = []
 
     for user in result:
-        dn, info = user
-        charname = info['characterName'][0].decode('utf-8')
-        charid = info['uid'][0].decode('utf-8')
-        charid = int(charid)
 
         info = dict()
-        info['uid'] = charid
-        info['charname' ] = charname
+        info['uid'] = int( result[user]['uid'] )
+        info['charname' ] = result[user]['characterName']
 
         response['users'].append(info)
 
@@ -210,9 +190,8 @@ def core_group_members(group):
 def core_chargroups(charid):
 
     import json
-    import ldap
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     from flask import Response, request
 
     # get the list of groups for this charid
@@ -225,48 +204,31 @@ def core_chargroups(charid):
         js = json.dumps({ 'error': 'charid parameter must be integer'})
         return Response(js, status=401, mimetype='application/json')
 
-    # initialize connections
-
-    try:
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        msg = 'LDAP connection error: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-        js = json.dumps({ 'error': msg })
-        return Response(js, status=500, mimetype='application/json')
-
     # snag groups
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
-            ldap.SCOPE_SUBTREE,
-            filterstr='(uid={})'.format(charid),
-            attrlist=['characterName', 'authGroup' ]
-        )
-        result_count = result.__len__()
-    except ldap.LDAPError as error:
-        msg = 'unable to fetch ldap users: {}'.format(error)
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(uid={})'.format(charid)
+    attrlist=['characterName', 'authGroup' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
+        msg = 'unable to fetch ldap information: {}'.format(error)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
         return Response(js, status=500, mimetype='application/json')
 
-    if result_count == 0:
-        msg = 'charid {0} not in ldap'.format(error)
+
+    if result == None:
+        msg = 'charid {0} not in ldap'.format(charid)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
         js = json.dumps({ 'error': msg })
         return Response(js, status=404, mimetype='application/json')
 
-    dn, result = result[0]
-    encodedgroups = result['authGroup']
-    ldap_groups = []
-    for group in encodedgroups:
-        ldap_groups.append(group.decode('utf-8'))
 
-    charname = result['characterName'][0].decode('utf-8')
+    (dn, info), = result.items()
 
     response = dict()
-    response['groups'] = ldap_groups
+    response['groups'] = info['authGroup']
 
     js = json.dumps(response)
     return Response(js, status=200, mimetype='application/json')
