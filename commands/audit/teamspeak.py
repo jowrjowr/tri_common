@@ -306,6 +306,7 @@ async def user_validate(ts_dbid):
         # nobody. no problem.
         pass
     else:
+        result_count = len(result)
         # some ppl are banned/whatever and have a TS identity!
         msg = '{0} unauthorized users with a TS identity'.format(result_count)
         _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
@@ -320,8 +321,8 @@ async def user_validate(ts_dbid):
             mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
             mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
             try:
-                ldap_conn.modify_s(dn, mod_attrs)
-                msg = 'purged TS identity from unauthorized user: {}'.format(dn)
+                ldap_conn.modify_s(user, mod_attrs)
+                msg = 'purged TS identity from unauthorized user: {}'.format(user)
                 _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
             except ldap.LDAPError as error:
                 _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)

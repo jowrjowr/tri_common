@@ -149,7 +149,6 @@ def audit_core():
 
             if not esi_allianceid in vanguard:
                 # need to adjust to public
-                _ldaphelpers.update_status(dn, 'public')
                 _ldaphelpers.update_singlevalue(dn, 'accountStatus', 'public')
 
             # give them the correct base authgroups

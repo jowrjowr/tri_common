@@ -57,7 +57,7 @@ def teamspeak_groups(charid):
         result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks',
             ldap.SCOPE_SUBTREE,
             filterstr='(uid={})'.format(charid),
-            attrlist=['teamspeakdbid', 'characterName', 'authGroup' ]
+            attrlist=['teamspeakdbid', 'characterName', 'authGroup', 'corporation', 'alliance' ]
         )
         result_count = result.__len__()
     except ldap.LDAPError as error:
@@ -78,7 +78,14 @@ def teamspeak_groups(charid):
         ldap_groups.append(group.decode('utf-8'))
 
     charname = result['characterName'][0].decode('utf-8')
-
+    try:
+        allianceid = int( result['alliance'][0].decode('utf-8') )
+    except error as e:
+        allianceid = 0
+    try:
+        corpid = int( result['corporation'][0].decode('utf-8') )
+    except error as e:
+        corpid = 0
     try:
         ts_dbid = result['teamspeakdbid'][0].decode('utf-8')
     except Exception as error:
@@ -104,24 +111,6 @@ def teamspeak_groups(charid):
     current_tsgroups = []
     for group in tsgroups:
         current_tsgroups.append( int(group['sgid']) )
-
-    # get character affiliations
-
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
-    data = '[{}]'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
-
-    if not code == 200:
-        # something broke severely
-        msg = 'affiliations API error {0}: {1}'.format(code, result['error'])
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-        return(False, msg)
-
-    corpid = result[0]['corporation_id']
-    try:
-        allianceid = result[0]['alliance_id']
-    except KeyError:
-        allianceid = 0
 
     # snag mysql permissions info
 
@@ -237,7 +226,6 @@ def teamspeak_groups(charid):
     groups_to_add = list( set(correct_ts_groups) - set(current_ts_groups) )
     msg = 'TS groups to add {0}'.format(groups_to_add)
     _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.DEBUG)
-
     for group in groups_to_add:
         try:
             resp = ts3conn.servergroupaddclient(sgid=group, cldbid=ts_dbid)

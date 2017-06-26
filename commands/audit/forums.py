@@ -264,7 +264,7 @@ def audit_forums():
             return False
 
         portrait = result['px128x128']
-        query = 'UPDATE core_members SET pp_main_photo="%s", pp_thumb_photo="%s", pp_photo_type="custom" WHERE name = %s'
+        query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
         try:
             cursor.execute(query, (portrait, portrait, charname,))
         except Exception as err:
@@ -326,7 +326,7 @@ def audit_forums():
                 change = change[:-1] # peel off trailing comma
 
             if len(secondaries_to_remove) > 0:
-                query = 'UPDATE core_members SET mgroup_others = "%s" WHERE name = %s'
+                query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
                     msg = 'removed secondary group(s) {0} from {1}'.format(change, charname)
@@ -350,7 +350,7 @@ def audit_forums():
                 change = change[:-1] # peel off trailing comma
 
             if len(secondaries_to_add) > 0:
-                query = 'UPDATE core_members SET mgroup_others = "%s" WHERE name = %s'
+                query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
                     msg = 'added secondary group(s) {0} to {1}'.format(change, charname)
@@ -362,9 +362,9 @@ def audit_forums():
                     sql_conn.commit()
 
             if not correct_primary == primary_group:
-                query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
+                query = 'UPDATE core_members SET member_group_id=%s WHERE name=%s'
                 try:
-                    cursor.execute(query, (charname,))
+                    cursor.execute(query, (2, charname,))
                     _logger.log('[' + __name__ + '] adjusted primary forum group of {0} to {1}'.format(charname, correct_primary),_logger.LogLevel.INFO)
                 except Exception as err:
                     _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
@@ -395,18 +395,19 @@ def forumpurge (charname):
     cursor = sql_conn.cursor()
 
     # remove secondary groups
+    # null not allowed: [commands.audit.forums] mysql error: (1048, "Column 'mgroup_others' cannot be null")
 
-    query = 'UPDATE core_members SET mgroup_others = "" WHERE name = %s'
+    query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
     try:
-        cursor.execute(query, (charname,))
+        cursor.execute(query, (' ', charname,))
     except Exception as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
 
     # set them to the public group
-    query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
+    query = 'UPDATE core_members SET member_group_id=%s WHERE name=%s'
     try:
-        cursor.execute(query, (charname,))
+        cursor.execute(query, (2, charname,))
     except Exception as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         return False
