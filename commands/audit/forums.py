@@ -5,6 +5,7 @@ def audit_forums():
     import common.credentials.ldap as _ldap
     import common.credentials.database as _database
     import common.credentials.forums as _forumcreds
+    import common.ldaphelpers as _ldaphelpers
     import common.request_esi
     from common.api import base_url
     from common.graphite import sendmetric
@@ -14,6 +15,7 @@ def audit_forums():
     import urllib
     import html
     import MySQLdb as mysql
+    import re
     _logger.log('[' + __name__ + '] auditing forums',_logger.LogLevel.INFO)
 
     # setup connections
@@ -114,36 +116,34 @@ def audit_forums():
             users[charname]['secondary'] = secondarygroups
 
             # match up against ldap data
-            try:
-                result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(characterName={0}))'.format(charname), attrlist=['authGroup', 'accountstatus', 'uid'])
-            except ldap.LDAPError as error:
-                _logger.log('[' + __name__ + '] unable to fetch ldap user {0}: {1}'.format(charid,error),_logger.LogLevel.ERROR)
+            dn = 'ou=People,dc=triumvirate,dc=rocks'
+            filterstr='(&(objectclass=pilot)(characterName={0}))'.format(charname)
+            attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
+            code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
-            if len(result) == 0:
+            if code == False:
+                return
+
+            if result == None:
                 # you WILL be dealt with later!
-#                print('orphan user:"{}"'.format(charname))
                 orphan += 1
                 users[charname]['charid'] = None
+                users[charname]['alliance'] = None
                 users[charname]['authgroups'] = []
                 users[charname]['accountstatus'] = None
             else:
-                dn, result = result[0]
-                users[charname]['dn'] = dn
 
-                # character ID is primary to all ldap entries.
-                charid = result['uid'][0].decode('utf-8')
-                charid = int(charid)
-                users[charname]['charid'] = charid
+                (dn, info), = result.items()
 
-                # account status is the equivalent of forum primary group
-                users[charname]['accountstatus'] = result['accountStatus'][0].decode('utf-8')
+                try:
+                    users[charname]['alliance'] = int( info['alliance'] )
 
-                # auth groups are functionally forum secondary groups
+                except Exception as e:
+                    users[charname]['alliance'] = None
 
-                authgroups = result['authGroup']
-                authgroups = list(map(lambda x: x.decode('utf-8'), authgroups))
-                users[charname]['authgroups'] = authgroups
-
+                users[charname]['charid'] = int( info['uid'] )
+                users[charname]['accountstatus'] = info['accountStatus']
+                users[charname]['authgroups'] = info['authGroup']
 
         # last but not least
         page += 1
@@ -158,7 +158,7 @@ def audit_forums():
     for user in special:
         users.pop(user, None)
 
-    _logger.log('[' + __name__ + '] orphan forum users: {0}'.format(orphan),_logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] forum users with no LDAP entry: {0}'.format(orphan),_logger.LogLevel.INFO)
 
     # map each user to a charID given that the username is exactly
     # a character name
@@ -178,7 +178,7 @@ def audit_forums():
             _logger.log('[' + __name__ + '] /search output: {}'.format(result), _logger.LogLevel.DEBUG)
 
             if not code == 200:
-                print(result)
+                return
             if len(result) == 0:
                 really_orphan += 1
                 users[charname]['doomheim'] = True
@@ -189,7 +189,7 @@ def audit_forums():
                 print(esi_url)
                 print(charname)
 
-    _logger.log('[' + __name__ + '] doomheim forum users: {0}'.format(really_orphan),_logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] forum users who have biomassed: {0}'.format(really_orphan),_logger.LogLevel.INFO)
 
     # at this point every forum user has been mapped to their character id either via ldap or esi /search
 
@@ -204,10 +204,14 @@ def audit_forums():
             forumpurge(charname)
             continue
 
-        # get forum groups
+        authgroups = users[charname]['authgroups']
+        alliance = users[charname]['alliance']
+
+        # get user forum groups
 
         cursor = sql_conn.cursor()
         query = 'SELECT member_group_id, mgroup_others, ip_address FROM core_members WHERE name=%s'
+
         try:
             rowcount = cursor.execute(query, (charname,))
             row = cursor.fetchone()
@@ -217,30 +221,58 @@ def audit_forums():
 
         if rowcount == 0:
             # this SHOULDN'T happen
-            _logger.log('[' + __name__ + '] unable to find forum user: {0}'.format(user), _logger.LogLevel.WARN)
+            _logger.log('[' + __name__ + '] unable to find forum user: {0}'.format(user), _logger.LogLevel.WARNING)
 
         primary_group = row[0]
-        secondary_groups = row[1].split(',')
+        secondary_groups = []
+
+        # some seriously fucked up db data with random quotes
+        somecrap = re.sub("'", '', row[1])
+        for item in somecrap.split(','):
+            if not item == '':
+                secondary_groups.append(int(item))
+
         forum_lastip = row[2]
 
-        # get character affiliations
-        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
-        data = '[{}]'.format(charid)
-        code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+        # get character affiliations if nothing in ldap
+
+        if alliance == None:
+            request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+            data = '[{}]'.format(charid)
+            code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+
+            if not code == 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+                return
+
+            try:
+                alliance = result[0]['alliance_id']
+            except KeyError:
+                alliance = None
+
+        # anchor forum portrait
+
+        esi_url = base_url + 'characters/' + str(charid) + '/portrait/?datasource=tranquility'
+
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
+        _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
         if not code == 200:
             # something broke severely
-            _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
-                        _logger.LogLevel.ERROR)
-            error = result['error']
-            result = {'code': code, 'error': error}
-            print('oops looking at {0}: {1} {2}'.format(charid, code, result))
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            return False
 
-        corpid = result[0]['corporation_id']
+        portrait = result['px128x128']
+        query = 'UPDATE core_members SET pp_main_photo="%s", pp_thumb_photo="%s", pp_photo_type="custom" WHERE name = %s'
         try:
-            allianceid = result[0]['alliance_id']
-        except KeyError:
-            allianceid = 0
+            cursor.execute(query, (portrait, portrait, charname,))
+        except Exception as err:
+            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+            return False
+        finally:
+            sql_conn.commit()
+
 
         ## start doing checks
 
@@ -249,7 +281,7 @@ def audit_forums():
 
         vanguard = forum_mappings.keys()
 
-        if allianceid not in vanguard and primary_group != 2:
+        if alliance not in vanguard and primary_group != 2:
 
             # this char is not in a vanguard alliance but has non-public forum access
 
@@ -259,20 +291,97 @@ def audit_forums():
 
             _logger.securitylog(__name__, 'forum demotion', charid=charid, charname=charname, ipaddress=forum_lastip)
             msg = 'non-vanguard character with privileged access demoted. charname: {0} ({1}), alliance: {2}, primary group: {3}, secondary group(s): {4}, last ip: {5}'.format(
-                charname, charid, allianceid, primary_group, secondary_groups, forum_lastip
+                charname, charid, alliance, primary_group, secondary_groups, forum_lastip
             )
             _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
             non_tri += 1
 
-    _logger.log('[' + __name__ + '] non-vanguard forum users removed: {0}'.format(non_tri),_logger.LogLevel.INFO)
+        if alliance in vanguard:
+
+            correct_primary = forum_mappings[alliance]
+            correct_secondaries = []
+            # construct the list of correct secondary groups
+
+            for authgroup in authgroups:
+                mapping = authgroup_map(authgroup)
+                if not mapping == None:
+                    correct_secondaries.append(mapping)
+
+            ## deal with secondary groups
+
+            # remove secondaries
+            msg = 'char {0} current secondaries: {1} correct secondaries: {2}'.format(charname, secondary_groups, correct_secondaries)
+            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.DEBUG)
+
+            secondaries_to_remove = list( set(secondary_groups) - set(correct_secondaries) )
+
+            if len(secondaries_to_remove) == 1:
+                change = secondaries_to_remove[0]
+
+            # ips forum likes a comma separated list of secondaries
+            if len(secondaries_to_remove) > 1:
+                change = ''
+                for group in secondaries_to_remove:
+                    change = change + str(group) + ','
+                change = change[:-1] # peel off trailing comma
+
+            if len(secondaries_to_remove) > 0:
+                query = 'UPDATE core_members SET mgroup_others = "%s" WHERE name = %s'
+                try:
+                    cursor.execute(query, (change, charname,))
+                    msg = 'removed secondary group(s) {0} from {1}'.format(change, charname)
+                    _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+                except Exception as err:
+                    _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                    return False
+                finally:
+                    sql_conn.commit()
+
+            secondaries_to_add = list( set(correct_secondaries) - set(secondary_groups) )
+
+            if len(secondaries_to_add) == 1:
+                change = secondaries_to_add[0]
+
+            # ips forum likes a comma separated list of secondaries
+            if len(secondaries_to_add) > 1:
+                change = ''
+                for group in secondaries_to_add:
+                    change = change + str(group) + ','
+                change = change[:-1] # peel off trailing comma
+
+            if len(secondaries_to_add) > 0:
+                query = 'UPDATE core_members SET mgroup_others = "%s" WHERE name = %s'
+                try:
+                    cursor.execute(query, (change, charname,))
+                    msg = 'added secondary group(s) {0} to {1}'.format(change, charname)
+                    _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+                except Exception as err:
+                    _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                    return False
+                finally:
+                    sql_conn.commit()
+
+            if not correct_primary == primary_group:
+                query = 'UPDATE core_members SET member_group_id = "2" WHERE name = %s'
+                try:
+                    cursor.execute(query, (charname,))
+                    _logger.log('[' + __name__ + '] adjusted primary forum group of {0} to {1}'.format(charname, correct_primary),_logger.LogLevel.INFO)
+                except Exception as err:
+                    _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                    return False
+                finally:
+                    sql_conn.commit()
+        cursor.close()
+    sql_conn.close()
+    _logger.log('[' + __name__ + '] non-vanguard forum users reset: {0}'.format(non_tri),_logger.LogLevel.INFO)
 
 def forumpurge (charname):
     # remove their access
-    
+
     import common.logger as _logger
     import common.credentials.forums as _forumcreds
     import MySQLdb as mysql
-    
+
     try:
         sql_conn = mysql.connect(
             database=_forumcreds.mysql_db,
@@ -305,3 +414,24 @@ def forumpurge (charname):
     sql_conn.commit()
     cursor.close()
     return True
+
+def authgroup_map(authgroup):
+
+    # map ldap groups to forum secondary groups
+
+    if authgroup == '500percent':       return 23
+    if authgroup == 'command':          return 10
+    if authgroup == 'trisupers':        return 13
+    if authgroup == 'triprobers':       return 53
+    if authgroup == 'dreads':           return 54
+    if authgroup == 'vgsupers':         return 57
+    if authgroup == 'skirmishfc':       return 11
+    if authgroup == 'leadership':       return 9
+    if authgroup == 'skyteam':          return 12
+    if authgroup == 'forumadmin':       return 4
+
+    # public is group 2, but that's a primary group
+
+    # no match
+
+    return None
