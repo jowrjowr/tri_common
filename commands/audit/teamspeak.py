@@ -339,21 +339,40 @@ async def user_validate(ts_dbid):
     if code == False:
         return
 
-    if not result == None:
-        # the dbid is matched to an ldap user
-
+    if result == None:
+        # this can happen if the TS user has an entry in the TS db but nothing in ldap
+        _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
+        registered_username = None
+        orphan = True
+    elif len(result) == 1:
+        # the dbid is matched to an single ldap user
         orphan = False
-
         (dn, info), = result.items()
         charname = info['characterName']
         charid = int( info['uid'] )
         registered_username = charname
 
-    else:
-        # this can happen if the TS user has an entry in the TS db but nothing in ldap
-        _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
-        registered_username = None
+    elif len(result) > 1:
+        # multiple TS registrations. naughty.
+
         orphan = True
+
+        for user in result.keys():
+
+            charid = int( result[user]['uid'] )
+
+            # decouple their TS identities from their LDAP entry
+
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
+            try:
+                ldap_conn.modify_s(user, mod_attrs)
+                msg = 'purged TS identity from duplicate user: {}'.format(user)
+                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
 
     try:
         resp = ts3conn.clientlist()
@@ -384,14 +403,24 @@ async def user_validate(ts_dbid):
         clid = client['clid']
         cldbid = client['client_database_id']
         client_username = client['client_nickname']
-        if cldbid == ts_dbid and client_username != registered_username:
+
+        if orphan == True:
+            reason = 'Please re-register your TS on CORE'
+            try:
+                resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: active orphan'.format(user_nick),_logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
+            except ts3.query.TS3QueryError as err:
+                _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
+
+        elif cldbid == ts_dbid and client_username != registered_username:
             # online user has a username that does not match records.
             # "encourage" fixing this.
             reason = 'Please use your main character name as your teamspeak nickname, without any tags'
             try:
                 resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
                 _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: mismatch'.format(user_nick),_logger.LogLevel.WARNING)
-                _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
 
