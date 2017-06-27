@@ -13,8 +13,3 @@ def hello_world():
     return 'hello world'
 app.add_url_rule('/hello', 'hello', hello_world)
 
-
-from tri_core.pages.main import page_main
-app.add_url_rule('/pages/', 'main', page_main)
-app.add_url_rule('/pages/main', 'main', page_main)
-
