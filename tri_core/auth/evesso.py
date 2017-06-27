@@ -38,9 +38,9 @@ def evesso(isalt, altof):
 
     ipaddress = request.headers['X-Real-Ip']
     if isalt == True:
-        _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
-    else:
         _logger.securitylog(__name__, 'SSO login (alt of {0}) initiated'.format(altof), ipaddress=ipaddress)
+    else:
+        _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
 
     # setup the redirect url for the first stage of oauth flow
 
@@ -100,7 +100,6 @@ def auth_evesso_callback():
     # the user has (ostensibly) authenticated with the application, now
     # the access token can be fetched
 
-    isalt = session.get('isalt');
     altof = session.get('altof');
 
     if altof == None:
@@ -154,9 +153,12 @@ def auth_evesso_callback():
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    if isalt == True:
+
+    if details == 'isalt':
+        isalt = True
         _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
     else:
+        isalt = False
         _logger.securitylog(__name__, 'SSO callback (alt) completed', charid=charid, ipaddress=ipaddress)
 
     # store the tokens regardless of their status. we're greedy.

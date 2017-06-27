@@ -180,7 +180,6 @@ def core_group_members(group):
     for user in result.keys():
 
         details = result[user]
-        print(details)
 
         info = dict()
         info['uid'] = int( details['uid'] )
