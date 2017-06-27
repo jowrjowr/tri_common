@@ -13,6 +13,8 @@ def audit_all():
     audit_core()
     _logger.log('[' + __name__ + '] teamspeak audit', _logger.LogLevel.DEBUG)
     audit_teamspeak()
+    _logger.log('[' + __name__ + '] forum audit', _logger.LogLevel.DEBUG)
+    audit_forums()
     #_logger.log('[' + __name__ + '] jabber bothunt', _logger.LogLevel.DEBUG)
     #audit_bothunt()
 

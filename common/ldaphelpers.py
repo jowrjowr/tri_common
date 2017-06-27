@@ -107,6 +107,31 @@ def update_singlevalue(dn, attribute, value):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
 
+def ldap_adduser(dn, attributes):
+
+    import ldap
+    import ldap.modlist
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    from flask import Response, request
+
+    # initialize connections
+
+    try:
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'LDAP connection error: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False
+    # https://access.redhat.com/documentation/en-US/Red_Hat_Directory_Server/8.0/html/Configuration_and_Command_Reference/Configuration_Command_File_Reference-Access_Log_and_Connection_Code_Reference.html
+    try:
+        ldap_conn.add_s(dn, attributes)
+        _logger.log('[' + __name__ + '] created ldap dn {0}'.format(dn),_logger.LogLevel.INFO)
+        return True
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to create ldap dn {0}: {1}'.format(dn,error),_logger.LogLevel.ERROR)
+        return False
 
 def add_value(dn, attribute, value):
     import common.logger as _logger

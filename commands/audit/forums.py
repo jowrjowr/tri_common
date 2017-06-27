@@ -16,6 +16,11 @@ def audit_forums():
     import html
     import MySQLdb as mysql
     import re
+
+    import hashlib
+    from passlib.hash import ldap_salted_sha1
+    import uuid
+
     _logger.log('[' + __name__ + '] auditing forums',_logger.LogLevel.INFO)
 
     # setup connections
@@ -108,6 +113,10 @@ def audit_forums():
             users[charname]['primary'][item['primaryGroup']['id']] = item['primaryGroup']['formattedName']
             users[charname]['secondary'] = dict()
 
+            cn = charname.replace(" ", '')
+            cn = cn.replace("'", '')
+            cn = cn.lower()
+
             secondarygroups = dict()
 
             for group in item['secondaryGroups']:
@@ -117,7 +126,7 @@ def audit_forums():
 
             # match up against ldap data
             dn = 'ou=People,dc=triumvirate,dc=rocks'
-            filterstr='(&(objectclass=pilot)(characterName={0}))'.format(charname)
+            filterstr='(&(objectclass=pilot)(cn={0}))'.format(cn)
             attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
             code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
@@ -178,16 +187,61 @@ def audit_forums():
             _logger.log('[' + __name__ + '] /search output: {}'.format(result), _logger.LogLevel.DEBUG)
 
             if not code == 200:
-                return
+                _logger.log('[' + __name__ + '] error searching for user {0}: {1}'.format(charname, result['error']),_logger.LogLevel.INFO)
             if len(result) == 0:
                 really_orphan += 1
                 users[charname]['doomheim'] = True
             if len(result) == 1:
-                users[charname]['charid'] = result['character'][0]
-            if len(result) >= 2:
-                print('multiple character return from /search')
-                print(esi_url)
-                print(charname)
+
+                # make a stub ldap entry for them
+
+                attributes = []
+                attributes.append(('objectClass', ['top'.encode('utf-8'), 'pilot'.encode('utf-8'), 'simpleSecurityObject'.encode('utf-8'), 'organizationalPerson'.encode('utf-8')]))
+                attributes.append(('characterName', [charname.encode('utf-8')]))
+                attributes.append(('accountStatus', ['public'.encode('utf-8')]))
+                attributes.append(('authGroup', ['public'.encode('utf-8')]))
+
+                # cn, dn
+                cn = charname.replace(" ", '')
+                cn = cn.replace("'", '')
+                cn = cn.lower()
+                dn = "cn={},ou=People,dc=triumvirate,dc=rocks".format(cn)
+
+                attributes.append(('sn',[cn.encode('utf-8')]))
+                attributes.append(('cn',[cn.encode('utf-8')]))
+
+                # character ID
+                charid = result['character'][0]
+                users[charname]['charid'] = charid
+                attributes.append(('uid', [str(charid).encode('utf-8')]))
+
+                request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+                data = '[{}]'.format(charid)
+                code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+
+                if not code == 200:
+                    # something broke severely
+                    _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+                    return
+
+                try:
+                    alliance = result[0]['alliance_id']
+                except KeyError:
+                    alliance = None
+
+                attributes.append(('corporation', [str(result[0]['corporation_id']).encode('utf-8')]))
+                attributes.append(('alliance', [str(alliance).encode('utf-8')]))
+
+                # a random password keeps them from logging in but who cares
+
+                password = uuid.uuid4().hex
+                password_hash = ldap_salted_sha1.hash(password)
+                password_hash = password_hash.encode('utf-8')
+                attributes.append(('userPassword', [password_hash]))
+
+                # create the ldap entry
+
+                _ldaphelpers.ldap_adduser(dn, attributes)
 
     _logger.log('[' + __name__ + '] forum users who have biomassed: {0}'.format(really_orphan),_logger.LogLevel.INFO)
 
@@ -229,27 +283,12 @@ def audit_forums():
         # some seriously fucked up db data with random quotes
         somecrap = re.sub("'", '', row[1])
         for item in somecrap.split(','):
-            if not item == '':
-                secondary_groups.append(int(item))
-
-        forum_lastip = row[2]
-
-        # get character affiliations if nothing in ldap
-
-        if alliance == None:
-            request_url = base_url + 'characters/affiliation/?datasource=tranquility'
-            data = '[{}]'.format(charid)
-            code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
-
-            if not code == 200:
-                # something broke severely
-                _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-                return
-
             try:
-                alliance = result[0]['alliance_id']
-            except KeyError:
-                alliance = None
+                secondary_groups.append(int(item))
+            except ValueError as e:
+                # thanks garbage data
+                _logger.log('[' + __name__ + '] invalid secondary group on {0}: {1}'.format(charname, item), _logger.LogLevel.DEBUG)
+        forum_lastip = row[2]
 
         # anchor forum portrait
 
@@ -260,19 +299,17 @@ def audit_forums():
 
         if not code == 200:
             # something broke severely
-            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            return False
+            _logger.log('[' + __name__ + '] /characters portrait API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            portrait = None
 
         portrait = result['px128x128']
         query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
         try:
             cursor.execute(query, (portrait, portrait, charname,))
+            sql_conn.commit()
         except Exception as err:
             _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
             return False
-        finally:
-            sql_conn.commit()
-
 
         ## start doing checks
 
@@ -315,62 +352,51 @@ def audit_forums():
 
             secondaries_to_remove = list( set(secondary_groups) - set(correct_secondaries) )
 
-            if len(secondaries_to_remove) == 1:
-                change = secondaries_to_remove[0]
-
             # ips forum likes a comma separated list of secondaries
-            if len(secondaries_to_remove) > 1:
+            if len(secondaries_to_remove) > 0:
                 change = ''
-                for group in secondaries_to_remove:
+                for group in correct_secondaries:
                     change = change + str(group) + ','
                 change = change[:-1] # peel off trailing comma
 
-            if len(secondaries_to_remove) > 0:
                 query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
-                    msg = 'removed secondary group(s) {0} from {1}'.format(change, charname)
+                    sql_conn.commit()
+                    msg = 'removed secondary group(s) {0} from {1}'.format(secondaries_to_remove, charname)
                     _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
                 except Exception as err:
                     _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                     return False
-                finally:
-                    sql_conn.commit()
 
             secondaries_to_add = list( set(correct_secondaries) - set(secondary_groups) )
 
-            if len(secondaries_to_add) == 1:
-                change = secondaries_to_add[0]
-
             # ips forum likes a comma separated list of secondaries
-            if len(secondaries_to_add) > 1:
+            if len(secondaries_to_add) > 0:
                 change = ''
-                for group in secondaries_to_add:
+                for group in correct_secondaries:
                     change = change + str(group) + ','
                 change = change[:-1] # peel off trailing comma
 
-            if len(secondaries_to_add) > 0:
                 query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
-                    msg = 'added secondary group(s) {0} to {1}'.format(change, charname)
+                    sql_conn.commit()
+                    msg = 'added secondary group(s) {0} to {1}'.format(secondaries_to_add, charname)
                     _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
                 except Exception as err:
                     _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                     return False
-                finally:
-                    sql_conn.commit()
 
             if not correct_primary == primary_group:
                 query = 'UPDATE core_members SET member_group_id=%s WHERE name=%s'
                 try:
-                    cursor.execute(query, (2, charname,))
+                    cursor.execute(query, (correct_primary, charname,))
+                    sql_conn.commit()
                     _logger.log('[' + __name__ + '] adjusted primary forum group of {0} to {1}'.format(charname, correct_primary),_logger.LogLevel.INFO)
                 except Exception as err:
                     _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                     return False
-                finally:
-                    sql_conn.commit()
         cursor.close()
     sql_conn.close()
     _logger.log('[' + __name__ + '] non-vanguard forum users reset: {0}'.format(non_tri),_logger.LogLevel.INFO)
