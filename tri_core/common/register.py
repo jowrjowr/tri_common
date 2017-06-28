@@ -159,7 +159,7 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     user['password_hash'] = password_hash
 
     # alt storage
-    if isalt == True:
+    if isalt == True and not altof == None:
         user['altof'] = altof
 
     # sort out basic auth groups
@@ -175,7 +175,8 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     for item in user.keys():
         # everything but authgroup is a single valued entry that needs to be encoded
         if not item == 'authgroup':
-            user[item] = str(user[item]).encode('utf-8')
+            if not user[item] == None:
+                user[item] = str(user[item]).encode('utf-8')
         else:
             newgroups = []
             for group in authgroups:
