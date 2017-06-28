@@ -102,7 +102,8 @@ def auth_evesso_callback():
 
     altof = session.get('altof');
 
-    if altof == None:
+    if altof == None or altof == 'None':
+        isalt = False
         _logger.log('[' + __name__ + '] SSO callback received',_logger.LogLevel.INFO)
     else:
         _logger.log('[' + __name__ + '] SSO callback (previous core login under charid {0}) received'.format(altof),_logger.LogLevel.INFO)

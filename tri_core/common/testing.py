@@ -140,7 +140,7 @@ def usertest(charid):
     status = info['accountStatus']
     altof = info['altOf']
 
-    if altof == None:
+    if altof == None or altof == 'None':
         isalt = False
     else:
         isalt = True
