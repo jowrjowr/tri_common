@@ -184,8 +184,61 @@ def ts3_monitoring(ts3conn):
 
 def ts3_validate_users(ts3conn):
 
+    import ldap
+    import common.ldaphelpers as _ldaphelpers
+    import common.credentials.ldap as _ldap
+    import common.credentials.ts3 as _ts3
     import common.logger as _logger
+    import time
     import ts3
+
+    from tri_core.common.tsgroups import teamspeak_groups
+
+
+    try:
+        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'LDAP connection error: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+
+
+    # generic purge of TS from non-blue ldap users
+    # only matches people who should not have a TS identity
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = '(&(!(accountstatus=blue))(teamspeakuid=*))'
+    attributes = ['characterName', 'uid' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+    if code == False:
+        return
+
+    if result == None:
+        # nobody. no problem.
+        pass
+    else:
+        result_count = len(result)
+        # some ppl are banned/whatever and have a TS identity!
+        msg = '{0} unauthorized users with a TS identity'.format(result_count)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+
+        for user in result.keys():
+
+            charid = int( result[user]['uid'] )
+
+            # decouple their TS identities from their LDAP entry
+
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
+            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
+            try:
+                ldap_conn.modify_s(user, mod_attrs)
+                msg = 'purged TS identity from unauthorized user: {}'.format(user)
+                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
 
     # validate ts3 online users
 
@@ -199,8 +252,6 @@ def ts3_validate_users(ts3conn):
     except ts3.query.TS3QueryError as err:
         _logger.log('[' + __name__ + '] ts3 error: {0}'.format(err),_logger.LogLevel.ERROR)
         return
-
-    loop = asyncio.new_event_loop()
 
     clients = []
 
@@ -239,8 +290,8 @@ def ts3_validate_users(ts3conn):
             clients.append(int(client['cldbid']))
 
     # deduplicate using set and filter out dbids that have to be skipped
+    # server query only, basically
 
-    # server query, basically
     skip = [ 1 ]
 
     clients = set(clients) - set(skip)
@@ -249,236 +300,167 @@ def ts3_validate_users(ts3conn):
     clientcount = len(clients)
     _logger.log('[' + __name__ + '] distinct ts3 client identities: {0}'.format(clientcount),_logger.LogLevel.DEBUG)
 
-    for client in clients:
-
-        _logger.log('[' + __name__ + '] Validating ts3 user {0}'.format(client),_logger.LogLevel.DEBUG)
-        loop.run_until_complete(user_validate(client))
-
-    return loop.close()
-
-async def user_validate(ts_dbid):
-
-    # validate a given user against the core database
-
-    import ldap
-    import common.ldaphelpers as _ldaphelpers
-    import common.credentials.ldap as _ldap
-    import common.credentials.ts3 as _ts3
-    import common.logger as _logger
-    import time
-    import ts3
-
-    from tri_core.common.tsgroups import teamspeak_groups
-
-    try:
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        msg = 'LDAP connection error: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-
-    try:
-        # Note, that the client will wait for the response and raise a
-        # **TS3QueryError** if the error id of the response is not 0.
-        ts3conn = ts3.query.TS3Connection(_ts3.TS_HOST)
-        ts3conn.login(
-            client_login_name=_ts3.TS_USER,
-            client_login_password=_ts3.TS_PASSWORD
-        )
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] unable to connect to TS3: {0}'.format(err.resp.error["msg"]),_logger.LogLevel.ERROR)
-        return
-
-    ts3conn.use(sid=_ts3.TS_SERVER_ID)
-
-    # purge public/banned TS
-    # only matches people who should not have a TS identity
-
-    dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr = '(&(!(accountstatus=blue))(teamspeakuid=*))'
-    attributes = ['characterName', 'uid' ]
-    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
-
-    if code == False:
-        return
-
-    if result == None:
-        # nobody. no problem.
-        pass
-    else:
-        result_count = len(result)
-        # some ppl are banned/whatever and have a TS identity!
-        msg = '{0} unauthorized users with a TS identity'.format(result_count)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
-
-        for user in result.keys():
-
-            charid = int( result[user]['uid'] )
-
-            # decouple their TS identities from their LDAP entry
-
-            mod_attrs = []
-            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
-            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
-            try:
-                ldap_conn.modify_s(user, mod_attrs)
-                msg = 'purged TS identity from unauthorized user: {}'.format(user)
-                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
-            except ldap.LDAPError as error:
-                _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
-
-    # we explicitly check only for blue. this means people with non-blue status (public, banned)
-    # lose their TS
-
-    dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid)
-    attrlist=['characterName', 'uid' ]
-
-    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
-
-    if code == False:
-        return
-
-    if result == None:
-        # this can happen if the TS user has an entry in the TS db but nothing in ldap
-        _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
-        registered_username = None
-        orphan = True
-    elif len(result) == 1:
-        # the dbid is matched to an single ldap user
-        orphan = False
-        (dn, info), = result.items()
-        charname = info['characterName']
-        charid = int( info['uid'] )
-        registered_username = charname
-
-    elif len(result) > 1:
-        # multiple TS registrations. naughty.
-
-        orphan = True
-
-        for user in result.keys():
-
-            charid = int( result[user]['uid'] )
-
-            # decouple their TS identities from their LDAP entry
-
-            mod_attrs = []
-            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
-            mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
-            try:
-                ldap_conn.modify_s(user, mod_attrs)
-                msg = 'purged TS identity from duplicate user: {}'.format(user)
-                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
-            except ldap.LDAPError as error:
-                _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
-
-
+    # get the current TS3 client list
     try:
         resp = ts3conn.clientlist()
-        clients = resp.parsed
+        live_clients = resp.parsed
     except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts_dbid, err),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] unable to fetch TS client list: {0}'.format(err),_logger.LogLevel.WARNING)
 
 
-    # this should never fail since the dbid we have is fed from the ts3 client list upstream
-
-    try:
-        resp = ts3conn.clientdbinfo(cldbid=ts_dbid)
-        user = resp.parsed
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts_dbid, err),_logger.LogLevel.WARNING)
+    # start validating clients, online or otherwise
+    for ts_dbid in clients:
 
 
-    user_nick = user[0]['client_nickname']
-    user_lastip = user[0]['client_lastip']
-    user_lastconn = int(user[0]['client_lastconnected'])
-    user_conns = int(user[0]['client_totalconnections'])
-    user_created = int(user[0]['client_totalconnections'])
+        # this should never fail since the dbid we have is fed from the ts3 client list upstream
 
-    # if the user is online, we want to make sure that the username matches
-    # what is in the teamspeak table
+        try:
+            resp = ts3conn.clientdbinfo(cldbid=ts_dbid)
+            user = resp.parsed
+        except ts3.query.TS3QueryError as err:
+            _logger.log('[' + __name__ + '] ts3 (uid: {0}) error: "{1}"'.format(ts_dbid, err),_logger.LogLevel.WARNING)
+            return
 
-    for client in clients:
-        clid = client['clid']
-        cldbid = client['client_database_id']
-        client_username = client['client_nickname']
+        user_nick = user[0]['client_nickname']
 
-        if orphan == True:
-            reason = 'Please re-register your TS on CORE'
+        _logger.log('[' + __name__ + '] Validating ts3 user "{0}"'.format(user_nick),_logger.LogLevel.DEBUG)
+
+        user_lastip = user[0]['client_lastip']
+        user_lastconn = int(user[0]['client_lastconnected'])
+        user_conns = int(user[0]['client_totalconnections'])
+        user_created = int(user[0]['client_created'])
+        kicked = False # users can be kicked in a few spots prior to final purge spot
+
+        # we explicitly check only for blue users that have this dbid.
+        # this means people with non-blue status (public, banned) lose their TS
+
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid)
+        attrlist=['characterName', 'uid' ]
+
+        code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+        if code == False:
+            return
+
+        if result == None:
+            # this can happen if the TS user has an entry in the TS db but nothing in ldap
+            # this user will be dealt with downstream
+            _logger.log('[' + __name__ + '] ts3 orphan dbid: {0}'.format(ts_dbid),_logger.LogLevel.INFO)
+            registered_username = None
+            orphan = True
+        elif len(result) == 1:
+            # the dbid is matched to an single ldap user
+            orphan = False
+            (dn, info), = result.items()
+            charname = info['characterName']
+            charid = int( info['uid'] )
+            registered_username = charname
+
+            _logger.log('[' + __name__ + '] charid {0} validated non-orphan'.format(charid),_logger.LogLevel.DEBUG)
+
+            # do a TS group validate
+
+            code, result = teamspeak_groups(charid)
+
+            if code == False:
+                msg = 'unable to setup teamspeak groups for {0}: {1}'.format(charname, result)
+                _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+                return
+
+        elif len(result) > 1:
+            # multiple TS registrations. naughty.
+
+            _logger.log('[' + __name__ + '] multiple unique TS identities attached to accounts: {0}'.format(result),_logger.LogLevel.WARNING)
+
+            orphan = True
+            print('reeeeee: '.format(user))
+            # boot from TS...
+            reason = 'Please re-register your TS on CORE. On only one character.'
             try:
                 resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
                 _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: active orphan'.format(user_nick),_logger.LogLevel.WARNING)
                 _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
+                kicked = True
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
 
-        elif cldbid == ts_dbid and client_username != registered_username:
-            # online user has a username that does not match records.
-            # "encourage" fixing this.
-            reason = 'Please use your main character name as your teamspeak nickname, without any tags'
+            # ...break the ldap <--> TS link on each character
+            for user in result.keys():
+
+                charid = int( result[user]['uid'] )
+
+                mod_attrs = []
+                mod_attrs.append((ldap.MOD_DELETE, 'teamspeakdbid', None ))
+                mod_attrs.append((ldap.MOD_DELETE, 'teamspeakuid', None ))
+                try:
+                    ldap_conn.modify_s(user, mod_attrs)
+                    msg = 'purged TS identity from duplicate user: {}'.format(user)
+                    _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
+                except ldap.LDAPError as error:
+                    _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+        # if the user is online, we want to make sure that the username matches
+        # what is in the teamspeak table
+
+        for client in live_clients:
+            clid = client['clid']
+            cldbid = client['client_database_id']
+            client_username = client['client_nickname']
+
+            if cldbid == ts_dbid and client_username != registered_username and kicked == False:
+                # online user has a username that does not match records.
+                # "encourage" fixing this.
+                reason = 'Please use your main character name as your teamspeak nickname, without any tags'
+                try:
+                    resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                    _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: mismatch'.format(user_nick),_logger.LogLevel.WARNING)
+                    _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
+                    kicked = True
+                except ts3.query.TS3QueryError as err:
+                    _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
+
+        # handle orphan TS users
+
+        if orphan == True:
+            # log the shit out of the orphan user
+
+            lastconnected = time.gmtime(user_lastconn)
+            lastconnected_iso = time.strftime("%Y-%m-%dT%H:%M:%S", lastconnected)
+            created = time.gmtime(user_created)
+            created_iso = time.strftime("%Y-%m-%dT%H:%M:%S", created)
+            _logger.log('[' + __name__ + '] Orphan ts3 user: {0}'.format(user_nick), _logger.LogLevel.WARNING)
+            _logger.log('[' + __name__ + '] User {0} created: {1}, last login: {2}, last ip: {3}, total connections: {4}'.format(
+                user_nick,created_iso,lastconnected_iso,user_lastip,user_conns),
+                _logger.LogLevel.WARNING
+            )
+
+            _logger.securitylog(__name__, 'orphan ts3 user purge', charname=user_nick, date=user_lastconn, ipaddress=user_lastip)
+
+            # first kick from the server if they are on, asking them to re-register
+            # to do that i need the client id, which is not the client db id, because
+            # of fucking course it isn't
+
+            for client in live_clients:
+                clid = client['clid']
+                cldbid = client['client_database_id']
+                if cldbid == ts_dbid and kicked == False:
+                    try:
+                        reason = 'You are detached from CORE. Please configure services.'
+                        resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                        _logger.log('[' + __name__ + '] ts3 user {0} kicked from server (orphan user)'.format(user_nick),_logger.LogLevel.WARNING)
+                    except ts3.query.TS3QueryError as err:
+                        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
+
+            # now remove the client from the ts3 database
+
             try:
-                resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
-                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: mismatch'.format(user_nick),_logger.LogLevel.WARNING)
-                _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
-            except ts3.query.TS3QueryError as err:
-                _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
-
-    if orphan == False:
-
-        # the user has a core entry and the correct username they registered with.
-
-        _logger.log('[' + __name__ + '] charid {0} validated non-orphan'.format(charid),_logger.LogLevel.DEBUG)
-
-        # do a TS group validate
-
-        code, result = teamspeak_groups(charid)
-
-        if code == False:
-            msg = 'unable to setup teamspeak groups for {0}: {1}'.format(charname, result)
-            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-
-        return
-
-    # oops orphan. we hate orphans.
-    # log the shit out of the orphan user
-
-    lastconnected = time.gmtime(user_lastconn)
-    lastconnected_iso = time.strftime("%Y-%m-%dT%H:%M:%S", lastconnected)
-    created = time.gmtime(user_created)
-    created_iso = time.strftime("%Y-%m-%dT%H:%M:%S", created)
-    _logger.log('[' + __name__ + '] Orphan ts3 user: {0}'.format(user_nick), _logger.LogLevel.WARNING)
-    _logger.log('[' + __name__ + '] User {0} created: {1}, last login: {2}, last ip: {3}, total connections: {4}'.format(
-        user_nick,created_iso,lastconnected_iso,user_lastip,user_conns
-    ), _logger.LogLevel.WARNING)
-
-    _logger.securitylog(__name__, 'orphan ts3 user purge', charname=user_nick, date=user_lastconn, ipaddress=user_lastip)
-
-    # remove orphan ts3 users
-
-    # first kick from the server if they are on, asking them to re-register
-    # to do that i need the client id, which is not the client db id, because
-    # of fucking course it isn't
-
-    for client in clients:
-        clid = client['clid']
-        cldbid = client['client_database_id']
-        if cldbid == ts_dbid:
-            try:
-                reason = 'You are detached from CORE. Please configure services.'
-                resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
-                _logger.log('[' + __name__ + '] ts3 user {0} kicked from server (orphan user)'.format(user_nick),_logger.LogLevel.WARNING)
+                resp = ts3conn.clientdbdelete(cldbid=ts_dbid)
+                _logger.log('[' + __name__ + '] ts3 user {0} removed'.format(user_nick),_logger.LogLevel.WARNING)
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
 
-    # now remove the client from the ts3 database
-
-    try:
-        resp = ts3conn.clientdbdelete(cldbid=ts_dbid)
-        _logger.log('[' + __name__ + '] ts3 user {0} removed'.format(user_nick),_logger.LogLevel.WARNING)
-    except ts3.query.TS3QueryError as err:
-        _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
-
-    # client removed. gg.
-
-    return
+            # client removed. gg.
+        else:
+            # nothing to do. yer good.
+            pass
