@@ -200,8 +200,10 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     attrs.append(('userPassword', [user['password_hash']]))
 
     if isalt == True:
-        attrs.append(('altOf', [user['altof']]))
-
+        try:
+            attrs.append(('altOf', [user['altof']]))
+        except Exception as e:
+            pass
     # build out the modification in case
     mod_attrs = []
     for attr in attrs:

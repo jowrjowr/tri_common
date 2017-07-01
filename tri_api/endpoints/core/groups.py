@@ -8,14 +8,15 @@ def core_group_manage(group, charid):
     import common.logger as _logger
 
     ipaddress = request.headers['X-Real-Ip']
-    # remove the char from a group
+    log_charid = request.args.get('log_charid')    # logging purposes
+
     if request.method == 'DELETE':
-        _logger.securitylog(__name__, 'removed charid {0} from group {1}'.format(charid, group), ipaddress=ipaddress)
+        _logger.securitylog(__name__, 'removed charid {0} from group {1}'.format(charid, group), ipaddress=ipaddress, charid=log_charid)
         return group_DELETE(group, charid)
 
     # add the char to a group
     if request.method == 'POST':
-        _logger.securitylog(__name__, 'added charid {0} to group {1}'.format(charid, group), ipaddress=ipaddress)
+        _logger.securitylog(__name__, 'added charid {0} to group {1}'.format(charid, group), ipaddress=ipaddress, charid=log_charid)
         return group_ADD(group, charid)
 
 def group_DELETE(group, charid):

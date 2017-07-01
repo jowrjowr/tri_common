@@ -15,7 +15,7 @@ def sashslack(message, group):
         'triumvirate':  '#_ops',
         'trisupers':    '#hot_soup',
         'vgsupers':     '#hot_soup',
-        'leadership':   '#corporate_management',
+        'leadership':   '#_directorate',
         '500percent':   '#jf_pilots',
         'triprobers':   '#hole_probers',
         'blackops':     '#black_ops',
