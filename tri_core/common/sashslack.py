@@ -10,15 +10,15 @@ def sashslack(message, group):
     # map the sash slack channels to appropriate groups
 
     slack_mapping = {
-        'public':       '#_ops',
-        'vanguard':     '#_ops',
-        'triumvirate':  '#_ops',
-        'trisupers':    '#hot_soup',
-        'vgsupers':     '#hot_soup',
-        'leadership':   '#_directorate',
-        '500percent':   '#jf_pilots',
-        'triprobers':   '#hole_probers',
-        'blackops':     '#black_ops',
+        'public':           '#_ops',
+        'vanguard':         '#_ops',
+        'triumvirate':      '#_ops',
+        'trisupers':        '#hot_soup',
+        'vgsupers':         '#hot_soup',
+        'administration':   '#_directorate',
+        '500percent':       '#jf_pilots',
+        'triprobers':       '#hole_probers',
+        'blackops':         '#black_ops',
     }
 
     # not every group has a slask channel
