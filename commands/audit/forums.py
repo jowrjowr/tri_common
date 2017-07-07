@@ -456,6 +456,7 @@ def authgroup_map(authgroup):
     if authgroup == 'administration':   return 9
     if authgroup == 'skyteam':          return 12
     if authgroup == 'forumadmin':       return 4
+    if authgroup == 'board':            return 66
 
     # public is group 2, but that's a primary group
 
