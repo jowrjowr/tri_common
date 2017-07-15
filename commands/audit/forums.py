@@ -309,10 +309,7 @@ def audit_forums():
             msg = 'char {0} current secondaries: {1} correct secondaries: {2}'.format(charname, secondary_groups, correct_secondaries)
             _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.DEBUG)
 
-            #print(secondary_groups)
-            #print(correct_secondaries)
             secondaries_to_remove = list( set(secondary_groups) - set(correct_secondaries) )
-            #print(secondaries_to_remove)
 
             # ips forum likes a comma separated list of secondaries
             if len(secondaries_to_remove) > 0:
