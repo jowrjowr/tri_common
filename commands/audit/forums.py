@@ -1,6 +1,5 @@
 def audit_forums():
 
-    import common.request_forums as _forums
     import common.logger as _logger
     import common.credentials.ldap as _ldap
     import common.credentials.database as _database
@@ -43,7 +42,7 @@ def audit_forums():
         return False
 
     try:
-        sql_conn = mysql.connect(
+        sql_conn_forum = mysql.connect(
             database=_forumcreds.mysql_db,
             user=_forumcreds.mysql_user,
             password=_forumcreds.mysql_pass,
@@ -75,97 +74,82 @@ def audit_forums():
 
     # get all the forum users and stuff them into a dict for later processing
 
-    page = 1
-    total_pages = 2
-    orphan = 0
+    cursor = sql_conn_forum.cursor()
+    query = 'SELECT name, member_group_id, mgroup_others, ip_address FROM core_members'
+
+    try:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql forum error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    total_users = len(rows)
+    _logger.log('[' + __name__ + '] forum users: {0}'.format(total_users), _logger.LogLevel.INFO)
+    sendmetric(__name__, 'forums', 'statistics', 'total_users', total_users)
 
     users = dict()
+    orphan = 0
 
-    while (page < total_pages):
-
-        code, response = _forums.forums(__name__, '/core/members&page={0}'.format(page), 'get')
-        _logger.log('[' + __name__ + '] /core/members output (page {0}): {1}'.format(page, response),_logger.LogLevel.DEBUG)
-
-        if not code == 200:
-            _logger.log('[' + __name__ + '] /core/members API error {0} (page {1}): {2}'.format(code, page, response), _logger.LogLevel.ERROR)
-            return False
-        response = json.loads(response)
-
-        if page == 1:
-
-            # establish page count ONCE
-            total_pages = response['totalPages']
-
-            # some metric logging
-            total_users = response['totalResults']
-            _logger.log('[' + __name__ + '] forum users: {0}'.format(total_users), _logger.LogLevel.INFO)
-            sendmetric(__name__, 'forums', 'statistics', 'total_users', total_users)
-
-        for item in response['results']:
-
-            charname = html.unescape(item['formattedName'])
-            users[charname] = dict()
-            users[charname]['charname'] = charname
-            users[charname]['doomheim'] = False
-            # the ids are internal forum group ids
-            users[charname]['id'] = item['id']
-            users[charname]['primary'] = dict()
-            users[charname]['primary'][item['primaryGroup']['id']] = item['primaryGroup']['formattedName']
-            users[charname]['secondary'] = dict()
-
-            cn = charname.replace(" ", '')
-            cn = cn.replace("'", '')
-            cn = cn.lower()
-
-            secondarygroups = dict()
-
-            for group in item['secondaryGroups']:
-                secondarygroups[group['id']] = group['formattedName']
-
-            users[charname]['secondary'] = secondarygroups
-
-            # match up against ldap data
-            dn = 'ou=People,dc=triumvirate,dc=rocks'
-            filterstr='(&(objectclass=pilot)(cn={0}))'.format(cn)
-            attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
-            code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
-
-            if code == False:
-                return
-
-            if result == None:
-                # you WILL be dealt with later!
-                orphan += 1
-                users[charname]['charid'] = None
-                users[charname]['alliance'] = None
-                users[charname]['authgroups'] = []
-                users[charname]['accountstatus'] = None
-            else:
-
-                (dn, info), = result.items()
-
-                try:
-                    users[charname]['alliance'] = int( info['alliance'] )
-
-                except Exception as e:
-                    users[charname]['alliance'] = None
-
-                users[charname]['charid'] = int( info['uid'] )
-                users[charname]['accountstatus'] = info['accountStatus']
-                users[charname]['authgroups'] = info['authGroup']
-
-        # last but not least
-        page += 1
-
-    # postprocessing
-
-    # remove special users from consideration.
-    # may be worth tagging directly in ldap some day?
-
+    # special forum users that are not to be audited
     special = [ 'Admin', 'Sovereign' ]
 
-    for user in special:
-        users.pop(user, None)
+    for charname, primary_group, secondary_string, last_ip in rows:
+
+        # dont work on these
+        if charname in special:
+            continue
+
+        # recover user information
+        users[charname] = dict()
+        users[charname]['charname'] = charname
+        users[charname]['doomheim'] = False
+        users[charname]['primary'] = primary_group
+        users[charname]['last_ip'] = last_ip
+
+        # convert the comma separated list of groups to an array of integers
+
+        secondaries = []
+        for item in secondary_string.split(','):
+            if not item == '' and not item == ' ':
+                secondaries.append(int(item))
+        users[charname]['secondary'] = secondaries
+
+        cn = charname.replace(" ", '')
+        cn = cn.replace("'", '')
+        cn = cn.lower()
+
+        # match up against ldap data
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        filterstr='(&(objectclass=pilot)(cn={0}))'.format(cn)
+        attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
+        code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+        if code == False:
+            _logger.log('[' + __name__ + '] ldap error: {0}'.format(result), _logger.LogLevel.ERROR)
+            return
+
+        if result == None:
+            # nothing in ldap.
+            # you WILL be dealt with later!
+            orphan += 1
+            users[charname]['charid'] = None
+            users[charname]['alliance'] = None
+            users[charname]['authgroups'] = []
+            users[charname]['accountstatus'] = None
+        else:
+            (dn, info), = result.items()
+            try:
+                users[charname]['alliance'] = int( info['alliance'] )
+
+            except Exception as e:
+                users[charname]['alliance'] = None
+
+            users[charname]['charid'] = int( info['uid'] )
+            users[charname]['accountstatus'] = info['accountStatus']
+            users[charname]['authgroups'] = info['authGroup']
+
+    # postprocessing
 
     _logger.log('[' + __name__ + '] forum users with no LDAP entry: {0}'.format(orphan),_logger.LogLevel.INFO)
 
@@ -246,7 +230,6 @@ def audit_forums():
     _logger.log('[' + __name__ + '] forum users who have biomassed: {0}'.format(really_orphan),_logger.LogLevel.INFO)
 
     # at this point every forum user has been mapped to their character id either via ldap or esi /search
-
     # work through each user and determine if they are correctly setup on the forums
 
     non_tri = 0
@@ -260,35 +243,9 @@ def audit_forums():
 
         authgroups = users[charname]['authgroups']
         alliance = users[charname]['alliance']
-
-        # get user forum groups
-
-        cursor = sql_conn.cursor()
-        query = 'SELECT member_group_id, mgroup_others, ip_address FROM core_members WHERE name=%s'
-
-        try:
-            rowcount = cursor.execute(query, (charname,))
-            row = cursor.fetchone()
-        except Exception as err:
-            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-            return
-
-        if rowcount == 0:
-            # this SHOULDN'T happen
-            _logger.log('[' + __name__ + '] unable to find forum user: {0}'.format(user), _logger.LogLevel.WARNING)
-
-        primary_group = row[0]
-        secondary_groups = []
-
-        # some seriously fucked up db data with random quotes
-        somecrap = re.sub("'", '', row[1])
-        for item in somecrap.split(','):
-            try:
-                secondary_groups.append(int(item))
-            except ValueError as e:
-                # thanks garbage data
-                _logger.log('[' + __name__ + '] invalid secondary group on {0}: {1}'.format(charname, item), _logger.LogLevel.DEBUG)
-        forum_lastip = row[2]
+        primary_group = users[charname]['primary']
+        secondary_groups = users[charname]['secondary']
+        forum_lastip = users[charname]['last_ip']
 
         # anchor forum portrait
 
@@ -303,10 +260,12 @@ def audit_forums():
             portrait = None
 
         portrait = result['px128x128']
+        cursor = sql_conn_forum.cursor()
+
         query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
         try:
             cursor.execute(query, (portrait, portrait, charname,))
-            sql_conn.commit()
+            sql_conn_forum.commit()
         except Exception as err:
             _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
             return False
@@ -350,7 +309,10 @@ def audit_forums():
             msg = 'char {0} current secondaries: {1} correct secondaries: {2}'.format(charname, secondary_groups, correct_secondaries)
             _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.DEBUG)
 
+            #print(secondary_groups)
+            #print(correct_secondaries)
             secondaries_to_remove = list( set(secondary_groups) - set(correct_secondaries) )
+            #print(secondaries_to_remove)
 
             # ips forum likes a comma separated list of secondaries
             if len(secondaries_to_remove) > 0:
@@ -362,7 +324,7 @@ def audit_forums():
                 query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
-                    sql_conn.commit()
+                    sql_conn_forum.commit()
                     msg = 'removed secondary group(s) {0} from {1}'.format(secondaries_to_remove, charname)
                     _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
                 except Exception as err:
@@ -381,7 +343,7 @@ def audit_forums():
                 query = 'UPDATE core_members SET mgroup_others=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (change, charname,))
-                    sql_conn.commit()
+                    sql_conn_forum.commit()
                     msg = 'added secondary group(s) {0} to {1}'.format(secondaries_to_add, charname)
                     _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
                 except Exception as err:
@@ -392,13 +354,13 @@ def audit_forums():
                 query = 'UPDATE core_members SET member_group_id=%s WHERE name=%s'
                 try:
                     cursor.execute(query, (correct_primary, charname,))
-                    sql_conn.commit()
+                    sql_conn_forum.commit()
                     _logger.log('[' + __name__ + '] adjusted primary forum group of {0} to {1}'.format(charname, correct_primary),_logger.LogLevel.INFO)
                 except Exception as err:
                     _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                     return False
         cursor.close()
-    sql_conn.close()
+    sql_conn_forum.close()
     _logger.log('[' + __name__ + '] non-vanguard forum users reset: {0}'.format(non_tri),_logger.LogLevel.INFO)
 
 def forumpurge (charname):
