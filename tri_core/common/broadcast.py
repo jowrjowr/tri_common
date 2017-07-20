@@ -89,10 +89,9 @@ def broadcast(message, group):
 
     # broadcast a message to all the members of a given ldap group
 
-    import ldap
     import math
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     from tri_core.common.sashslack import sashslack
     from concurrent.futures import ThreadPoolExecutor
     from collections import defaultdict
@@ -108,32 +107,27 @@ def broadcast(message, group):
 
     skip = [ 'sovereign' ]
 
-    # ldap bind
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(&(objectclass=pilot)(authGroup={0}))'.format(group)
+    attrlist=['cn']
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
-    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-    try:
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
-        return False
+    if code == False:
+        msg = 'unable to fetch ldap information: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return None
 
-    # fetch all the users that are in a given jabber group. not using ldap groups, ironically.
+    if result == None:
+        msg = 'no users in group {0}'.format(charid)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        return None
 
-    try:
-        result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(authGroup={0}))'.format(group), attrlist=['cn'])
-        user_count = result.__len__()
-    except ldap.LDAPError as error:
-        _logger.log('[' + __name__ + '] unable to fetch ldap users: {}'.format(error),_logger.LogLevel.ERROR)
-        return False
-
-    _logger.log('[' + __name__ + '] total users in authgroup {0}: {1}'.format(group, user_count),_logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] total users in authgroup {0}: {1}'.format(group, len(result)),_logger.LogLevel.INFO)
 
     users = list()
 
-    for object in result:
-        dn, cn = object
-        cn = cn['cn'][0]
-        cn = cn.decode('utf-8')
+    for dn in result:
+        cn = result[dn]['cn']
         jid = cn + '@triumvirate.rocks'
 
         if cn not in skip:
