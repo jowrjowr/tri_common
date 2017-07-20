@@ -1,4 +1,3 @@
-import tri_core.services.jabber as _jabber
 import copy
 import json
 import ldap

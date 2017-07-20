@@ -1,3 +1,22 @@
+def ldap_name2id(function, charname):
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(characterName={})'.format(charname)
+    attrlist=['uid']
+    code, result = ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
+        msg = 'unable to fetch ldap information: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return None
+
+    if result == None:
+        msg = 'charname {0} not in ldap'.format(charid)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        return None
+    (dn, info), = result.items()
+
+    return info
+
 def ldap_search(function, dn, filter, attributes):
 
     import ldap

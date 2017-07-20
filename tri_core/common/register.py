@@ -9,8 +9,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     from common.graphite import sendmetric
     from common.api import base_url
     import ldap
-    import MySQLdb as mysql
-
     import json
     import datetime
     import uuid
@@ -28,16 +26,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     else:
         _logger.log('[' + __name__ + '] registering user {0} (alt of {1})'.format(charid, altof),_logger.LogLevel.INFO)
 
-    try:
-        sql_conn = mysql.connect(
-            database=_database.DB_DATABASE,
-            user=_database.DB_USERNAME,
-            password=_database.DB_PASSWORD,
-            host=_database.DB_HOST)
-        cursor = sql_conn.cursor()
-    except mysql.Error as err:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return(False, 'error')
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
@@ -107,35 +95,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     serviceuser = serviceuser.replace(" ", '')
     serviceuser = serviceuser.replace("'", '')
     servicepass = uuid.uuid4().hex[:8]
-
-    # store user data in users table
-    query =  'REPLACE INTO Users (charID, charName, corpID, corpName, allianceID, allianceName, ServiceUsername, ServicePassword, isMain, isAlt)'
-    query += 'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
-
-    try:
-        row = cursor.execute(
-            query, (
-                charid,
-                charname,
-                corpid,
-                corpname,
-                allianceid,
-                alliancename,
-                serviceuser,
-                servicepass,
-                1,
-                0,
-            ),
-        )
-        _logger.log('[' + __name__ + '] user {0} user data registered (mysql)'.format(charid), _logger.LogLevel.INFO)
-    except Exception as errmsg:
-        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        return(False, 'error')
-    finally:
-        # done with mysql
-        cursor.close()
-        sql_conn.commit()
-        sql_conn.close()
 
     # store in LDAP
 

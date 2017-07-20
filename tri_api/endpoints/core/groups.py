@@ -1,14 +1,30 @@
 from flask import request
 from tri_api import app
 
-@app.route('/core/group/<group>/<charid>', methods=[ 'DELETE', 'POST' ])
-def core_group_manage(group, charid):
+@app.route('/core/group/<group>/<target>', methods=[ 'DELETE', 'POST' ])
+def core_group_manage(group, target):
 
-    from flask import request
+    from flask import request, Response
+    import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
 
     ipaddress = request.headers['X-Real-Ip']
     log_charid = request.args.get('log_charid')    # logging purposes
+
+    # translate target to a charid
+
+    if target.isdigit():
+        # should be close enough
+        charid = target
+    else:
+        # not a digit so assume name. find it.
+        result = _ldaphelpers.ldap_name2id(__name__, target)
+        if result == None:
+            msg = 'unable to locate charname {}'.format(target)
+            js = json.dumps({ 'error': msg })
+            return Response(js, status=404, mimetype='application/json')
+        else:
+            charid = result['uid']
 
     if request.method == 'DELETE':
         _logger.securitylog(__name__, 'removed charid {0} from group {1}'.format(charid, group), ipaddress=ipaddress, charid=log_charid)
@@ -232,8 +248,8 @@ def core_group_members(group):
     js = json.dumps(response)
     return Response(js, status=200, mimetype='application/json')
 
-@app.route('/core/chargroups/<charid>', methods=[ 'GET' ])
-def core_chargroups(charid):
+@app.route('/core/chargroups/<target>', methods=[ 'GET' ])
+def core_chargroups(target):
 
     import json
     import common.logger as _logger
@@ -242,13 +258,20 @@ def core_chargroups(charid):
 
     # get the list of groups for this charid
     ipaddress = request.headers['X-Real-Ip']
+    # translate target to a charid
 
-    try:
-        charid = int(charid)
-    except ValueError:
-        _logger.log('[' + __name__ + '] invalid charid: "{0}"'.format(charid), _logger.LogLevel.WARNING)
-        js = json.dumps({ 'error': 'charid parameter must be integer'})
-        return Response(js, status=401, mimetype='application/json')
+    if target.isdigit():
+        # should be close enough
+        charid = target
+    else:
+        # not a digit so assume name. find it.
+        result = _ldaphelpers.ldap_name2id(__name__, target)
+        if result == None:
+            msg = 'unable to locate charname {}'.format(target)
+            js = json.dumps({ 'error': msg })
+            return Response(js, status=404, mimetype='application/json')
+        else:
+            charid = int(result['uid'])
 
     # snag groups
 
