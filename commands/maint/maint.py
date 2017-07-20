@@ -1,6 +1,5 @@
 from commands.maint.tokens import maint_tokens
 from commands.maint.ldapgroups import maint_ldapgroups
-from commands.maint.strikes import reset_strikes
 
 import common.logger as _logger
 import argparse
@@ -37,15 +36,11 @@ class parseaction(argparse.Action):
         elif values == 'ldapgroups':
             _logger.log('[' + __name__ + '] ldap group maintenance', _logger.LogLevel.INFO)
             maint_ldapgroups()
-        elif values == 'strikes':
-            _logger.log('[' + __name__ + '] resetting user strikes', _logger.LogLevel.INFO)
-            reset_strikes()
-
 
 def add_arguments(parser):
     parser.add_argument("--maint",
         dest='maint_target',
-        choices=['tokens', 'ldapgroups', 'all', 'strikes'],
+        choices=['tokens', 'ldapgroups', 'all'],
         default='all',
         action=parseaction,
         help='core maintenance commands',
