@@ -1,6 +1,6 @@
 def ldap_name2id(function, charname):
     dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr='(characterName={})'.format(charname)
+    filterstr='(characterName:caseIgnoreMatch:={})'.format(charname)
     attrlist=['uid']
     code, result = ldap_search(__name__, dn, filterstr, attrlist)
 
