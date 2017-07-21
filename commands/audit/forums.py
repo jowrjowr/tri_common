@@ -100,6 +100,9 @@ def audit_forums():
         if charname in special:
             continue
 
+        if charname == '' or charname == None:
+            continue
+
         # recover user information
         users[charname] = dict()
         users[charname]['charname'] = charname
@@ -121,10 +124,9 @@ def audit_forums():
 
         # match up against ldap data
         dn = 'ou=People,dc=triumvirate,dc=rocks'
-        filterstr='(&(objectclass=pilot)(cn={0}))'.format(cn)
+        filterstr='cn={0}'.format(cn)
         attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
         code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
-
         if code == False:
             _logger.log('[' + __name__ + '] ldap error: {0}'.format(result), _logger.LogLevel.ERROR)
             return
@@ -264,8 +266,9 @@ def audit_forums():
 
         query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
         try:
-            cursor.execute(query, (portrait, portrait, charname,))
-            sql_conn_forum.commit()
+            pass
+            #cursor.execute(query, (portrait, portrait, charname,))
+            #sql_conn_forum.commit()
         except Exception as err:
             _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
             return False
