@@ -155,7 +155,6 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
     import MySQLdb as mysql
     import common.credentials.database as _database
     import common.logger as _logger
-    from common.api import base_url
     import common.request_esi
     import time
     import urllib
@@ -182,7 +181,7 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
     if not charname == None and charid == None:
         query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
         query = urllib.parse.urlencode(query)
-        esi_url = base_url + 'search/?' + query
+        esi_url = 'search/?' + query
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
         # not going to hardfail here, search is fuzzier than other endpoints
@@ -196,7 +195,7 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
 
     # try to get character name if a charid (but no charname) is supplied
     if charname == None and not charid == None:
-        esi_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
+        esi_url = 'characters/{0}/?datasource=tranquility'.format(charid)
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
         if not code == 200:

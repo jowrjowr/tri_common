@@ -9,8 +9,8 @@ def refresh_token(old_rtoken):
     import flask
 
     base_url = 'https://discordapp.com/api'
-    token_url = base_url + '/oauth2/token'
-    base_auth_url = base_url + '/oauth2/authorize'
+    token_url = '/oauth2/token'
+    base_auth_url = '/oauth2/authorize'
     redirect = 'https://auth.triumvirate.rocks/5eyes/callback?server_type=discord'
 
     extra = {

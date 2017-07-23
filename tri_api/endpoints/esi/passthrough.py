@@ -5,7 +5,6 @@ from tri_api import app
 def core_esi_passthrough(url):
 
     from flask import Flask, request, url_for, json, Response
-    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
     import json
@@ -42,7 +41,7 @@ def core_esi_passthrough(url):
 
     # we're going to just pass the request through with the access token attached
 
-    esi_url = base_url + url + '?' + parameterstring
+    esi_url = url + '?' + parameterstring
 
     if request.method == 'GET':
         code, result = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)

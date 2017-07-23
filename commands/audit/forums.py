@@ -6,7 +6,6 @@ def audit_forums():
     import common.credentials.forums as _forumcreds
     import common.ldaphelpers as _ldaphelpers
     import common.request_esi
-    from common.api import base_url
     from common.graphite import sendmetric
     from collections import defaultdict
     import ldap
@@ -176,7 +175,7 @@ def audit_forums():
             # need to map the forum username to a character id
             query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
             query = urllib.parse.urlencode(query)
-            esi_url = base_url + 'search/?' + query
+            esi_url = 'search/?' + query
             code, result = common.request_esi.esi(__name__, esi_url, 'get')
             _logger.log('[' + __name__ + '] /search output: {}'.format(result), _logger.LogLevel.DEBUG)
 
@@ -209,7 +208,7 @@ def audit_forums():
                 users[charname]['charid'] = charid
                 attributes.append(('uid', [str(charid).encode('utf-8')]))
 
-                request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+                request_url = 'characters/affiliation/?datasource=tranquility'
                 data = '[{}]'.format(charid)
                 code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
 
@@ -260,7 +259,7 @@ def audit_forums():
 
         # anchor forum portrait
 
-        esi_url = base_url + 'characters/' + str(charid) + '/portrait/?datasource=tranquility'
+        esi_url = 'characters/' + str(charid) + '/portrait/?datasource=tranquility'
 
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
         _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)

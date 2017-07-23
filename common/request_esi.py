@@ -1,4 +1,4 @@
-def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
+def do_esi(function, url, method, charid=None, data=None, version='latest', base='esi', extraheaders=dict()):
 
     import requests
     import common.logger as _logger
@@ -9,12 +9,25 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
     import ldap
     from cachecontrol import CacheControl
     from cachecontrol.caches.redis_cache import RedisCache
-    from common.api import base_url
     from common.graphite import sendmetric
 
     useragent = 'triumvirate services - yell at saeka'
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
+
+    # construct the full request url including api version
+
+    # request_esi hits more than just ESI-specific stuff, so some scoping of the base is necessary
+
+    if base == 'esi':
+        base_url = 'https://esi.tech.ccp.is'
+        url = base_url + '/' + version + '/' + url
+    elif base == 'triapi':
+        base_url = 'https://api.triumvirate.rocks'
+        url = base_url + '/' + url
+    elif base == 'oauth':
+        base_url = 'https://login.eveonline.com/oauth'
+        url = base_url + '/' + url
 
     # if a charid is specified, this is going to be treated as an authenticated request
     # where an access token is added to the esi request url automatically
@@ -129,7 +142,7 @@ def do_esi(function, url, method, charid=None, data=None, extraheaders=dict()):
     return(request.status_code, result)
 
 
-def esi(function, url, method='get', charid=None, data=None, extraheaders=dict()):
+def esi(function, url, method='get', charid=None, data=None, version='latest', base='esi', extraheaders=dict()):
     from common.graphite import sendmetric
     import common.logger as _logger
     import time
@@ -143,7 +156,7 @@ def esi(function, url, method='get', charid=None, data=None, extraheaders=dict()
     while (retry_count < retry_max):
         if retry_count > 0:
             _logger.log('[' + function + '] ESI retry {0} of {1}'.format(retry_count, retry_max), _logger.LogLevel.WARNING)
-        code, result = do_esi(function, url, method, charid, data, extraheaders)
+        code, result = do_esi(function, url, method, charid, data, version, base, extraheaders)
         # the only thing that's worth retrying are on 5xx errors, everything else is game
 
         if code >= 500:

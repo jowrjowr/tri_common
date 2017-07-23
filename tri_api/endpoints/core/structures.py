@@ -7,7 +7,6 @@ def core_structures():
     from flask import Flask, request, Response
     from joblib import Parallel, delayed
     from common.check_role import check_role
-    from common.api import base_url
     import common.logger as _logger
     import common.request_esi
     import json
@@ -53,7 +52,7 @@ def core_structures():
         _logger.log('[' + __name__ + '] sufficient roles to view corp structure information',_logger.LogLevel.DEBUG)
 
     # get corpid
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(id)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     if not code == 200:
@@ -62,7 +61,7 @@ def core_structures():
 
     corpid = result[0]['corporation_id']
 
-    esi_url = base_url + 'corporations/' + str(corpid)
+    esi_url = 'corporations/' + str(corpid)
     esi_url = esi_url + '/structures?datasource=tranquility'
 
     # get all structures that this user has access to
@@ -95,7 +94,6 @@ def core_structures():
 def structure_parse(charid, object, structure_id):
 
     import common.logger as _logger
-    from common.api import base_url
     import common.database as DATABASE
     import common.request_esi
     import json
@@ -110,7 +108,7 @@ def structure_parse(charid, object, structure_id):
 
     structure['structure_id'] = structure_id
 
-    esi_url = base_url + 'universe/structures/' + str(structure_id)
+    esi_url = 'universe/structures/' + str(structure_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)
@@ -137,7 +135,7 @@ def structure_parse(charid, object, structure_id):
     # get structure type name
 
     typeid = data['type_id']
-    esi_url = base_url + 'universe/types/{0}'.format(typeid)
+    esi_url = 'universe/types/{0}'.format(typeid)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, typedata = common.request_esi.esi(__name__, esi_url, 'get')
@@ -158,7 +156,7 @@ def structure_parse(charid, object, structure_id):
     # step 1: get name and constellation
 
     system_id = data['solar_system_id']
-    esi_url = base_url + 'universe/systems/{0}/'.format(system_id)
+    esi_url = 'universe/systems/{0}/'.format(system_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
@@ -179,7 +177,7 @@ def structure_parse(charid, object, structure_id):
 
     # step 2: get the constellation info
 
-    esi_url = base_url + 'universe/constellations/{0}'.format(constellation_id)
+    esi_url = 'universe/constellations/{0}'.format(constellation_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')
@@ -198,7 +196,7 @@ def structure_parse(charid, object, structure_id):
         return structure
 
     # step 3: get region name
-    esi_url = base_url + 'universe/regions/{0}/'.format(region_id)
+    esi_url = 'universe/regions/{0}/'.format(region_id)
     esi_url = esi_url + '?datasource=tranquility'
 
     code, data = common.request_esi.esi(__name__, esi_url, 'get')

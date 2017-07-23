@@ -1,6 +1,5 @@
 def check_role(function, charid, roles):
 
-    from common.api import base_url
     import common.logger as _logger
     import common.request_esi
     import common.credentials.ldap as _ldap
@@ -8,7 +7,7 @@ def check_role(function, charid, roles):
 
     # check to make sure that the user has the expected corp roles
 
-    request_url = base_url + 'characters/{0}/roles/?datasource=tranquility'.format(charid)
+    request_url = 'characters/{0}/roles/?datasource=tranquility'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid)
     if not code == 200:
         error = 'unable to get character roles for {0}: ({1}) {2}'.format(id, code, result['error'])

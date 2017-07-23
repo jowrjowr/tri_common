@@ -5,7 +5,6 @@ from tri_api import app
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
-    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
     import requests
@@ -32,7 +31,7 @@ def core_isblue():
 
     # query esi to determine id type and proceed accordingly
 
-    request_url = base_url + 'universe/names/?datasource=tranquility'
+    request_url = 'universe/names/?datasource=tranquility'
     data = '[{}]'.format(id)
     _logger.log('[' + __name__ + '] determining type of id {0}'.format(id),_logger.LogLevel.DEBUG)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
@@ -69,12 +68,11 @@ def core_isblue():
 
 def test_char(charid):
 
-    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
 
     # get character affiliations
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     _logger.log('[' + __name__ + '] affiliations output: {}'.format(result), _logger.LogLevel.DEBUG)
@@ -128,13 +126,12 @@ def test_corp(corpid):
     # everything for testing if this is a corp and if the corp / parent
     # alliance are blue to us
 
-    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
 
     # if it is a corp it is not directly in our blue table. check its alliance.
 
-    esi_url = base_url + 'corporations/' + str(corpid) + '/?datasource=tranquility'
+    esi_url = 'corporations/' + str(corpid) + '/?datasource=tranquility'
 
     # do the request, but catch exceptions for connection issues
 

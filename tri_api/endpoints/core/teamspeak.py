@@ -32,7 +32,6 @@ def teamspeak_POST(charid):
     import common.credentials.ldap as _ldap
     import common.credentials.ts3 as _ts3
     from flask import Response, request
-    from common.api import base_url
     from tri_core.common.tsgroups import teamspeak_groups
 
     # make a new ts3 identity
@@ -99,7 +98,7 @@ def teamspeak_POST(charid):
 
     # get character affiliations
 
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
 

@@ -7,7 +7,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     import common.credentials.ldap as _ldap
     import common.request_esi
     from common.graphite import sendmetric
-    from common.api import base_url
     import ldap
     import json
     import datetime
@@ -35,7 +34,7 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
         return(False, 'error')
 
     # character affiliations
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
     if not code == 200:
@@ -47,7 +46,7 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     allianceid = result[0]['alliance_id']
 
     # username
-    request_url = base_url + 'characters/{0}/?datasource=tranquility'.format(charid)
+    request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
 
     code, result = common.request_esi.esi(__name__, request_url, 'get')
     _logger.log('[' + __name__ + '] character output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
@@ -63,7 +62,7 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
         return(False, 'error')
 
     # get corp name
-    request_url = base_url + "corporations/" + str(corpid) + '/?datasource=tranquility'
+    request_url = "corporations/" + str(corpid) + '/?datasource=tranquility'
 
     code, result = common.request_esi.esi(__name__, request_url, 'get')
     _logger.log('[' + __name__ + '] corporations output for {0}: {1}'.format(corpid, json.dumps(result)),_logger.LogLevel.DEBUG)
@@ -79,7 +78,7 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
         return('SORRY, ESI API ERROR')
 
     # get alliance name
-    request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
+    request_url = "alliances/" + str(allianceid) + '/?datasource=tranquility'
 
     code, result = common.request_esi.esi(__name__, request_url, 'get')
 

@@ -86,13 +86,10 @@ def auth_evesso_callback():
     import uuid
     import time
 
-    import common.request_esi
-
     client_id = _eve.client_id
     client_secret = _eve.client_secret
     redirect_url = _eve.redirect_url
 
-    esi_url = 'https://esi.tech.ccp.is/latest'
     base_url = 'https://login.eveonline.com'
     token_url = base_url + '/oauth/token'
     verify_url = base_url + '/oauth/verify'

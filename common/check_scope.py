@@ -1,6 +1,5 @@
 def check_scope(function, charid, scopes, atoken=None):
 
-    from common.api import base_url
     import common.request_esi
     import common.logger as _logger
     import common.credentials.ldap as _ldap
@@ -36,9 +35,9 @@ def check_scope(function, charid, scopes, atoken=None):
 
     # determine the scopes the token has access to
 
-    verify_url = 'https://login.eveonline.com/oauth/verify'
+    verify_url = 'verify'
     extraheaders = {'Authorization': 'Bearer ' + atoken }
-    code, result = common.request_esi.esi(__name__, verify_url, method='get', extraheaders=extraheaders)
+    code, result = common.request_esi.esi(__name__, verify_url, method='get', base='oauth', extraheaders=extraheaders)
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
         return 'error', 'broken verify request'

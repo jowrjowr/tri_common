@@ -54,14 +54,13 @@ def usertest(charid):
     import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
     import common.request_esi
-    from common.api import base_url
 
     # determine the status of the user and how to proceed
     _logger.log('[' + __name__ + '] determining status of {0}'.format(charid),_logger.LogLevel.INFO)
 
     # username
 
-    esi_url = base_url + 'characters/{}/?datasource=tranquility'.format(charid)
+    esi_url = 'characters/{}/?datasource=tranquility'.format(charid)
 
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
@@ -76,7 +75,7 @@ def usertest(charid):
     # character affiliations
     # doing via requests directly so no caching the request
 
-    request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+    request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
 
@@ -95,8 +94,8 @@ def usertest(charid):
 
 
     # validate that the person who wants services is, in fact, blue to us
-    request_url = 'https://api.triumvirate.rocks/core/isblue?id={0}'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, 'get')
+    request_url = 'core/isblue?id={0}'.format(charid)
+    code, result = common.request_esi.esi(__name__, request_url, 'get', base='triapi')
 
     if not code == 200:
         # something broke severely

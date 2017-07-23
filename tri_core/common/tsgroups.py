@@ -12,7 +12,6 @@ def teamspeak_groups(charid):
     import common.credentials.ldap as _ldap
     import common.credentials.ts3 as _ts3
     import common.database as _database
-    from common.api import base_url
 
     # initialize connections
 
@@ -160,7 +159,7 @@ def teamspeak_groups(charid):
 
         # get the corp info
 
-        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
+        request_url = 'corporations/{0}/?datasource=tranquility'.format(corpid)
         code, result = common.request_esi.esi(__name__, request_url, 'get')
 
         if code != 200:

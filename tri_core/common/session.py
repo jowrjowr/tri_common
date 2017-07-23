@@ -4,7 +4,6 @@ def makesession(charid, token, alt=False):
     import common.request_esi
     import common.credentials.core as _core
     import common.database as _database
-    from common.api import base_url
 
     import base64
     import urllib.parse
@@ -51,7 +50,7 @@ def makesession(charid, token, alt=False):
 
     # first, get the user data.
 
-    esi_url = base_url + 'characters/' + str(charid) + '/?datasource=tranquility'
+    esi_url = 'characters/' + str(charid) + '/?datasource=tranquility'
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
@@ -83,7 +82,7 @@ def makesession(charid, token, alt=False):
     else:
         payload['scope'] = 1
 
-    esi_url = base_url + 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
+    esi_url = 'corporations/' + str(payload['corpID']) + '/?datasource=tranquility'
     code, result = common.request_esi.esi(__name__, esi_url, 'get')
     _logger.log('[' + __name__ + '] /corporations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
@@ -95,7 +94,7 @@ def makesession(charid, token, alt=False):
     payload['corpName'] = result['corporation_name']
 
     if not payload['allianceID'] == False:
-        esi_url = base_url + 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
+        esi_url = 'alliances/' + str(payload['allianceID']) + '/?datasource=tranquility'
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
         _logger.log('[' + __name__ + '] /alliances output: {}'.format(result), _logger.LogLevel.DEBUG)
 

@@ -161,7 +161,6 @@ def core_group_members(group):
     import common.logger as _logger
     import common.ldaphelpers as _ldaphelpers
     import common.request_esi
-    from common.api import base_url
     from flask import Response, request
 
     # get the list of group members for this group
@@ -206,7 +205,7 @@ def core_group_members(group):
         allianceid = int( details['alliance'] )
         info['allianceid'] = allianceid
 
-        request_url = base_url + "alliances/" + str(allianceid) + '/?datasource=tranquility'
+        request_url = "alliances/" + str(allianceid) + '/?datasource=tranquility'
 
         code, esi_result = common.request_esi.esi(__name__, request_url, 'get')
 
@@ -220,7 +219,7 @@ def core_group_members(group):
 
         corpid = int( details['corporation'] )
         info['corpid'] = corpid
-        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
+        request_url = 'corporations/{0}/?datasource=tranquility'.format(corpid)
         code, esi_result = common.request_esi.esi(__name__, request_url, 'get')
 
         if code != 200:

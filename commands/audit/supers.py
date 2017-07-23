@@ -1,5 +1,4 @@
 def audit_supers():
-    from common.api import base_url
     import common.request_esi
     import ldap
     import ldap.modlist
@@ -43,7 +42,7 @@ def audit_supers():
         print("Auditing \"{0}\"...".format(character_name))
 
         # get character affiliations
-        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+        request_url = 'characters/affiliation/?datasource=tranquility'
         data = '[{}]'.format(character_id)
         code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
 
@@ -79,7 +78,7 @@ def audit_supers():
             print("WARNING: pilot is not in vgsupers group")
 
         # get corp & alliance names
-        request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corpid)
+        request_url = 'corporations/{0}/?datasource=tranquility'.format(corpid)
         code, result = common.request_esi.esi(__name__, request_url, 'get')
 
         if code != 200:
@@ -93,7 +92,7 @@ def audit_supers():
         corp_name = result['corporation_name']
 
         if allianceid != 0:
-            request_url = base_url + 'alliances/{0}/?datasource=tranquility'.format(allianceid)
+            request_url = 'alliances/{0}/?datasource=tranquility'.format(allianceid)
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if code != 200:
@@ -122,7 +121,7 @@ def audit_supers():
             problems.append(character_name)
 
         # test token
-        request_url = base_url + 'characters/{0}/wallets/?datasource=tranquility&token={1}'\
+        request_url = 'characters/{0}/wallets/?datasource=tranquility&token={1}'\
             .format(corpid, token)
         code, result = common.request_esi.esi(__name__, request_url, 'get')
 

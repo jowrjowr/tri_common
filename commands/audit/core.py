@@ -7,7 +7,6 @@ def audit_core():
     import common.ldaphelpers as _ldaphelpers
     import math
     import MySQLdb as mysql
-    from common.api import base_url
 
     # keep the ldap account status entries in sync
 
@@ -75,7 +74,7 @@ def audit_core():
         chunk = data[:chunksize]
         del data[:chunksize]
         _logger.log('[' + __name__ + '] passing {0} items to affiliations endpoint'.format(len(chunk)), _logger.LogLevel.INFO)
-        request_url = base_url + 'characters/affiliation/?datasource=tranquility'
+        request_url = 'characters/affiliation/?datasource=tranquility'
         chunk = json.dumps(chunk)
         code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk)
         for item in result:

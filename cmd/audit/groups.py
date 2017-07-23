@@ -14,10 +14,9 @@ class Corporation(_Command):
 
         # get corporation
         def get_corporation(corp_id):
-            from common.api import base_url
             import common.request_esi
 
-            request_url = base_url + 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+            request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if code == 403:
@@ -69,7 +68,6 @@ class Corporation(_Command):
 
         # grab first char id of list and grab corp member list and output missing tokens
         def get_member_list(users, corp_id):
-            from common.api import base_url
             import common.request_esi
 
             if users.__len__() > 0:
@@ -84,7 +82,7 @@ class Corporation(_Command):
 
                 raise Exception
 
-            request_url = base_url + 'corporations/{0}/members/?datasource=tranquility'.format(corp_id)
+            request_url = 'corporations/{0}/members/?datasource=tranquility'.format(corp_id)
             code, result = common.request_esi.esi(__name__, request_url, 'get', charid=char_id)
 
             if not code == 200:
@@ -110,10 +108,9 @@ class Corporation(_Command):
 
         # get character names from missing IDs
         def get_member_names(ids):
-            from common.api import base_url
             import common.request_esi
 
-            request_url = base_url + 'characters/names/?character_ids={0}&datasource=tranquility'.format('%2C'.join(ids))
+            request_url = 'characters/names/?character_ids={0}&datasource=tranquility'.format('%2C'.join(ids))
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if not code == 200:

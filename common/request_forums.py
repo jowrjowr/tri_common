@@ -36,7 +36,7 @@ def do_forums(function, endpoint, method, *data):
 
     # do the request, but catch exceptions for connection issues
 
-    url = _forums.base_url + endpoint
+    url = _forums.endpoint
     timeout = 5
 
     try:
