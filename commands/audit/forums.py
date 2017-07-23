@@ -125,7 +125,7 @@ def audit_forums():
         # match up against ldap data
         dn = 'ou=People,dc=triumvirate,dc=rocks'
         filterstr='cn={0}'.format(cn)
-        attributes = ['authGroup', 'accountStatus', 'uid', 'alliance' ]
+        attributes = ['authGroup', 'accountStatus', 'uid', 'alliance', 'corporation' ]
         code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
         if code == False:
             _logger.log('[' + __name__ + '] ldap error: {0}'.format(result), _logger.LogLevel.ERROR)
@@ -139,13 +139,21 @@ def audit_forums():
             users[charname]['alliance'] = None
             users[charname]['authgroups'] = []
             users[charname]['accountstatus'] = None
+            users[charname]['corporation'] = None
         else:
             (dn, info), = result.items()
+            # alliance
             try:
                 users[charname]['alliance'] = int( info['alliance'] )
 
             except Exception as e:
                 users[charname]['alliance'] = None
+            # corporation
+
+            try:
+                users[charname]['corporation'] = int( info['corporation'] )
+            except Exception as e:
+                users[charname]['corporation'] = None
 
             users[charname]['charid'] = int( info['uid'] )
             users[charname]['accountstatus'] = info['accountStatus']
@@ -245,6 +253,7 @@ def audit_forums():
 
         authgroups = users[charname]['authgroups']
         alliance = users[charname]['alliance']
+        corporation = users[charname]['corporation']
         primary_group = users[charname]['primary']
         secondary_groups = users[charname]['secondary']
         forum_lastip = users[charname]['last_ip']
@@ -305,6 +314,11 @@ def audit_forums():
                 mapping = authgroup_map(authgroup)
                 if not mapping == None:
                     correct_secondaries.append(mapping)
+
+            # map any custom corp groups
+            corpgroup = corp_map(corporation)
+            if not corpgroup == None:
+                correct_secondaries.append(corpgroup)
 
             ## deal with secondary groups
 
@@ -421,6 +435,17 @@ def authgroup_map(authgroup):
     if authgroup == 'board':            return 67
 
     # public is group 2, but that's a primary group
+
+    # no match
+
+    return None
+
+def corp_map(corpid):
+
+    # map corps to forum secondary groups
+
+    # avalanche
+    if corpid == 98509794:       return 68
 
     # no match
 

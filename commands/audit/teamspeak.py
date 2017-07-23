@@ -89,12 +89,20 @@ def ts3_logs(ts3conn):
                 # parse the log
                 date, level, target, server, logline = entry.split('|', 4)
 
-
                 # convert the date into epoch
 
                 # example date: 2017-05-13 14:34:58.223587
+                # or 0000002017-07-21 19:50:58.
 
-                date = time.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+                # why are you doing this shit, ts3?
+                date = date.replace('000000', '')
+                date = re.sub('\.$', '.000000', date) # make sure %f has something to use
+                try:
+                    date = time.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+                except ValueError as e:
+                    _logger.log('[' + __name__ + '] ts3 log data pollution: {0}'.format(e),_logger.LogLevel.ERROR)
+                    continue
+
                 date = time.mktime(date)
 
                 # stop processing logs as this is where we last were
