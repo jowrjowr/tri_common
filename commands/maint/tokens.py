@@ -63,16 +63,15 @@ def maint_tokens():
             atoken = result['access_token']
             rtoken = result['refresh_token']
             expires = result['expires_at']
-
             # store the updated token
-            result, value = storetokens(charid, atoken, rtoken)
+            result, value = storetokens(charid, atoken, rtoken, expires)
 
             if result == True:
                 _logger.log('[' + __name__ + '] token entries updated for user {}'.format(dn), _logger.LogLevel.DEBUG)
             else:
                 _logger.log('[' + __name__ + '] unable to store tokens for user {}'.format(dn), _logger.LogLevel.ERROR)
         else:
-            # broken token, or broken oauth.
+            # broken token, or broken oauth?
             # the distinction matters.
             # see env/lib/python3.5/site-packages/oauthlib/oauth2/rfc6749/errors.py
 

@@ -1,10 +1,11 @@
-def storetokens(charid, atoken, rtoken):
+def storetokens(charid, atoken, rtoken, expires=None):
     # refresh a characters token store
     # this will also put in a really basic entry into ldap/mysql
 
     import common.logger as _logger
     import common.credentials.ldap as _ldap
     import ldap
+    import time
 
     _logger.log('[' + __name__ + '] updating tokens for user {}'.format(charid),_logger.LogLevel.DEBUG)
 
@@ -30,9 +31,16 @@ def storetokens(charid, atoken, rtoken):
     dn = users[0][0]
     atoken = [ atoken.encode('utf-8') ]
     rtoken = [ rtoken.encode('utf-8') ]
+
+    if expires == None:
+        # set expiration to 'now'
+        expires = time.time()
+
+    expires = [ str(expires).encode('utf-8') ]
     mod_attrs = []
     mod_attrs.append((ldap.MOD_REPLACE, 'esiAccessToken', atoken ))
     mod_attrs.append((ldap.MOD_REPLACE, 'esiRefreshToken', rtoken ))
+    mod_attrs.append((ldap.MOD_REPLACE, 'esiAccessTokenExpires', expires ))
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)
