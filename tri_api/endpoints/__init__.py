@@ -6,6 +6,7 @@ import tri_api.endpoints.core.teamspeak
 import tri_api.endpoints.core.groups
 import tri_api.endpoints.core.broadcast
 import tri_api.endpoints.core.password
+import tri_api.endpoints.core.corpaudit
 
 import tri_api.endpoints.auth
 import tri_api.endpoints.char

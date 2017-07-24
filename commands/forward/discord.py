@@ -27,7 +27,12 @@ def start_discord(username, password, covername, handler, discord_queue):
     @client.event
     async def on_server_remove():
         _logger.log(prefix + 'discord user {0} ({1}) disconnected'.format(covername, username), _logger.LogLevel.INFO)
-        loginmsg = '```diff' + '\n' + '+ {0} offline```'.format(covername)
+        loginmsg = '```diff' + '\n' + '+ {0} offline [remove]```'.format(covername)
+        discord_queue.put(loginmsg)
+    @client.event
+    async def on_server_unavailable():
+        _logger.log(prefix + 'discord user {0} ({1}) unavailable'.format(covername, username), _logger.LogLevel.INFO)
+        loginmsg = '```diff' + '\n' + '+ {0} offline [unavailable]```'.format(covername)
         discord_queue.put(loginmsg)
 
     @client.event
