@@ -15,19 +15,6 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
 
-    # construct the full request url including api version
-
-    # request_esi hits more than just ESI-specific stuff, so some scoping of the base is necessary
-
-    if base == 'esi':
-        base_url = 'https://esi.tech.ccp.is'
-        url = base_url + '/' + version + '/' + url
-    elif base == 'triapi':
-        base_url = 'https://api.triumvirate.rocks'
-        url = base_url + '/' + url
-    elif base == 'oauth':
-        base_url = 'https://login.eveonline.com/oauth'
-        url = base_url + '/' + url
 
     # if a charid is specified, this is going to be treated as an authenticated request
     # where an access token is added to the esi request url automatically
@@ -59,12 +46,27 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         dn, atoken = result[0]
         try:
             atoken = atoken['esiAccessToken'][0].decode('utf-8')
-            url = url + '&token=' + atoken
+            atoken = '&token=' + atoken
         except KeyError as error:
             js = { 'error': 'no access token'}
             return 400, js
     else:
         _logger.log('[' + __name__ + '] unauthenticated esi request: {0}'.format(url),_logger.LogLevel.DEBUG)
+        atoken = ''
+
+    # construct the full request url including api version
+
+    # request_esi hits more than just ESI-specific stuff, so some scoping of the base is necessary
+
+    if base == 'esi':
+        base_url = 'https://esi.tech.ccp.is'
+        url = base_url + '/' + version + '/' + url + atoken
+    elif base == 'triapi':
+        base_url = 'https://api.triumvirate.rocks'
+        url = base_url + '/' + url
+    elif base == 'oauth':
+        base_url = 'https://login.eveonline.com/oauth'
+        url = base_url + '/' + url
 
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
