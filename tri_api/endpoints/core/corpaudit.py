@@ -157,8 +157,17 @@ def core_corpaudit(charid):
 
             # str(None) == False
             if str(detail).isdigit():
-                users[charid]['altof'] = detail
                 users[charid]['isalt'] = True
+                request_url = 'characters/{0}/?datasource=tranquility'.format(detail)
+                code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+                if not code == 200:
+                    _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+                try:
+                    users[charid]['altof'] = result['name']
+                except KeyError as error:
+                    _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+                    users[charid]['altof'] = 'Unknown'
             else:
                 users[charid]['altof'] = None
                 users[charid]['isalt'] = False
