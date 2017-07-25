@@ -1,14 +1,9 @@
 def maint_tokens():
 
-    from tri_core.common.storetokens import storetokens
     import common.logger as _logger
-    import common.maint.discord.refresh as _discordrefresh
-    import common.maint.eve.refresh as _everefresh
     import common.credentials.ldap as _ldap
     import ldap
-    import json
-    import time
-    import datetime
+    from concurrent.futures import ThreadPoolExecutor
 
     # bindings
 
@@ -46,62 +41,103 @@ def maint_tokens():
         evetokens[dn]['rtoken'] = rtoken
         evetokens[dn]['uid'] = uid
 
-    # work with each individual token
+    # dump the tokens into a pool to bulk manage
 
-    eve_broketokens = 0
-    discord_broketokens = 0
+    with ThreadPoolExecutor(25) as executor:
+        for user in evetokens:
+            dn = user
+            charid = evetokens[user]['uid']
+            old_rtoken = evetokens[user]['rtoken']
+            executor.submit(tokenthings, dn, charid, old_rtoken)
 
-    for user in evetokens:
-        dn = user
-        charid = evetokens[user]['uid']
-        old_rtoken = evetokens[user]['rtoken']
-        purge = False
+def tokenthings(dn, charid, old_rtoken):
 
-        result, code = _everefresh.refresh_token(old_rtoken)
+    import common.logger as _logger
+    import time
 
-        if code == True:
-            atoken = result['access_token']
-            rtoken = result['refresh_token']
-            expires = result['expires_at']
-            # store the updated token
-            result, value = storetokens(charid, atoken, rtoken, expires)
+    # wrap around do_esi so we can do retries!
 
-            if result == True:
-                _logger.log('[' + __name__ + '] token entries updated for user {}'.format(dn), _logger.LogLevel.DEBUG)
-            else:
-                _logger.log('[' + __name__ + '] unable to store tokens for user {}'.format(dn), _logger.LogLevel.ERROR)
+    retry_max = 5
+    retry_count = 0
+    sleep = 1
+    function = __name__
+
+    while (retry_count < retry_max):
+        if retry_count > 0:
+            _logger.log('[' + function + '] token update retry {0} of {1}'.format(retry_count, retry_max), _logger.LogLevel.WARNING)
+
+        result = tokenthings_again(dn, charid, old_rtoken)
+        if result == False:
+            retry_count += 1
+            _logger.log('[' + function + '] token update failed. sleeping {0} seconds before retrying'.format(sleep), _logger.LogLevel.WARNING)
+            time.sleep(sleep)
         else:
-            # broken token, or broken oauth?
-            # the distinction matters.
-            # see env/lib/python3.5/site-packages/oauthlib/oauth2/rfc6749/errors.py
+            return True
+    _logger.log('[' + function + '] token update failed {0} times. giving up. '.format(retry_max), _logger.LogLevel.WARNING)
+    return False
 
-            _logger.log('[' + __name__ + '] unable to refresh token for charid {0}: {1}'.format(charid, result), _logger.LogLevel.INFO)
 
-            # only these exception types are valid reasons to purge a token
-            purgetype = [ 'InvalidGrantError', 'UnauthorizedClientError', 'InvalidClientError' ]
+def tokenthings_again(dn, charid, old_rtoken):
+    from tri_core.common.storetokens import storetokens
+    import common.logger as _logger
+    import common.maint.eve.refresh as _everefresh
+    import common.credentials.ldap as _ldap
+    import ldap
 
-            if result in purgetype:
+    _logger.log('[' + __name__ + '] updating token for charid {0}'.format(charid), _logger.LogLevel.DEBUG)
 
-                eve_broketokens = eve_broketokens + 1
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+        return False
 
-                # purge the entry from the ldap user
-                mod_attrs = []
-                mod_attrs.append((ldap.MOD_DELETE, 'esiAccessToken', None ))
+    result, code = _everefresh.refresh_token(old_rtoken)
 
-                # for some reason sometimes there is only one of the access/refresh tokens even though they should come in pairs
-                try:
-                    result = ldap_conn.modify_s(dn, mod_attrs)
-                except ldap.LDAPError as error:
-                    _logger.log('[' + __name__ + '] unable to purge atoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+    if code == True:
+        atoken = result['access_token']
+        rtoken = result['refresh_token']
+        expires = result['expires_at']
+        # store the updated token
+        result, value = storetokens(charid, atoken, rtoken, expires)
 
-                mod_attrs = []
-                mod_attrs.append((ldap.MOD_DELETE, 'esiRefreshToken', None ))
-                try:
-                    result = ldap_conn.modify_s(dn, mod_attrs)
-                except ldap.LDAPError as error:
-                    _logger.log('[' + __name__ + '] unable to purge rtoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+        if result == True:
+            _logger.log('[' + __name__ + '] token entries updated for user {}'.format(dn), _logger.LogLevel.DEBUG)
+            return True
+        else:
+            _logger.log('[' + __name__ + '] unable to store tokens for user {}'.format(dn), _logger.LogLevel.ERROR)
+            return False
+    else:
+        # broken token, or broken oauth?
+        # the distinction matters.
+        # see env/lib/python3.5/site-packages/oauthlib/oauth2/rfc6749/errors.py
 
-                _logger.log('[' + __name__ + '] invalid token entries purged for user {}'.format(dn), _logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] unable to refresh token for charid {0}: {1}'.format(charid, result), _logger.LogLevel.INFO)
 
-    _logger.log('[' + __name__ + '] invalid tokens purged: {}'.format(eve_broketokens), _logger.LogLevel.INFO)
+        # only these exception types are valid reasons to purge a token
+        purgetype = [ 'InvalidGrantError', 'UnauthorizedClientError', 'InvalidClientError' ]
+
+        if result in purgetype:
+
+            # purge the entry from the ldap user
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'esiAccessToken', None ))
+
+            # for some reason sometimes there is only one of the access/refresh tokens even though they should come in pairs
+            try:
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge atoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+            mod_attrs = []
+            mod_attrs.append((ldap.MOD_DELETE, 'esiRefreshToken', None ))
+            try:
+                result = ldap_conn.modify_s(dn, mod_attrs)
+            except ldap.LDAPError as error:
+                _logger.log('[' + __name__ + '] unable to purge rtoken entry for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+            _logger.log('[' + __name__ + '] invalid token entries purged for user {}'.format(dn), _logger.LogLevel.INFO)
+        # failed
+        return False
 
