@@ -5,6 +5,7 @@ from tri_api import app
 def core_corpaudit(charid):
 
     from flask import request, Response
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from common.check_role import check_role
     import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
@@ -76,159 +77,164 @@ def core_corpaudit(charid):
     # start constructing which member has what
 
     users = dict()
-
-    for user in result:
-        charid = user['character_id']
-        users[charid] = dict()
-
-        dn = 'ou=People,dc=triumvirate,dc=rocks'
-        filterstr='(uid={})'.format(charid)
-        attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf' ]
-        code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
-
-        if code == False:
-            msg = 'unable to fetch ldap information: {}'.format(error)
-            _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-            js = json.dumps({ 'error': msg })
-            return Response(js, status=500, mimetype='application/json')
-
-        if result == None:
-            # no result? simple response.
-            users[charid]['location'] = 'Unknown'
-            users[charid]['online'] = 'Unknown'
-            users[charid]['last_online'] = 'Unknown'
-            users[charid]['token_status'] = False
-            users[charid]['teamspeak_status'] = False
-            users[charid]['isalt'] = 'Unknown'
-            users[charid]['altof'] = None
-
-            # map the id to a name
-
-            request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
-            code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-            if not code == 200:
-                _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-                charname = 'Unknown'
-            try:
-                charname = result['name']
-            except KeyError as error:
-                _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
-                charname = None
-
-            users[charid]['charname'] = charname
-
-            continue
-
-        else:
-            (dn, info), = result.items()
-
-            users[charid]['charname'] = info['characterName']
-
-            # does the char have a token?
-
-            try:
-                detail = info['esiAccessToken']
-                if len(detail) > 0:
-                    users[charid]['token_status'] = True
-                else:
-                    users[charid]['token_status'] = False
-            except Exception as e:
-                users[charid]['token_status'] = False
-
-            # teamspeak registration?
-            try:
-                detail = info['teamspeakdbid']
-                if len(detail) > 0:
-                    users[charid]['teamspeak_status'] = True
-                else:
-                    users[charid]['teamspeak_status'] = False
-            except Exception as e:
-                users[charid]['teamspeak_status'] = False
-
-            # is this an alt?
-
-            # cast the altof detail to something useful
-
-            try:
-                detail = info['altOf']
-            except Exception as e:
-                detail = None
-
-            # str(None) == False
-            if str(detail).isdigit():
-                users[charid]['isalt'] = True
-                request_url = 'characters/{0}/?datasource=tranquility'.format(detail)
-                code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-                if not code == 200:
-                    _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
-                try:
-                    users[charid]['altof'] = result['name']
-                except KeyError as error:
-                    _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
-                    users[charid]['altof'] = 'Unknown'
-            else:
-                users[charid]['altof'] = None
-                users[charid]['isalt'] = False
-
-            ## start fetching character-specific information
-
-            #
-            request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
-            code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
-
-            if not code == 200:
-                # it doesn't really matter
-                _logger.log('[' + __name__ + '] characters loction API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
-                location = None
-                users[charid]['location_id'] = location
-                users[charid]['location'] = 'Unknown'
-            else:
-                # can include either station_id or structure_id
-                location = result['solar_system_id']
-                users[charid]['location_id'] = location
-
-            request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
-            code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
-
-            if not code == 200:
-                # it doesn't really matter
-                _logger.log('[' + __name__ + '] characters loction API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
-                location = None
-            else:
-                # can include either station_id or structure_id
-                location = result['solar_system_id']
-
-            users[charid]['location_id'] = location
-
-            # map the location to a name
-            if location == None:
-                users[charid]['location'] = 'Unknown'
-            else:
-                request_url = 'universe/systems/{0}/'.format(location)
-                code, result = common.request_esi.esi(__name__, request_url, 'get')
-                if not code == 200:
-                    _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.INFO)
-                    users[charid]['location'] = 'Unknown'
-                else:
-                    users[charid]['location'] = result['name']
-
-            # get online status
-
-            request_url = 'characters/{0}/online/?datasource=tranquility'.format(charid)
-            code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
-
-            if not code == 200:
-                # it doesn't really matter
-                _logger.log('[' + __name__ + '] characters online API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
-                location = None
-                users[charid]['online'] = 'Unknown'
-                users[charid]['last_online'] = 'Unknown'
-            else:
-                users[charid]['online'] = result['online']
-                users[charid]['last_online'] = result['last_login']
-
+    with ThreadPoolExecutor(25) as executor:
+        futures = { executor.submit(fetch_chardetails, user['character_id']): user for user in result }
+        for future in as_completed(futures):
+            charid = futures[future]['character_id']
+            data = future.result()
+            users[charid] = data
     js = json.dumps(users)
     resp = Response(js, status=200, mimetype='application/json')
     return resp
+
+def fetch_chardetails(charid):
+
+    import common.ldaphelpers as _ldaphelpers
+    import common.logger as _logger
+    import common.request_esi
+
+    chardetails = dict()
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(uid={})'.format(charid)
+    attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if result == None or code == False:
+        # no result? simple response.
+        chardetails['location'] = 'Unknown'
+        chardetails['online'] = 'Unknown'
+        chardetails['last_online'] = 'Unknown'
+        chardetails['token_status'] = False
+        chardetails['teamspeak_status'] = False
+        chardetails['isalt'] = 'Unknown'
+        chardetails['altof'] = None
+
+        # map the id to a name
+
+        request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+        if not code == 200:
+            _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            charname = 'Unknown'
+        try:
+            charname = result['name']
+        except KeyError as error:
+            _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            charname = None
+
+        chardetails['charname'] = charname
+
+    else:
+        (dn, info), = result.items()
+
+        chardetails['charname'] = info['characterName']
+
+        # does the char have a token?
+
+        try:
+            detail = info['esiAccessToken']
+            if len(detail) > 0:
+                chardetails['token_status'] = True
+            else:
+                chardetails['token_status'] = False
+        except Exception as e:
+            chardetails['token_status'] = False
+
+        # teamspeak registration?
+        try:
+            detail = info['teamspeakdbid']
+            if len(detail) > 0:
+                chardetails['teamspeak_status'] = True
+            else:
+                chardetails['teamspeak_status'] = False
+        except Exception as e:
+            chardetails['teamspeak_status'] = False
+
+        # is this an alt?
+
+        # cast the altof detail to something useful
+
+        try:
+            detail = info['altOf']
+        except Exception as e:
+            detail = None
+
+        # str(None) == False
+        if str(detail).isdigit():
+            chardetails['isalt'] = True
+            request_url = 'characters/{0}/?datasource=tranquility'.format(detail)
+            code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+            if not code == 200:
+                _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+            try:
+                chardetails['altof'] = result['name']
+            except KeyError as error:
+                _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+                chardetails['altof'] = 'Unknown'
+        else:
+            chardetails['altof'] = None
+            chardetails['isalt'] = False
+
+        ## start fetching character-specific information
+
+        #
+        request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
+
+        if not code == 200:
+            # it doesn't really matter
+            _logger.log('[' + __name__ + '] characters loction API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
+            location = None
+            chardetails['location_id'] = location
+            chardetails['location'] = 'Unknown'
+        else:
+            # can include either station_id or structure_id
+            location = result['solar_system_id']
+            chardetails['location_id'] = location
+
+        request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
+
+        if not code == 200:
+            # it doesn't really matter
+            _logger.log('[' + __name__ + '] characters loction API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
+            location = None
+        else:
+            # can include either station_id or structure_id
+            location = result['solar_system_id']
+
+        chardetails['location_id'] = location
+
+        # map the location to a name
+        if location == None:
+            chardetails['location'] = 'Unknown'
+        else:
+            request_url = 'universe/systems/{0}/'.format(location)
+            code, result = common.request_esi.esi(__name__, request_url, 'get')
+            if not code == 200:
+                _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.INFO)
+                chardetails['location'] = 'Unknown'
+            else:
+                chardetails['location'] = result['name']
+
+        # get online status
+
+        request_url = 'characters/{0}/online/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
+
+        if not code == 200:
+            # it doesn't really matter
+            _logger.log('[' + __name__ + '] characters online API error {0}: {1}'.format(code, result['error']),_logger.LogLevel.DEBUG)
+            location = None
+            chardetails['online'] = 'Unknown'
+            chardetails['last_online'] = 'Unknown'
+        else:
+            chardetails['online'] = result['online']
+            chardetails['last_online'] = result['last_login']
+            
+    return chardetails
+
+
