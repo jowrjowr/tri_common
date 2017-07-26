@@ -7,6 +7,7 @@ def core_structures():
     from flask import Flask, request, Response
     from joblib import Parallel, delayed
     from common.check_role import check_role
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     import common.logger as _logger
     import common.request_esi
     import json
@@ -86,10 +87,15 @@ def core_structures():
 
     structures = dict()
 
-    for object in result_parsed:
-        structure_id = object['structure_id']
-        structures[structure_id] = structure_parse(id, object, structure_id)
-    return json.dumps(structures)
+    with ThreadPoolExecutor(10) as executor:
+        futures = { executor.submit(structure_parse, id, object, object['structure_id']): object for object in result_parsed }
+        for future in as_completed(futures):
+            structure_id = futures[future]['structure_id']
+            data = future.result()
+            structures[structure_id] = data
+    js = json.dumps(structures)
+    resp = Response(js, status=200, mimetype='application/json')
+    return resp
 
 def structure_parse(charid, object, structure_id):
 
@@ -104,7 +110,7 @@ def structure_parse(charid, object, structure_id):
     except:
         # there seems to be no fuel key if there are no services
         # unclear on what happens if there are services but no fuel
-        structure['fuel_expires'] = 'N/A'
+        structure['fuel_expires'] = 'Unknown'
 
     structure['structure_id'] = structure_id
 
@@ -115,8 +121,6 @@ def structure_parse(charid, object, structure_id):
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.ERROR)
-        resp = Response(result['error'], status=code, mimetype='application/json')
-        return resp
 
     # catch errors
 
@@ -142,8 +146,6 @@ def structure_parse(charid, object, structure_id):
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /universe/types API error ' + str(code) + ': ' + str(typedata['error']), _logger.LogLevel.ERROR)
-        resp = Response(result['error'], status=code, mimetype='application/json')
-        return resp
 
     try:
         structure['type_name'] = typedata['name']
