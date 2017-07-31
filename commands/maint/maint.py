@@ -10,8 +10,8 @@ def maint_all():
     maint_ldapgroups()
     _logger.log('[' + __name__ + '] token maintenance', _logger.LogLevel.INFO)
     maint_tokens()
-    #_logger.log('[' + __name__ + '] jabber log storage', _logger.LogLevel.INFO)
-    #maint_jabber_logs()
+    _logger.log('[' + __name__ + '] jabber log storage', _logger.LogLevel.INFO)
+    maint_jabber_logs()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
