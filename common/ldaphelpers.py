@@ -1,17 +1,40 @@
-def ldap_name2id(function, charname):
+def ldap_cn2id(function, cn):
+    import common.logger as _logger
+
     dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr='(characterName:caseIgnoreMatch:={})'.format(charname)
+    filterstr='(cn={})'.format(cn)
     attrlist=['uid']
-    code, result = ldap_search(__name__, dn, filterstr, attrlist)
+    code, result = ldap_search(function, dn, filterstr, attrlist)
 
     if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return None
+
+    if result == None:
+        msg = 'cn {0} not in ldap'.format(cn)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        return None
+    (dn, info), = result.items()
+
+    return info
+
+def ldap_name2id(function, charname):
+    import common.logger as _logger
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(characterName:caseIgnoreMatch:={})'.format(charname)
+    attrlist=['uid']
+    code, result = ldap_search(function, dn, filterstr, attrlist)
+
+    if code == False:
+        msg = 'unable to fetch ldap information: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
         return None
 
     if result == None:
         msg = 'charname {0} not in ldap'.format(charid)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
         return None
     (dn, info), = result.items()
 
