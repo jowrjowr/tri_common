@@ -87,7 +87,10 @@ def characters():
             new_entry['character_id'] = int(alt_data['uid'][0].decode('utf-8'))
             new_entry['character_name'] = alt_data['characterName'][0].decode('utf-8')
             new_entry['corporation_id'] = int(alt_data['corporation'][0].decode('utf-8'))
-            new_entry['alliance_id'] = int(alt_data['alliance'][0].decode('utf-8'))
+
+            if 'alliance' in alt_data:
+                new_entry['alliance_id'] = int(alt_data['alliance'][0].decode('utf-8'))
+
             if 'esiAccessToken' in alt_data:
                 new_entry['esi_token'] = True
                 new_entry['esi_token_valid'] = check_scope('acc_management',
