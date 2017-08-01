@@ -193,7 +193,7 @@ def auth_evesso_callback():
             message = 'your alt has been successfully registered.'
         else:
             message = 'there was a problem registering your alt. try again.'
-        return make_response(message)
+        return redirect("https://www.triumvirate.rocks/altregistration")
 
     if status == False:
         if details == 'error':
