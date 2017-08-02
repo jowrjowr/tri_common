@@ -92,11 +92,15 @@ def core_allianceaudit(charid):
             corp_dict['corps'][str(corp_id)]['members'] = esi_result['member_count']
             corp_dict['corps'][str(corp_id)]['tokens'] = 0
             corp_dict['corps'][str(corp_id)]['registered'] = 0
+            corp_dict['corps'][str(corp_id)]['mains'] = 0
 
         corp_dict['corps'][str(corp_id)]['registered'] += 1
 
-        if 'esiAccessToken' in entry  and entry['esiAccessToken'] is not None and not entry['esiAccessToken'] == '':
+        if 'esiAccessToken' in entry and entry['esiAccessToken'] is not None and not entry['esiAccessToken'] == '':
             corp_dict['corps'][str(corp_id)]['tokens'] += 1
+
+        if 'altOf' not in entry or entry['altOf'] is None or entry['altOf'] == '':
+            corp_dict['corps'][str(corp_id)]['mains'] += 1
 
     js = json.dumps(corp_dict)
     return Response(js, status=200, mimetype='application/json')
