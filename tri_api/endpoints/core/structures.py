@@ -103,8 +103,9 @@ def structure_parse(charid, object, structure_id):
     import common.logger as _logger
     import common.database as DATABASE
     import common.request_esi
-    import datetime
     import json
+
+    from datetime import datetime, timedelta
 
     structure = {}
     try:
@@ -117,16 +118,19 @@ def structure_parse(charid, object, structure_id):
     structure['structure_id'] = structure_id
 
     # build vulnerability timers
+    # monday is day 0 according to swagger spec
 
-    # should build out to UTC
-    start = object['state_timer_start'] + ' 00:00:00'
-    start = datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+    today = datetime.today().weekday()
+    _offsets = (3, 1, 1, 1, 1, 1, 2)
 
+    start = datetime.now()
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    start = start - timedelta(days=_offsets[today])
     vuln_dates = []
     for moment in object['current_vul']:
         hour = moment['hour']
         day = moment['day']
-        window = start + datetime.timedelta(days=day, hours=hour)
+        window = start + timedelta(days=day, hours=hour)
         window = window.strftime("%Y-%m-%d %H:%M:%S")
         vuln_dates.append(window)
 
