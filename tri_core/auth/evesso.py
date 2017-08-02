@@ -201,12 +201,10 @@ def auth_evesso_callback():
             _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'nope.avi'
         elif code == True:
-            message = 'your alt has been successfully registered.'
-            message += '<br>'
-            message += 'you can close this window now.'
+            return redirect("https://www.triumvirate.rocks/altregistration")
         else:
             message = 'there was a problem registering your alt. try again.'
-        return redirect("https://www.triumvirate.rocks/altregistration")
+            return make_response(message)
 
     # more complex logic for non-alts
 
