@@ -59,7 +59,7 @@ def core_allianceaudit(charid):
 
     # get all entires for triumvirate
     code, result = _ldaphelpers.ldap_search(__name__, dn, 'alliance=933731581',
-                                            ['uid', 'corporation', 'esiAccessToken'])
+                                            ['uid', 'corporation', 'esiAccessToken', 'altOf'])
 
     if code == 'error':
         error = 'unable to fetch all tri ldap entries: ({0}) {1}'.format(code, result)
@@ -99,7 +99,7 @@ def core_allianceaudit(charid):
         if 'esiAccessToken' in entry and entry['esiAccessToken'] is not None and not entry['esiAccessToken'] == '':
             corp_dict['corps'][str(corp_id)]['tokens'] += 1
 
-        if 'altOf' not in entry:
+        if 'altOf' in entry:
             corp_dict['corps'][str(corp_id)]['mains'] += 0
         else:
             corp_dict['corps'][str(corp_id)]['mains'] += 1
