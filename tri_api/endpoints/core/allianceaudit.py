@@ -87,6 +87,7 @@ def core_allianceaudit(charid):
                 err_result = {'code': code, 'error': error}
                 return code, err_result
 
+            corp_dict['corps'][str(corp_id)] = {}
             corp_dict['corps'][str(corp_id)]['name'] = esi_result['corporation_name']
             corp_dict['corps'][str(corp_id)]['members'] = esi_result['member_count']
             corp_dict['corps'][str(corp_id)]['tokens'] = 0
