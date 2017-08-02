@@ -69,6 +69,8 @@ def core_allianceaudit(charid):
 
     corp_dict = {'corps': {}, 'statistics': {}}
 
+    _logger.log('[' + __name__ + '] ' + result, _logger.LogLevel.INFO)
+
     for entry in result:
         dn, result = entry[0]
 
