@@ -71,7 +71,7 @@ def core_allianceaudit(charid):
     corp_dict = {'corps': {}, 'statistics': {}}
 
     for entry in result:
-        (_, result) = entry
+        (_, result), = entry
 
         corp_id = result['corporation']
 
