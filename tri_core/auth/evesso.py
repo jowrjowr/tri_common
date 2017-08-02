@@ -3,22 +3,23 @@ from tri_api import app
 
 @app.route('/auth/eve/register', methods=['GET'])
 def auth_evesso():
-    return evesso(isalt=False, altof=None)
+    return evesso()
 
 @app.route('/auth/eve/register_alt', methods=['GET'])
 def auth_evesso_alt():
-    from flask import request, make_response
+    from flask import request
     from tri_core.common.session import readsession
+    import common.logger as _logger
 
     cookie = request.cookies.get('tri_core')
 
     if cookie == None:
         return make_response('You need to be logged in with your main in order to register an alt')
+    else:
+        payload = readsession(cookie)
+        return evesso(isalt=True, altof=payload['charID'])
 
-    payload = readsession(cookie)
-    return evesso(isalt=True, altof=payload['charID'])
-
-def evesso(isalt, altof):
+def evesso(isalt=False, altof=None):
     from flask import request, Response, session, redirect, make_response
     from requests_oauthlib import OAuth2Session
     from tri_core.common.scopes import scope
@@ -38,7 +39,7 @@ def evesso(isalt, altof):
 
     ipaddress = request.headers['X-Real-Ip']
     if isalt == True:
-        _logger.securitylog(__name__, 'SSO login (alt of {0}) initiated'.format(altof), ipaddress=ipaddress)
+        _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress, detail='alt of {}'.format(altof))
     else:
         _logger.securitylog(__name__, 'SSO login initiated', ipaddress=ipaddress)
 
@@ -54,8 +55,12 @@ def evesso(isalt, altof):
         },
         auto_refresh_url=token_url,
     )
-    auth_url, state = oauth_session.authorization_url(base_auth_url)
-    session['oauth_state'] = state
+    auth_url, state = oauth_session.authorization_url(
+        base_auth_url,
+        isalt=isalt,
+        altof=altof,
+        )
+    session['oauth2_state'] = state
 
     # store alt parameters
 
@@ -97,17 +102,21 @@ def auth_evesso_callback():
     # the user has (ostensibly) authenticated with the application, now
     # the access token can be fetched
 
-    altof = session.get('altof');
+    altof = session.get('altof')
+    isalt = session.get('isalt')
+    state = session.get('oauth2_state')
 
-    if altof == None or altof == 'None':
-        isalt = False
+    print('alt of: {}'.format(altof))
+    print('isalt: {}'.format(isalt))
+
+    if altof == None:
         _logger.log('[' + __name__ + '] SSO callback received',_logger.LogLevel.INFO)
     else:
-        _logger.log('[' + __name__ + '] SSO callback (previous core login under charid {0}) received'.format(altof),_logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] SSO callback received (alt of {0})'.format(altof),_logger.LogLevel.INFO)
 
     oauth_session = OAuth2Session(
         client_id=client_id,
-        state=session.get('oauth2_state'),
+        state=state,
         redirect_uri=redirect_url,
         auto_refresh_kwargs={
             'client_id': client_id,
@@ -152,12 +161,10 @@ def auth_evesso_callback():
 
     ipaddress = request.headers['X-Real-Ip']
 
-    if details == 'isalt':
-        isalt = True
+    if details == 'isalt' or isalt == True:
         _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
     else:
-        isalt = False
-        _logger.securitylog(__name__, 'SSO callback (alt) completed', charid=charid, ipaddress=ipaddress)
+        _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
 
     # store the tokens regardless of their status. we're greedy.
     storetokens(charid, access_token, refresh_token)
@@ -189,11 +196,17 @@ def auth_evesso_callback():
 
     if isalt == True:
         code, result = registeruser(charid, access_token, refresh_token, isalt, altof)
-        if code == True:
-            message = 'your alt has been successfully registered.'
+        if details == 'banned':
+            _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register alt {2}'.format(charid, charname, altof),_logger.LogLevel.WARNING)
+            _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
+            message = 'nope.avi'
+        elif code == True:
+            return redirect("https://www.triumvirate.rocks/altregistration")
         else:
             message = 'there was a problem registering your alt. try again.'
-        return redirect("https://www.triumvirate.rocks/altregistration")
+            return make_response(message)
+
+    # more complex logic for non-alts
 
     if status == False:
         if details == 'error':

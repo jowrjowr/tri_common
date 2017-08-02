@@ -20,7 +20,7 @@ def core_password(charid):
     ipaddress = request.headers['X-Real-Ip']
     log_charid = request.args.get('log_charid')    # logging purposes
 
-    _logger.securitylog(__name__, 'reset password of charid {0}'.format(charid), ipaddress=ipaddress, charid=log_charid)
+    _logger.securitylog(__name__, 'reset password', detail='target charid {0}'.format(charid), ipaddress=ipaddress, charid=log_charid)
 
 
     # initialize connections

@@ -27,16 +27,17 @@ def maint_jabber_logs():
     for line in file.readlines():
         match_accept = re.match(accepted, line)
         match_failed = re.match(failed, line)
+        action = 'jabber login'
 
         if match_accept:
             date = match_accept.group(1)
             cn = match_accept.group(2)
             ip_address = match_accept.group(3)
-            action = 'jabber login (successful)'
+            detail = 'successful'
         elif match_failed:
             date = match_failed.group(1)
             ip_address = match_failed.group(3)
-            action = 'jabber login (failed)'
+            detail = 'failed'
 
             # convert the attempted login user to maybe a valid dn
             login_user = match_failed.group(2)
@@ -70,7 +71,7 @@ def maint_jabber_logs():
 
         # store into the security log
 
-        _logger.securitylog(__name__, action, charid=uid, ipaddress=ip_address, date=date)
+        _logger.securitylog(__name__, action, charid=uid, ipaddress=ip_address, date=date, detail=detail)
 
     # wipe the file and close out
     file.seek(0)

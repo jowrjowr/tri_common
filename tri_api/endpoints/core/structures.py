@@ -68,6 +68,7 @@ def core_structures():
     # get all structures that this user has access to
 
     code, result_parsed = common.request_esi.esi(__name__, esi_url, 'get', charid=id)
+
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /structures API error ' + str(code) + ': ' + str(result_parsed['error']), _logger.LogLevel.ERROR)
@@ -104,6 +105,8 @@ def structure_parse(charid, object, structure_id):
     import common.request_esi
     import json
 
+    from datetime import datetime, timedelta
+
     structure = {}
     try:
         structure['fuel_expires'] = object['fuel_expires']
@@ -114,6 +117,24 @@ def structure_parse(charid, object, structure_id):
 
     structure['structure_id'] = structure_id
 
+    # build vulnerability timers
+    # monday is day 0 according to swagger spec
+
+    today = datetime.today().weekday()
+    _offsets = (3, 1, 1, 1, 1, 1, 2)
+
+    start = datetime.now()
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    start = start - timedelta(days=_offsets[today])
+    vuln_dates = []
+    for moment in object['current_vul']:
+        hour = moment['hour']
+        day = moment['day']
+        window = start + timedelta(days=day, hours=hour)
+        window = window.strftime("%Y-%m-%d %H:%M:%S")
+        vuln_dates.append(window)
+
+    structure['vuln_dates'] = vuln_dates
     esi_url = 'universe/structures/' + str(structure_id)
     esi_url = esi_url + '?datasource=tranquility'
 
@@ -134,7 +155,6 @@ def structure_parse(charid, object, structure_id):
         error = data['error']
         error_code = data['code']
         return structure
-
 
     # get structure type name
 
