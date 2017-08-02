@@ -70,11 +70,10 @@ def core_allianceaudit(charid):
 
     corp_dict = {'corps': {}, 'statistics': {}}
 
-    for entry in result:
-        _logger.log('[' + __name__ + ']' + entry, _logger.LogLevel.ERROR)
-        (_, result), = entry
+    for cn in result:
+        entry = result[cn]
 
-        corp_id = result['corporation']
+        corp_id = entry['corporation']
 
         if corp_id not in corp_dict['corps']:
             request_url = 'corporations/{}/?datasource=tranquility'.format(corp_id)
@@ -82,11 +81,11 @@ def core_allianceaudit(charid):
 
             if not code == 200:
                 # something broke severely
-                _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
+                _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, esi_result['error']),
                             _logger.LogLevel.ERROR)
-                error = result['error']
-                result = {'code': code, 'error': error}
-                return code, result
+                error = esi_result['error']
+                err_result = {'code': code, 'error': error}
+                return code, err_result
 
             corp_dict['corps'][str(corp_id)]['name'] = esi_result['corporation_name']
             corp_dict['corps'][str(corp_id)]['members'] = esi_result['member_count']
