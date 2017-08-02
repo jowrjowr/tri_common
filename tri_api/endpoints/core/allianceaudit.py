@@ -50,7 +50,7 @@ def core_allianceaudit(charid):
 
     (dn, result), = result.items()
 
-    if not "tsadmin" in [group.decode('utf-8') for group in result['authGroup']]:
+    if not "tsadmin" in result['authGroup']:
         error = 'insufficient corporate roles to access this endpoint.'
         _logger.log('[' + __name__ + '] ' + error, _logger.LogLevel.INFO)
         js = json.dumps({'error': error})
