@@ -206,7 +206,7 @@ def auth_evesso_callback():
             message += 'you can close this window now.'
         else:
             message = 'there was a problem registering your alt. try again.'
-        return make_response(message)
+        return redirect("https://www.triumvirate.rocks/altregistration")
 
     # more complex logic for non-alts
 
