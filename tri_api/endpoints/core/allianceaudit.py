@@ -95,7 +95,7 @@ def core_allianceaudit(charid):
 
         corp_dict['corps'][str(corp_id)]['registered'] += 1
 
-        if 'esiAccessToken' in result:
+        if 'esiAccessToken' in entry:
             corp_dict['corps'][str(corp_id)]['tokens'] += 1
 
     js = json.dumps(corp_dict)
