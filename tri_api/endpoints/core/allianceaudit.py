@@ -79,9 +79,9 @@ def core_allianceaudit(charid):
             request_url = 'corporations/{}/?datasource=tranquility'.format(corp_id)
             esi_code, esi_result = common.request_esi.esi(__name__, request_url, method='get')
 
-            if not code == 200:
+            if not esi_code == 200:
                 # something broke severely
-                _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, esi_result['error']),
+                _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(code, esi_result['error']),
                             _logger.LogLevel.ERROR)
                 error = esi_result['error']
                 err_result = {'code': code, 'error': error}
