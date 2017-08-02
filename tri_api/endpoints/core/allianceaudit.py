@@ -99,7 +99,7 @@ def core_allianceaudit(charid):
         if 'esiAccessToken' in entry and entry['esiAccessToken'] is not None and not entry['esiAccessToken'] == '':
             corp_dict['corps'][str(corp_id)]['tokens'] += 1
 
-        if 'altOf' in entry and entry['altOf'] is not None and not entry['altOf'] == '':
+        if 'altOf' in entry:
             corp_dict['corps'][str(corp_id)]['mains'] += 0
         else:
             corp_dict['corps'][str(corp_id)]['mains'] += 1
