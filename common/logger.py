@@ -149,7 +149,7 @@ def add_arguments(parser):
         help='log level',
     )
 
-def securitylog(function, action, charid=None, charname=None, ipaddress=None, date=None):
+def securitylog(function, action, charid=None, charname=None, ipaddress=None, date=None, detail=None):
     # log stuff into the security table
 
     import MySQLdb as mysql
@@ -209,18 +209,19 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
 
     # log to file
 
-    _logger.log('[{0}] {1}: {2} ({3}) @ {4}: {5}'.format(function, friendly_time, charname, charid, ipaddress, action),_logger.LogLevel.INFO)
+    _logger.log('[{0}] {1}: {2} ({3}) @ {4} {5}: {6}'.format(function, friendly_time, charname, charid, ipaddress, action, detail),_logger.LogLevel.INFO)
 
     # log to security table
 
     try:
-        query = 'INSERT INTO Security (charID, charName, IP, action, date) VALUES(%s, %s, %s, %s, FROM_UNIXTIME(%s))'
+        query = 'INSERT INTO Security (charID, charName, IP, action, date, detail) VALUES(%s, %s, %s, %s, FROM_UNIXTIME(%s), %s)'
         cursor.execute(query, (
             charid,
             charname,
             ipaddress,
             action,
             date,
+            detail,
         ),)
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)

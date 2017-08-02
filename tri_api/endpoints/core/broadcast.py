@@ -13,7 +13,7 @@ def core_group_broadcast(group):
 
     # spew at a group
     if request.method == 'POST':
-        _logger.securitylog(__name__, 'broadcast to group {0}'.format(group), ipaddress=ipaddress)
+        _logger.securitylog(__name__, 'broadcast', detail='group {0}'.format(group), ipaddress=ipaddress)
         broadcast(message, group)
         return Response({}, status=200, mimetype='application/json')
 
