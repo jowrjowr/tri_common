@@ -58,7 +58,8 @@ def core_allianceaudit(charid):
         return resp
 
     # get all entires for triumvirate
-    code, result = _ldaphelpers.ldap_search(__name__, dn, 'alliance=933731581', ['uid, corporation, esiAccessToken'])
+    code, result = _ldaphelpers.ldap_search(__name__, dn, 'alliance=933731581',
+                                            ['uid', 'corporation', 'esiAccessToken'])
 
     if code == 'error':
         error = 'unable to fetch all tri ldap entries: ({0}) {1}'.format(code, result)
@@ -69,12 +70,10 @@ def core_allianceaudit(charid):
 
     corp_dict = {'corps': {}, 'statistics': {}}
 
-    _logger.log('[' + __name__ + '] ' + json.dumps(result), _logger.LogLevel.INFO)
-
     for entry in result:
-        (_, info), = entry[0]
+        (_, result) = entry
 
-        corp_id = result['corporation'][0].decode('utf-8')
+        corp_id = result['corporation']
 
         if corp_id not in corp_dict['corps']:
             request_url = 'corporations/{}/?datasource=tranquility'.format(corp_id)
