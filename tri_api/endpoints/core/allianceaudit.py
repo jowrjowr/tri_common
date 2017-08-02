@@ -99,9 +99,6 @@ def core_allianceaudit(charid):
         if 'esiAccessToken' in entry and entry['esiAccessToken'] is not None and not entry['esiAccessToken'] == '':
             corp_dict['corps'][str(corp_id)]['tokens'] += 1
 
-        _logger.log('[' + __name__ + '] ' + entry['altOf'],
-                    _logger.LogLevel.DEBUG)
-
         if 'altOf' in entry:
             corp_dict['corps'][str(corp_id)]['mains'] += 0
         else:
