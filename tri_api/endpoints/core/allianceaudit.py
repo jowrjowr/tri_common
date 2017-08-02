@@ -102,10 +102,10 @@ def core_allianceaudit(charid):
         _logger.log('[' + __name__ + ']' + str(entry['altOf']),
                     _logger.LogLevel.ERROR)
 
-        if entry['altOf'] is not None or entry['altOf'] != '':
-            corp_dict['corps'][str(corp_id)]['mains'] += 0
-        else:
+        if entry['altOf'] is None:
             corp_dict['corps'][str(corp_id)]['mains'] += 1
+        else:
+            corp_dict['corps'][str(corp_id)]['mains'] += 0
 
     js = json.dumps(corp_dict)
     return Response(js, status=200, mimetype='application/json')
