@@ -110,7 +110,7 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result['members'] = esi_corporation_result['member_count']
 
     code_mains, result_mains = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(corporation={0})((!(altOf=*)))'.format(corp_id), [])
+                                                        '(\&(corporation={0})(!(altOf=*)))'.format(corp_id), [])
 
     if code_mains == 'error':
         error = 'unable to count main ldap users {0}: ({1}) {2}'.format(charid, code_mains, result_mains)
@@ -130,7 +130,7 @@ def audit_corp(charid, allianceid, corp_id):
         return resp
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(corporation={0})((esiAccessToken=*))'.format(corp_id), [])
+                                                        '(\&(corporation={0})(esiAccessToken=*))'.format(corp_id), [])
 
     if code_tokens == 'error':
         error = 'unable to count token\'d ldap users {0}: ({1}) {2}'.format(charid, code_tokens, result_tokens)
