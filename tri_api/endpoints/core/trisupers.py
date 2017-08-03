@@ -86,6 +86,8 @@ def audit_pilot(entry):
 
     pilot = dict()
 
+    print(entry)
+
     uid = entry['uid']
     corpid = entry['corporation']
     charname = entry['characterName']
