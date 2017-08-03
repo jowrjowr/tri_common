@@ -188,7 +188,7 @@ def audit_pilot(entry):
                 pilot['main'] = main
                 pilot['active'] = True
                 pilot['location'] = esi_system_result['name']
-            else:
+            elif 1==0:
                 # check if asset scope is available
                 scope_code, _ = _check_scope.check_scope(__name__, uid, ['esi-assets.read_assets.v1'])
 
