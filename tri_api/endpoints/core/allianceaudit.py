@@ -9,6 +9,7 @@ def core_allianceaudit(charid):
     from common.check_role import check_role
     import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
+    import common.check_scope as _check_scope
     import common.request_esi
     import json
 
@@ -176,11 +177,13 @@ def core_allianceaudit(charid):
                 corp_dict['supers'][entry['uid']]['type'] = "Supercarrier"
                 corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
             else:
-                request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(entry['uid'])
-                esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, method='get',
-                                                                            charid=entry['uid'])
+                # check if asset scope is available
+                code, result = _check_scope.check_scope(__name__, entry['uid'], ['esi-assets.read_assets.v1'])
 
-                if esi_assets_code == 403:
+                if code:
+                    request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(entry['uid'])
+                    esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, method='get',
+                                                                                charid=entry['uid'])
                     if esi_assets_code != 200:
                         # something broke severely
                         _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(code, esi_assets_result['error']),
@@ -205,6 +208,9 @@ def core_allianceaudit(charid):
                             corp_dict['supers'][entry['uid']]['location'] = esi_system_result['name']
                             corp_dict['supers'][entry['uid']]['type'] = "Supercarrier"
                             corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
+                else:
+                    _logger.log(
+                        '[' + __name__ + '] no asset scope for char {}'.format(entry['uid']), _logger.LogLevel.WARNING)
 
     js = json.dumps(corp_dict)
     return Response(js, status=200, mimetype='application/json')
