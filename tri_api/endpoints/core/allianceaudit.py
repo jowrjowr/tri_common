@@ -158,7 +158,7 @@ def audit_character(corp_dict, entry):
                                                               ['uid', 'characterName'])
             _logger.log(
                 '[' + __name__ + '] {0}'.format(main_result),
-                _logger.LogLevel.DEBUG)
+                _logger.LogLevel.INFO)
             main = main_result['characterName']
         else:
             main = entry['characterName']
