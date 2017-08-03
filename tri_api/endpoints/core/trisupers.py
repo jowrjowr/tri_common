@@ -67,6 +67,8 @@ def core_trisupers():
         for future in as_completed(futures):
             data = future.result()
 
+            print(data)
+
             if data['valid']:
                 supers[data['uid']] = data
 
@@ -189,12 +191,14 @@ def audit_pilot(entry):
                 pilot['main'] = main
                 pilot['active'] = True
                 pilot['location'] = esi_system_result['name']
+                pilot['valid'] = True
             elif esi_ship_result['ship_type_id'] in supers.keys():
                 pilot['ship_type'] = supers[esi_ship_result['ship_type_id']]
                 pilot['super_type'] = "Supercarrier"
                 pilot['main'] = main
                 pilot['active'] = True
                 pilot['location'] = esi_system_result['name']
+                pilot['valid'] = True
             elif 1==0:
                 # check if asset scope is available
                 scope_code, _ = _check_scope.check_scope(__name__, uid, ['esi-assets.read_assets.v1'])
