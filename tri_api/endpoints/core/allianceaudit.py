@@ -178,9 +178,9 @@ def core_allianceaudit(charid):
                 corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
             else:
                 # check if asset scope is available
-                code, result = _check_scope.check_scope(__name__, entry['uid'], ['esi-assets.read_assets.v1'])
+                scope_code, _ = _check_scope.check_scope(__name__, entry['uid'], ['esi-assets.read_assets.v1'])
 
-                if code:
+                if scope_code:
                     request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(entry['uid'])
                     esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, method='get',
                                                                                 charid=entry['uid'])
