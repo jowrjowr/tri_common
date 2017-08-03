@@ -110,7 +110,7 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result['members'] = esi_corporation_result['member_count']
 
     code_mains, result_mains = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(corporation={0}'
+                                                        '(&(corporation={0})(altOf=))'
                                                         .format(corp_id), [])
 
     if code_mains == 'error':
@@ -119,7 +119,20 @@ def audit_corp(charid, allianceid, corp_id):
         js = json.dumps({'error': error})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
+    code_registered, result_registered = _ldaphelpers.ldap_search(__name__, dn,
+                                                                  '(&(alliance={0})(corporation={1}))'
+                                                                  .format(allianceid, corp_id), [])
 
+    if code_registered == 'error':
+        error = 'unable to check auth groups roles for {0}: ({1}) {2}'\
+            .format(charid, code_registered, result_registered)
+        _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
+        js = json.dumps({'error': error})
+        resp = Response(js, status=500, mimetype='application/json')
+        return resp
+
+
+    corp_result['registered'] = len(result_registered)
     corp_result['mains'] = len(result_mains)
 
     return corp_result
