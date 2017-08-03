@@ -70,8 +70,8 @@ def core_trisupers():
             try:
                 if data.get('valid', False):
                     supers[data['uid']] = data
-            except:
-                pass
+            except Exception as err:
+                _logger.log('[' + __name__ + '] super audit for failed: {0}'.format(err), _logger.LogLevel.ERROR)
 
     js = json.dumps(supers)
     return Response(js, status=200, mimetype='application/json')
@@ -110,7 +110,7 @@ def audit_pilot(entry):
                         _logger.LogLevel.ERROR)
             error = esi_ship_result['error']
             err_result = {'code': esi_ship_code, 'error': error}
-            return esi_ship_code, err_result
+            raise Exception(error)
 
         dn = 'ou=People,dc=triumvirate,dc=rocks'
         if altOf is not None:
@@ -122,7 +122,7 @@ def audit_pilot(entry):
                 _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
                 js = json.dumps({'error': error})
                 resp = Response(js, status=500, mimetype='application/json')
-                return resp
+                raise Exception(error)
 
             if main_result is not None:
                 main = main_result.get('characterName', 'Unkown')
@@ -210,33 +210,41 @@ def audit_pilot(entry):
 
             pilot['corporation'] = esi_result['corporation_name']
 
-            request_location_url = 'characters/{}/location/?datasource=tranquility'.format(uid)
-            esi_location_code, esi_location_result = common.request_esi.esi(__name__, request_location_url,
-                                                                            method='get',
-                                                                            charid=uid)
+            # check if asset scope is available
+            scope_code, _ = _check_scope.check_scope(__name__, uid,
+                                                     ['esi-location.read_location.v1',
+                                                      'esi-location.read_ship_type.v1'])
 
-            if esi_location_code != 200:
-                # something broke severely
-                _logger.log('[' + __name__ + '] location API error {0}: {1}'.format(esi_location_code,
-                                                                                    esi_location_result['error']),
-                            _logger.LogLevel.ERROR)
-                error = esi_location_result['error']
-                err_result = {'code': esi_location_code, 'error': error}
-                return esi_location_code, err_result
+            if scope_code:
+                request_location_url = 'characters/{}/location/?datasource=tranquility'.format(uid)
+                esi_location_code, esi_location_result = common.request_esi.esi(__name__, request_location_url,
+                                                                                method='get',
+                                                                                charid=uid)
 
-            request_sys_url = 'universe/systems/{}/?datasource=tranquility'.format(
-                esi_location_result['solar_system_id'])
-            esi_system_code, esi_system_result = common.request_esi.esi(__name__, request_sys_url, method='get')
+                if esi_location_code != 200:
+                    # something broke severely
+                    _logger.log('[' + __name__ + '] location API error {0}: {1}'.format(esi_location_code,
+                                                                                        esi_location_result['error']),
+                                _logger.LogLevel.ERROR)
+                    error = esi_location_result['error']
+                    err_result = {'code': esi_location_code, 'error': error}
+                    raise Exception(error)
 
-            if esi_system_code != 200:
-                # something broke severely
-                _logger.log(
-                    '[' + __name__ + '] ship API error {0}: {1}'.format(esi_system_code, esi_system_result['error']),
-                    _logger.LogLevel.ERROR)
-                error = esi_system_result['error']
-                err_result = {'code': esi_system_code, 'error': error}
-                return esi_system_code, err_result
+                request_sys_url = 'universe/systems/{}/?datasource=tranquility'.format(
+                    esi_location_result['solar_system_id'])
+                esi_system_code, esi_system_result = common.request_esi.esi(__name__, request_sys_url, method='get')
 
-            pilot['location'] = esi_system_result['name']
+                if esi_system_code != 200:
+                    # something broke severely
+                    _logger.log(
+                        '[' + __name__ + '] ship API error {0}: {1}'.format(esi_system_code, esi_system_result['error']),
+                        _logger.LogLevel.ERROR)
+                    error = esi_system_result['error']
+                    err_result = {'code': esi_system_code, 'error': error}
+                    raise Exception(error)
+
+                pilot['location'] = esi_system_result['name']
+            else:
+                pilot['location'] = 'Unkown'
 
     return pilot
