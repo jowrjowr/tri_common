@@ -110,7 +110,7 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result['members'] = esi_corporation_result['member_count']
 
     code_mains, result_mains = _ldaphelpers.ldap_search(__name__, dn, '(&(corporation={0})(!(altOf=*)))'
-                                                        .format(corp_id), [])
+                                                        .format(corp_id), ['uid'])
 
     if code_mains == 'error':
         error = 'unable to count main ldap users {0}: ({1}) {2}'.format(charid, code_mains, result_mains)
@@ -119,7 +119,8 @@ def audit_corp(charid, allianceid, corp_id):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
-    code_registered, result_registered = _ldaphelpers.ldap_search(__name__, dn, 'corporation={0}'.format(corp_id), [])
+    code_registered, result_registered = _ldaphelpers.ldap_search(__name__, dn, 'corporation={0}'.format(corp_id),
+                                                                  ['uid'])
 
     if code_registered == 'error':
         error = 'unable to count registered ldap users {0}: ({1}) {2}'\
@@ -130,7 +131,7 @@ def audit_corp(charid, allianceid, corp_id):
         return resp
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn, '(&(corporation={0})(esiAccessToken=*))'
-                                                          .format(corp_id), [])
+                                                          .format(corp_id), ['uid'])
 
     if code_tokens == 'error':
         error = 'unable to count token\'d ldap users {0}: ({1}) {2}'.format(charid, code_tokens, result_tokens)
@@ -142,6 +143,13 @@ def audit_corp(charid, allianceid, corp_id):
     print(result_tokens)
     print(result_registered)
     print(result_mains)
+
+    try:
+        print(result_tokens.__len__())
+        print(result_registered.__len__())
+        print(result_mains.__len__())
+    except:
+        pass
 
     #corp_result['tokens'] = len(result_tokens)
     #corp_result['registered'] = len(result_registered)
