@@ -156,7 +156,7 @@ def audit_character(corp_dict, entry):
         if entry['altOf'] is not None:
             main_code, main_result = _ldaphelpers.ldap_search(__name__, dn, 'uid={}'.format(entry['altOf']),
                                                               ['uid', 'characterName'])
-            main = main_result['characterName']
+            main = main_result[0]['characterName']
         else:
             main = entry['characterName']
 
