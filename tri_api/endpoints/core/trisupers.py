@@ -63,9 +63,7 @@ def core_trisupers():
     supers = dict()
 
     with ThreadPoolExecutor(10) as executor:
-        futures = { executor.submit(audit_pilot, entry['uid'], entry['corporation'],
-                                    entry['characterName'], entry['esiAccessToken'],
-                                    entry['altOf']): entry for entry in result_supers }
+        futures = { executor.submit(audit_pilot, entry): entry for entry in result_supers }
         for future in as_completed(futures):
             data = future.result()
 
@@ -76,7 +74,7 @@ def core_trisupers():
     return Response(js, status=200, mimetype='application/json')
 
 
-def audit_pilot(uid, corpid, charname, token, altOf):
+def audit_pilot(entry):
     from flask import request, Response
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from common.check_role import check_role
@@ -87,6 +85,12 @@ def audit_pilot(uid, corpid, charname, token, altOf):
     import json
 
     pilot = dict()
+
+    uid = entry['uid']
+    corpid = entry['corporation']
+    charname = entry['characterName']
+    token = entry['esiAccessToken']
+    altOf = entry['altOf']
 
     pilot['uid'] = uid
     pilot['pilot'] = charname
