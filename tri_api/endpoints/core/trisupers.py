@@ -151,6 +151,13 @@ def audit_pilot(entry):
             main_code, main_result = _ldaphelpers.ldap_search(__name__, dn, 'uid={}'.format(altOf),
                                                               ['uid', 'characterName'])
 
+            if main_code == 'error':
+                error = 'failed to find main for {0}: ({1}) {2}'.format(altOf, main_code, main_result)
+                _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
+                js = json.dumps({'error': error})
+                resp = Response(js, status=500, mimetype='application/json')
+                return resp
+
             if main_result is not None:
                 main = main_result.get('characterName', 'Unkown')
             else:
@@ -183,7 +190,7 @@ def audit_pilot(entry):
                 pilot['active'] = True
                 pilot['location'] = esi_system_result['name']
             elif esi_ship_result['ship_type_id'] in supers.keys():
-                pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
+                pilot['ship_type'] = supers[esi_ship_result['ship_type_id']]
                 pilot['super_type'] = "Supercarrier"
                 pilot['main'] = main
                 pilot['active'] = True
