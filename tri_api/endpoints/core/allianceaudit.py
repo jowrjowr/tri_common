@@ -140,19 +140,8 @@ def audit_corp(charid, allianceid, corp_id):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
-    print(result_tokens)
-    print(result_registered)
-    print(result_mains)
-
-    try:
-        print(result_tokens.__len__())
-        print(result_registered.__len__())
-        print(result_mains.__len__())
-    except:
-        pass
-
-    #corp_result['tokens'] = len(result_tokens)
-    #corp_result['registered'] = len(result_registered)
-    #corp_result['mains'] = len(result_mains)
+    corp_result['tokens'] = result_tokens.__len__()
+    corp_result['registered'] = result_registered.__len__()
+    corp_result['mains'] = result_mains.__len__()
 
     return corp_result
