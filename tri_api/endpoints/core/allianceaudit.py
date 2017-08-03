@@ -130,7 +130,7 @@ def audit_corp(charid, allianceid, corp_id):
         return resp
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(corporation={0})(esiAccessToken=*))'.format(corp_id), [])
+                                                        '(&(corporation={0})((esiAccessToken=*))'.format(corp_id), [])
 
     if code_tokens == 'error':
         error = 'unable to count token\'d ldap users {0}: ({1}) {2}'.format(charid, code_tokens, result_tokens)
@@ -139,7 +139,7 @@ def audit_corp(charid, allianceid, corp_id):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
-    #corp_result['tokens'] = len(result_tokens)
+    corp_result['tokens'] = len(result_tokens)
     corp_result['registered'] = len(result_registered)
     corp_result['mains'] = len(result_mains)
 
