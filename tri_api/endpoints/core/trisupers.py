@@ -150,7 +150,11 @@ def audit_pilot(entry):
         if altOf is not None:
             main_code, main_result = _ldaphelpers.ldap_search(__name__, dn, 'uid={}'.format(altOf),
                                                               ['uid', 'characterName'])
-            main = main_result['characterName']
+
+            if main_result is not None:
+                main = main_result['characterName']
+            else:
+                main = 'Unkown'
         else:
             main = charname
 
