@@ -152,7 +152,7 @@ def audit_pilot(entry):
                                                               ['uid', 'characterName'])
 
             if main_result is not None:
-                main = main_result['characterName']
+                main = main_result.get('characterName', 'Unkown')
             else:
                 main = 'Unkown'
         else:
