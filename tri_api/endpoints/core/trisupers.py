@@ -67,10 +67,11 @@ def core_trisupers():
         for future in as_completed(futures):
             data = future.result()
 
-            print(data)
-
-            if data.get('valid', False):
-                supers[data['uid']] = data
+            try:
+                if data.get('valid', False):
+                    supers[data['uid']] = data
+            except:
+                pass
 
     js = json.dumps(supers)
     return Response(js, status=200, mimetype='application/json')
