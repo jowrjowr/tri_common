@@ -132,7 +132,7 @@ def audit_corp(charid, allianceid, corp_id):
         return resp
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(&(alliance={0})(corporation={1}))(esiAccessToken=*))'
+                                                        '(&(&(alliance={0})(corporation={1}))((esiAccessToken=*)))'
                                                         .format(allianceid, corp_id), [])
 
     if code_mains == 'error':
