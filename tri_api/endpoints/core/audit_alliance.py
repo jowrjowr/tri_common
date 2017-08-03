@@ -110,8 +110,8 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result['members'] = esi_corporation_result['member_count']
 
     code_mains, result_mains = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(&(alliance={0})(corporation={1}))((!(altOf=*))))'
-                                                        .format(allianceid, corp_id), [])
+                                                        '(&(corporation={0})((!(altOf=*)))'
+                                                        .format(corp_id), [])
 
     if code_mains == 'error':
         error = 'unable to check auth groups roles for {0}: ({1}) {2}'.format(charid, code_mains, result_mains)
@@ -120,8 +120,8 @@ def audit_corp(charid, allianceid, corp_id):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
     code_registered, result_registered = _ldaphelpers.ldap_search(__name__, dn,
-                                                                  '(&(alliance={0})(corporation={1}))'
-                                                                  .format(allianceid, corp_id), [])
+                                                                  '(corporation={0})'
+                                                                  .format(corp_id), [])
 
     if code_registered == 'error':
         error = 'unable to check auth groups roles for {0}: ({1}) {2}'\
@@ -132,8 +132,8 @@ def audit_corp(charid, allianceid, corp_id):
         return resp
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(&(alliance={0})(corporation={1}))((esiAccessToken=*)))'
-                                                        .format(allianceid, corp_id), [])
+                                                        '(&(corporation={0})((esiAccessToken=*))'
+                                                        .format(corp_id), [])
 
     if code_mains == 'error':
         error = 'unable to check auth groups roles for {0}: ({1}) {2}'.format(charid, code_tokens, result_tokens)
