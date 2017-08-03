@@ -2,7 +2,7 @@ from flask import request
 from tri_api import app
 
 @app.route('/core/trisupers/', methods=[ 'GET' ])
-def core_audit_alliance(allianceid):
+def core_trisupers(allianceid):
     from flask import request, Response
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from common.check_role import check_role
