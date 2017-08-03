@@ -71,13 +71,15 @@ def core_allianceaudit(charid):
     corp_dict = {'corps': {}, 'supers': {}}
 
     with ThreadPoolExecutor(10) as executor:
-        futures = { executor.submit(audit_character, corp_dict, result[cn]): cn for cn in result }
+        futures = { executor.submit(audit_corps, corp_dict, result[cn]): cn for cn in result }
         for future in as_completed(futures):
-            corp_dict = future.result()
+            corp_dict['corps'] = future.result()
 
     js = json.dumps(corp_dict)
     return Response(js, status=200, mimetype='application/json')
 
+def audit_corps(corp_dict, entry):
+    pass
 
 def audit_character(corp_dict, entry):
     import common.ldaphelpers as _ldaphelpers
