@@ -8,8 +8,7 @@ import tri_api.endpoints.core.broadcast
 import tri_api.endpoints.core.password
 import tri_api.endpoints.core.corpaudit
 import tri_api.endpoints.core.blacklist
-import tri_api.endpoints.core.allianceaudit
-import tri_api.endpoints.core.vanguardaudit
+import tri_api.endpoints.core.audit_alliance
 
 import tri_api.endpoints.auth
 import tri_api.endpoints.char
