@@ -59,7 +59,7 @@ def core_allianceaudit(charid):
 
     # get all entires for triumvirate
     code, result = _ldaphelpers.ldap_search(__name__, dn, 'alliance=933731581',
-                                            ['uid', 'corporation', 'esiAccessToken', 'altOf'])
+                                            ['uid', 'characterName', 'corporation', 'esiAccessToken', 'altOf'])
 
     if code == 'error':
         error = 'unable to fetch all tri ldap entries: ({0}) {1}'.format(code, result)
@@ -80,6 +80,7 @@ def core_allianceaudit(charid):
 
 
 def audit_character(corp_dict, entry):
+    import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
     import common.check_scope as _check_scope
     import common.request_esi
@@ -150,6 +151,15 @@ def audit_character(corp_dict, entry):
             err_result = {'code': esi_system_code, 'error': error}
             return esi_system_code, err_result
 
+        # get main
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        if entry['altOf'] is not None:
+            main_code, main_result = _ldaphelpers.ldap_search(__name__, dn, 'uid={}'.format(entry['altOf']),
+                                                              ['uid', 'characterName'])
+            main = main_result['characterName']
+        else:
+            main = entry['characterName']
+
         # check ship
         titans = {
             11567: 'Avatar',
@@ -172,6 +182,8 @@ def audit_character(corp_dict, entry):
             corp_dict['supers'][entry['uid']] = {}
             corp_dict['supers'][entry['uid']]['ship'] = titans[esi_ship_result['ship_type_id']]
             corp_dict['supers'][entry['uid']]['type'] = "Titan"
+            corp_dict['supers'][entry['uid']]['main'] = main
+            corp_dict['supers'][entry['uid']]['pilot'] = entry['characterName']
             corp_dict['supers'][entry['uid']]['active'] = True
             corp_dict['supers'][entry['uid']]['location'] = esi_system_result['name']
             corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
@@ -182,6 +194,8 @@ def audit_character(corp_dict, entry):
             corp_dict['supers'][entry['uid']]['active'] = True
             corp_dict['supers'][entry['uid']]['location'] = esi_system_result['name']
             corp_dict['supers'][entry['uid']]['type'] = "Supercarrier"
+            corp_dict['supers'][entry['uid']]['main'] = main
+            corp_dict['supers'][entry['uid']]['pilot'] = entry['characterName']
             corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
         else:
             # check if asset scope is available
@@ -205,6 +219,8 @@ def audit_character(corp_dict, entry):
                         corp_dict['supers'][entry['uid']]['ship'] = titans[esi_ship_result['ship_type_id']]
                         corp_dict['supers'][entry['uid']]['type'] = "Titan"
                         corp_dict['supers'][entry['uid']]['active'] = False
+                        corp_dict['supers'][entry['uid']]['main'] = main
+                        corp_dict['supers'][entry['uid']]['pilot'] = entry['characterName']
                         corp_dict['supers'][entry['uid']]['location'] = esi_system_result['name']
                         corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
 
@@ -214,6 +230,8 @@ def audit_character(corp_dict, entry):
                         corp_dict['supers'][entry['uid']]['active'] = False
                         corp_dict['supers'][entry['uid']]['location'] = esi_system_result['name']
                         corp_dict['supers'][entry['uid']]['type'] = "Supercarrier"
+                        corp_dict['supers'][entry['uid']]['pilot'] = entry['characterName']
+                        corp_dict['supers'][entry['uid']]['main'] = main
                         corp_dict['supers'][entry['uid']]['corporation'] = corp_dict['corps'][str(corp_id)]['name']
             else:
                 _logger.log(
