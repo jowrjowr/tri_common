@@ -139,7 +139,7 @@ def audit_corp(charid, allianceid, corp_id):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
-    corp_result['tokens'] = len(result_tokens)
+    #corp_result['tokens'] = len(result_tokens)
     corp_result['registered'] = len(result_registered)
     corp_result['mains'] = len(result_mains)
 
