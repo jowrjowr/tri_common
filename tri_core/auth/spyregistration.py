@@ -1,20 +1,22 @@
 #!/usr/bin/python3
 
-from flask import Flask, request, url_for, Response
-from flask import g, session, redirect, jsonify, json
-from requests_oauthlib import OAuth2Session
+from flask import request
+from tri_api import app
 
-import common.logger as _logger
-import common.credentials.discord as _discord
-import common.database as _database
-import MySQLdb as mysql
-import flask
-
+@app.route('/auth/discord/spyregister', methods=['GET'])
 def auth_spyregister():
+
+    from flask import session, redirect, json, request, Response
+    from requests_oauthlib import OAuth2Session
+
+    import common.logger as _logger
+    import common.credentials.discord as _discord
+    import common.database as _database
+    import MySQLdb as mysql
 
     client_id = _discord.client_id
     client_secret = _discord.client_secret
-    redirect = 'https://auth.triumvirate.rocks/5eyes/callback?server_type=discord'
+    redirect_url = 'https://auth.triumvirate.rocks/discord/callback?server_type=discord_spy'
     base_url = 'https://discordapp.com/api'
     base_auth_url = base_url + '/oauth2/authorize'
     token_url = base_url + '/oauth2/token'
@@ -25,7 +27,7 @@ def auth_spyregister():
     oauth_session = OAuth2Session(
         client_id=client_id,
         scope=scope,
-        redirect_uri=redirect,
+        redirect_uri=redirect_url,
         auto_refresh_kwargs={
             'client_id': client_id,
             'client_secret': client_secret,
@@ -34,13 +36,23 @@ def auth_spyregister():
     )
     auth_url, state = oauth_session.authorization_url(base_auth_url)
     session['oauth_state'] = state
-    return flask.redirect(auth_url, code=302)
+    return redirect(auth_url, code=302)
 
+@app.route('/auth/discord/callback', methods=['GET'])
 def auth_spyregister_callback():
+
+    from flask import session, redirect, json, request, Response
+    from requests_oauthlib import OAuth2Session
+
+    import common.logger as _logger
+    import common.credentials.discord as _discord
+    import common.database as _database
+    import MySQLdb as mysql
+
 
     client_id = _discord.client_id
     client_secret = _discord.client_secret
-    redirect = 'https://auth.triumvirate.rocks/5eyes/callback?server_type=discord'
+    redirect = 'https://auth.triumvirate.rocks/discord/callback?server_type=discord_spy'
     base_url = 'https://discordapp.com/api'
     token_url = base_url + '/oauth2/token'
     base_auth_url = base_url + '/oauth2/authorize'
@@ -83,7 +95,7 @@ def auth_spyregister_callback():
         return
 
     cursor = sql_conn.cursor()
-    query = 'INSERT INTO SpyTokens (accessToken, refreshToken, validUntil, TokenType) VALUES (%s, %s, %s, %s)'
+    query = 'INSERT INTO SpyTokens (accessToken, refreshToken, validUntil, type) VALUES (%s, %s, %s, %s)'
 
     try:
         row = cursor.execute(
