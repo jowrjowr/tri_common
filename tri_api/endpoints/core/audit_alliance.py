@@ -110,7 +110,7 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result['members'] = esi_corporation_result['member_count']
 
     code_mains, result_mains = _ldaphelpers.ldap_search(__name__, dn,
-                                                        '(&(alliance={0})(corporation={1})(!(altOf=*)))'
+                                                        '(&(alliance={0})(corporation={1})(altOf=))'
                                                         .format(allianceid, corp_id), [])
 
     if code_mains == 'error':
