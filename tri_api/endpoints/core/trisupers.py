@@ -71,7 +71,7 @@ def core_trisupers():
                 if data.get('valid', False):
                     supers[data['uid']] = data
             except:
-                _logger.log('[' + __name__ + '] ' + data, _logger.LogLevel.ERROR)
+                pass
 
     js = json.dumps(supers)
     return Response(js, status=200, mimetype='application/json')
