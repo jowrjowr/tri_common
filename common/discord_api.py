@@ -71,7 +71,7 @@ def discord_members(function, target_channel):
     except Exception as error:
         _logger.log('[' + function + '] discord connection error: ' + str(error), _logger.LogLevel.ERROR)
 
-def discord_allmembers(function, login_type, token=None, user=None):
+def discord_allmembers(function, login_type, token=None, user=None, exclude=[], include=[]):
 
     import common.logger as _logger
     import discord
@@ -88,18 +88,36 @@ def discord_allmembers(function, login_type, token=None, user=None):
         servers = client.servers
         members = [ None ]
         for server in servers:
+
+            if server.name in exclude:
+                print('excluding: {0}'.format(server.name))
+                # do not fetch members from this named discord
+                continue
+
+            if server.name in include or include == []:
+                print('including: {0}'.format(server.name))
+                # only fetch specifically included discords
+                pass
+            else:
+                print('excluding: {0}'.format(server.name))
+                continue
+
             members = server.members
 
             for member in members:
                 member_detail = dict()
                 member_detail[member.name] = dict()
                 member_detail[member.name]['id'] =  member.id
+                member_detail[member.name]['bot'] =  member.bot
                 member_detail[member.name]['name'] = member.name
                 member_detail[member.name]['display_name'] = member.display_name
                 member_detail[member.name]['server'] = member.server.name
                 member_detail[member.name]['discriminator'] = member.discriminator
                 member_detail[member.name]['joined_at'] = member.joined_at
 
+                if member.bot == True:
+                    print('bot user: {0}'.format(member.name))
+                    print('server: {0}'.format(server.name))
                 users.append(member_detail)
 
         await client.close()
@@ -110,6 +128,62 @@ def discord_allmembers(function, login_type, token=None, user=None):
             username, password = user
             client.run(username, password)
         return users
+
+        _logger.log('[' + function + '] discord disconnected. job done.', _logger.LogLevel.DEBUG)
+    except Exception as error:
+        _logger.log('[' + function + '] discord connection error: ' + str(error), _logger.LogLevel.ERROR)
+
+def discord_userdetails(function, login_type, token=None, user=None, target_server=None, target_member=None):
+
+    import common.logger as _logger
+    import discord
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = discord.Client(loop=loop,cache_auth=False)
+
+    details = dict()
+
+    @client.event
+    async def on_ready():
+        _logger.log('[' + function + '] Discord connected', _logger.LogLevel.DEBUG)
+        for server in client.servers:
+            if server.name == target_server:
+                # we're only looking at a specific server
+
+                members = server.members
+
+                for member in members:
+
+                    if member.name == target_member:
+                        # specific server, specific member.
+                        details['joined_at'] = member.joined_at
+                        details['status'] = member.status
+                        details['id'] = member.id
+                        details['created_at'] = member.created_at
+                        details['bot'] = member.bot
+
+                        # some assembly required
+
+                        details['roles'] = []
+                        details['permissions'] = []
+                        for role in member.roles:
+                            details['roles'].append(role.name)
+
+                        details['top_role'] = member.top_role.name
+
+                        for perm in iter(member.server_permissions):
+                            details['permissions'].append(perm)
+
+        await client.close()
+    try:
+        if login_type == 'token':
+            client.run(token)
+        if login_type == 'user':
+            username, password = user
+            client.run(username, password)
+        return details
 
         _logger.log('[' + function + '] discord disconnected. job done.', _logger.LogLevel.DEBUG)
     except Exception as error:
