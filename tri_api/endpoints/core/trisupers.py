@@ -132,8 +132,6 @@ def audit_pilot(entry):
                 (_, main_result), = main_result.items()
                 main = main_result['characterName']
             except:
-                print(main_result)
-                _logger.log( '[' + __name__ + '] searching for main of {0} failed: {1}'.format(altOf, main_code),_logger.LogLevel.ERROR)
                 main = "Unkown"
 
         else:
@@ -243,7 +241,7 @@ def audit_pilot(entry):
                                 _logger.LogLevel.ERROR)
                     error = esi_assets_result['error']
                     err_result = {'code': esi_assets_code, 'error': error}
-                    return esi_assets_code, err_result
+                    raise Exception(error)
 
                 for asset in esi_assets_result:
                     if asset['type_id'] in titans.keys():
@@ -261,6 +259,43 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['main'] = main
                         ships[asset['item_id']]['active'] = False
                         ships[asset['item_id']]['location'] = "KEEPSTAR"
+
+                    if asset['item_id'] in ships:
+                        location_id = asset['location_type']
+                        location_type = asset['location_type']
+
+                        if location_type == "structure":
+                            request_assets_url = 'universe/structures/{}/?datasource=tranquility'.format(location_id)
+                            esi_structure_code, esi_structure_result = common.request_esi.esi(__name__, request_assets_url,
+                                                                                              method='get')
+
+                            if esi_structure_code != 200:
+                                # something broke severely
+                                _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(esi_structure_code,
+                                                                                                 esi_structure_result[
+                                                                                                     'error']),
+                                            _logger.LogLevel.ERROR)
+                                error = esi_structure_result['error']
+                                err_result = {'code': esi_structure_code, 'error': error}
+                                raise Exception(error)
+
+                            request_sys_url = 'universe/systems/{}/?datasource=tranquility'.format(
+                                esi_structure_result['solar_system_id'])
+                            esi_system_code, esi_system_result = common.request_esi.esi(__name__, request_sys_url,
+                                                                                        method='get')
+
+                            if esi_system_code != 200:
+                                # something broke severely
+                                _logger.log(
+                                    '[' + __name__ + '] ship API error {0}: {1}'.format(esi_system_code,
+                                                                                        esi_system_result['error']),
+                                    _logger.LogLevel.ERROR)
+                                error = esi_system_result['error']
+                                err_result = {'code': esi_system_code, 'error': error}
+                                raise Exception(error)
+
+                            ships[asset['item_id']]['location'] = esi_system_result['name'] + ' (Docked)'
+
             else:
                 _logger.log(
                     '[' + __name__ + '] no asset scope for char {}'.format(uid), _logger.LogLevel.WARNING)
