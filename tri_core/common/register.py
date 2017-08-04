@@ -78,17 +78,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
         _logger.log('[' + __name__ + '] /corporations API did not return corp name for corpid {0}: {1}'.format(corpid, error), _logger.LogLevel.ERROR)
         return('SORRY, ESI API ERROR')
 
-    # get alliance name
-    request_url = "alliances/" + str(allianceid) + '/?datasource=tranquility'
-
-    code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-    if not code == 200:
-        _logger.log('[' + __name__ + '] /alliances API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return('SORRY, ESI API ERROR')
-
-    alliancename = result['alliance_name']
-
     # setup the service user/pass
 
     serviceuser = charname
