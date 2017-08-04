@@ -129,7 +129,7 @@ def audit_pilot(entry):
                 resp = Response(js, status=500, mimetype='application/json')
                 raise Exception(error)
             try:
-                main = main_result['characterName']
+                main = main_result[0]['characterName']
             except:
                 print(main_result)
                 _logger.log( '[' + __name__ + '] searching for main of {0} failed: {1}'.format(altOf, main_code),_logger.LogLevel.ERROR)
