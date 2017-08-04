@@ -1,4 +1,4 @@
-def makesession(charid, token, alt=False):
+def makesession(charid):
 
     import common.logger as _logger
     import common.request_esi
@@ -31,7 +31,7 @@ def makesession(charid, token, alt=False):
     payload['csrf_token'] = uuid.uuid4().hex
     payload['_previous'] = dict()
     payload['_previous']['url'] = 'https://auth.triumvirate.rocks/eve/callback'
-    payload['ip_adress'] = ''
+    payload['ip_address'] = ''
     payload['user_agent'] = ''
 
     # i have literally no idea what purpose this serves.
