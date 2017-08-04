@@ -131,6 +131,7 @@ def audit_pilot(entry):
             try:
                 main = main_result['characterName']
             except:
+                print(main_result)
                 _logger.log( '[' + __name__ + '] searching for main of {0} failed: {1}'.format(altOf, main_code),_logger.LogLevel.ERROR)
                 main = "Unkown"
 
@@ -272,7 +273,7 @@ def audit_pilot(entry):
 
             corp_name = esi_result['corporation_name']
 
-            for ship in ships:
-                ship['corporation'] = corp_name
+            for id in ships:
+                ships[id]['corporation'] = corp_name
 
     return ships
