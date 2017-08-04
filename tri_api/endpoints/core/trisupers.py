@@ -263,8 +263,8 @@ def audit_pilot(entry):
                     if asset['item_id'] in ships:
                         location_id = asset['location_type']
                         location_type = asset['location_type']
-                        print(location_type)
-                        if location_type == "structure":
+
+                        if location_type == "other":
                             request_assets_url = 'universe/structures/{}/?datasource=tranquility'.format(location_id)
                             esi_structure_code, esi_structure_result = common.request_esi.esi(__name__, request_assets_url,
                                                                                               method='get')
