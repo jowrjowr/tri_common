@@ -118,7 +118,7 @@ def audit_pilot(entry):
             raise Exception(error)
 
         dn = 'ou=People,dc=triumvirate,dc=rocks'
-        if altOf is not None:
+        if altOf is not None and altOf!="None":
             main_code, main_result = _ldaphelpers.ldap_search(__name__, dn, 'uid={}'.format(altOf),
                                                               ['uid', 'characterName'])
 
@@ -129,13 +129,8 @@ def audit_pilot(entry):
                 resp = Response(js, status=500, mimetype='application/json')
                 raise Exception(error)
 
-            if main_result is not None:
-                main = main_result.get('characterName', 'Unknown')
-            else:
-                _logger.log(
-                    '[' + __name__ + '] searching for main of {0} failed: {1}'.format(altOf, main_code),
-                    _logger.LogLevel.ERROR)
-                main = 'Unknown'
+
+            main = main_result.get['characterName']
         else:
             main = charname
 
