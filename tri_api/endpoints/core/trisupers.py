@@ -130,8 +130,11 @@ def audit_pilot(entry):
                 raise Exception(error)
 
             if main_result is not None:
-                main = main_result[0].get('characterName', 'Unkown')
+                main = main_result.get('characterName', 'Unkown')
             else:
+                _logger.log(
+                    '[' + __name__ + '] searching for main of {0} failed: {1}'.format(altOf, main_code),
+                    _logger.LogLevel.ERROR)
                 main = 'Unkown'
         else:
             main = charname
