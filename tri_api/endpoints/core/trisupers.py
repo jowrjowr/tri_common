@@ -196,7 +196,7 @@ def audit_pilot(entry):
                 else:
                     if esi_structure_code != 200:
                         # something broke severely
-                        _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(esi_structure_code,
+                        _logger.log('[' + __name__ + '] structure API error {0}: {1}'.format(esi_structure_code,
                                                                                          esi_structure_result[
                                                                                              'error']),
                                     _logger.LogLevel.ERROR)
@@ -284,7 +284,7 @@ def audit_pilot(entry):
                             else:
                                 if esi_structure_code != 200:
                                     # something broke severely
-                                    _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(esi_structure_code,
+                                    _logger.log('[' + __name__ + '] structure API error {0}: {1}'.format(esi_structure_code,
                                                                                                      esi_structure_result[
                                                                                                          'error']),
                                                 _logger.LogLevel.ERROR)
