@@ -62,7 +62,7 @@ def core_trisupers():
 
     supers = dict()
 
-    with ThreadPoolExecutor(50) as executor:
+    with ThreadPoolExecutor(20) as executor:
         futures = { executor.submit(audit_pilot, result_supers[cn]): cn for cn in result_supers }
         for future in as_completed(futures):
             data = future.result()
