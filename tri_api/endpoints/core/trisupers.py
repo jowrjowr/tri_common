@@ -250,7 +250,7 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['super_type'] = "Titan"
                         ships[asset['item_id']]['main'] = main
                         ships[asset['item_id']]['active'] = False
-                        ships[asset['item_id']]['location'] = "Unkown"
+                        ships[asset['item_id']]['location'] = "Unknown"
 
                     elif asset['type_id'] in supers.keys():
                         ships[asset['item_id']] = basic_pilot
@@ -258,7 +258,7 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['super_type'] = "Supercarrier"
                         ships[asset['item_id']]['main'] = main
                         ships[asset['item_id']]['active'] = False
-                        ships[asset['item_id']]['location'] = "Unkown"
+                        ships[asset['item_id']]['location'] = "Unknown"
 
                     if asset['item_id'] in ships:
                         location_id = asset['location_type']
