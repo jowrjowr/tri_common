@@ -206,6 +206,8 @@ def auth_evesso_callback():
         if details == 'error':
             _logger.log('[' + __name__ + '] error in testing user {0}'.format(charid),_logger.LogLevel.ERROR)
             message = 'SORRY, internal error. Try again.'
+            return make_response(message)
+
         elif details == 'banned':
             message = 'nope.avi'
 
@@ -216,18 +218,24 @@ def auth_evesso_callback():
                 _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
                 _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
 
+            return make_response(message)
+
         elif details == 'public' and isalt == False:
             _logger.log('[' + __name__ + '] non-blue user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
             _logger.securitylog(__name__, 'non-blue user tried to register', charid=charid, ipaddress=ipaddress)
             message = 'Sorry, you have to be in vanguard to register for vanguard services'
+            return make_response(message)
+
+        elif details == 'public' and isalt == True:
+            # this is fine for an alt
+            pass
 
         else:
             # lol should never happen
             _logger.log('[' + __name__ + '] wtf? {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.ERROR)
             message = 'SORRY. There was an issue registering. Try again.'
+            return make_response(message)
 
-        response = make_response(message)
-        return response
     # true status is the only other return value so assume true
     # construct the session and declare victory
 

@@ -85,10 +85,44 @@ def characters():
         alt_charid = info['uid']
         alt_charname = info['characterName']
 
-        new_entry['dn'] = dn
         new_entry['character_id'] = alt_charid
         new_entry['character_name'] = alt_charname
         new_entry['corporation_id'] = info['corporation']
+
+        if 'alliance' in info:
+            new_entry['alliance_id'] = info['alliance']
+        else:
+            new_entry['alliance_id'] = None
+
+        # set some defaults
+
+        new_entry['skill_training_id'] = 'Unknown'
+        new_entry['skill_training_level'] = 'Unknown'
+        new_entry['skill_training'] = 'Unknown'
+        new_entry['skill_finish'] = 'Unknown'
+        new_entry['location'] = 'Unknown'
+        new_entry['esi_token_valid'] = False
+
+        # determine token status. everything past this requires a live token
+
+        try:
+            new_entry['esi_token'] = info['esiAccessToken']
+        except:
+            new_entry['esi_token'] = None
+
+        if new_entry['esi_token'] == None:
+            # we're done with this char
+            new_entry['esi_token'] = False
+            json_dict['alts'].append(new_entry)
+            continue
+        else:
+            # valid token. check scopes.
+            code, result = check_scope('acc_management', charid=alt_charid, scopes=scope)
+            # the default is already 'false'
+            if code == True:
+                new_entry['esi_token_valid'] = True
+
+        # we'll let the token scope status fall where it may and try to get other details
 
         # fetch skill queue
         request_url = 'characters/' + str(alt_charid) + '/skillqueue/?datasource=tranquility'
@@ -97,16 +131,27 @@ def characters():
 
         if not code == 200:
             _logger.log('[' + __name__ + '] /characters skillqueue API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            new_entry['skill_training_id'] = 'Unknown'
-            new_entry['skill_training_level'] = 'Unknown'
-            new_entry['skill_training'] = 'Unknown'
-            new_entry['skill_finish'] = 'Unknown'
             skill_training_id = None
-        else:
-            new_entry['skill_training_id'] = result[0]['skill_id']
-            new_entry['skill_training_level'] = result[0]['finished_level']
-            new_entry['skill_finish'] = result[0]['finish_date']
-            skill_training_id = result[0]['skill_id']
+
+        if len(result) == 0:
+            skill_training_id = None
+            current_skill = None
+
+        if len(result) > 0:
+            try:
+                current_skill = result[0]
+            except Exception as e:
+                skill_training_id = None
+                current_skill = None
+
+        if not current_skill == None:
+            new_entry['skill_training_id'] = current_skill['skill_id']
+            new_entry['skill_training_level'] = current_skill['finished_level']
+            try:
+                new_entry['skill_finish'] = current_skill['finish_date']
+            except Exception as e:
+                new_entry['skill_finish'] = 'N/A'
+            skill_training_id = current_skill['skill_id']
 
         if not skill_training_id == None:
             # map the skill id to a name
@@ -120,7 +165,6 @@ def characters():
                 new_entry['skill_training'] = 'Unknown'
             else:
                 new_entry['skill_training'] = result[0]['name']
-
 
         # fetch alt location
         request_url = 'characters/{0}/location/?datasource=tranquility'.format(alt_charid)
@@ -147,18 +191,8 @@ def characters():
             else:
                 new_entry['location'] = result['name']
 
-        if 'alliance' in info:
-            new_entry['alliance_id'] = info['alliance']
-        else:
-            new_entry['alliance_id'] = None
-
-        if 'esiAccessToken' in info:
-            new_entry['esi_token'] = True
-            new_entry['esi_token_valid'] = check_scope('acc_management', charid=alt_charid, scopes=scope)[0]
-        else:
-            new_entry['esi_token'] = False
-
         json_dict['alts'].append(new_entry)
+
 
     _logger.log('[' + __name__ + '] fetched characters successfully', _logger.LogLevel.DEBUG)
 
