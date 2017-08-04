@@ -35,14 +35,12 @@ def check_scope(function, charid, scopes, atoken=None):
 
     # determine the scopes the token has access to
 
-    verify_url = 'verify'
-    extraheaders = {'Authorization': 'Bearer ' + atoken }
-    code, result = common.request_esi.esi(__name__, verify_url, method='get', base='oauth', extraheaders=extraheaders)
+    verify_url = 'verify/?datasource=tranquility&token={0}'.format(atoken)
+    code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
         return 'error', 'broken verify request'
     charscopes = result['Scopes']
-
     # so given an array of scopes, let's check that what we want is in the list of scopes the character's token has
 
     # character scopes come out in a space delimited list
@@ -50,7 +48,6 @@ def check_scope(function, charid, scopes, atoken=None):
 
     # i want the set difference to be what is in the requested scope list, but NOT in the available scope list.
     difference = set(scopes) - set(charscopes)
-
     if difference == set([]):
         # the scopes requested matches what's available
         return True, []

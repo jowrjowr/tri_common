@@ -61,6 +61,10 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     if base == 'esi':
         base_url = 'https://esi.tech.ccp.is'
         url = base_url + '/' + version + '/' + url + atoken
+    elif base == 'esi_verify':
+        # special case where the endpoint isn't versioned
+        base_url = 'https://esi.tech.ccp.is'
+        url = base_url + '/' + url + '&token=' + atoken
     elif base == 'triapi':
         base_url = 'https://api.triumvirate.rocks'
         url = base_url + '/' + url
