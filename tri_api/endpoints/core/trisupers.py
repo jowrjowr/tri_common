@@ -250,7 +250,7 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['super_type'] = "Titan"
                         ships[asset['item_id']]['main'] = main
                         ships[asset['item_id']]['active'] = False
-                        ships[asset['item_id']]['location'] = "KEEPSTAR"
+                        ships[asset['item_id']]['location'] = "Unkown"
 
                     elif asset['type_id'] in supers.keys():
                         ships[asset['item_id']] = basic_pilot
@@ -258,12 +258,12 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['super_type'] = "Supercarrier"
                         ships[asset['item_id']]['main'] = main
                         ships[asset['item_id']]['active'] = False
-                        ships[asset['item_id']]['location'] = "KEEPSTAR"
+                        ships[asset['item_id']]['location'] = "Unkown"
 
                     if asset['item_id'] in ships:
                         location_id = asset['location_type']
                         location_type = asset['location_type']
-
+                        print(location_type)
                         if location_type == "structure":
                             request_assets_url = 'universe/structures/{}/?datasource=tranquility'.format(location_id)
                             esi_structure_code, esi_structure_result = common.request_esi.esi(__name__, request_assets_url,
