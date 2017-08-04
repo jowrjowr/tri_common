@@ -7,7 +7,6 @@ def core_isblue():
     from flask import Flask, request, url_for, json, Response
     import common.request_esi
     import common.logger as _logger
-    import requests
     import json
 
     # core isblue function that tells whether a user, corp, or alliance is currently blue to triumvirate
