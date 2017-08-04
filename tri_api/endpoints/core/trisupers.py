@@ -227,7 +227,7 @@ def audit_pilot(entry):
                 raise Exception(error)
 
             ships[esi_ship_result['ship_item_id']]['location'] = esi_system_result['name']
-        elif 1==0:
+        elif 1==1:
             # check if asset scope is available
             scope_code, _ = _check_scope.check_scope(__name__, uid, ['esi-assets.read_assets.v1'])
 
@@ -245,18 +245,22 @@ def audit_pilot(entry):
                     err_result = {'code': esi_assets_code, 'error': error}
                     return esi_assets_code, err_result
 
-                #for asset in esi_assets_result:
-                #    if esi_ship_result['ship_type_id'] in titans.keys():
-                #        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
-                #        pilot['super_type'] = "Titan"
-                #        pilot['main'] = main
-                #        pilot['active'] = True
+                for asset in esi_assets_result:
+                    if asset['type_id'] in titans.keys():
+                        ships[asset['item_id']] = basic_pilot
+                        ships[asset['item_id']]['ship_type'] = titans[asset['type_id']]
+                        ships[asset['item_id']]['super_type'] = "Titan"
+                        ships[asset['item_id']]['main'] = main
+                        ships[asset['item_id']]['active'] = False
+                        ships[asset['item_id']]['location'] = "KEEPSTAR"
 
-                #    elif esi_ship_result['ship_type_id'] in supers.keys():
-                #        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
-                #        pilot['super_type'] = "Supercarrier"
-                #        pilot['main'] = main
-                #        pilot['active'] = True
+                    elif asset['type_id'] in supers.keys():
+                        ships[asset['item_id']] = basic_pilot
+                        ships[asset['item_id']]['ship_type'] = supers[asset['type_id']]
+                        ships[asset['item_id']]['super_type'] = "Supercarrier"
+                        ships[asset['item_id']]['main'] = main
+                        ships[asset['item_id']]['active'] = False
+                        ships[asset['item_id']]['location'] = "KEEPSTAR"
             else:
                 _logger.log(
                     '[' + __name__ + '] no asset scope for char {}'.format(uid), _logger.LogLevel.WARNING)
