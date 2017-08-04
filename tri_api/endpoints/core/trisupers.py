@@ -271,12 +271,12 @@ def audit_pilot(entry):
                         ships[asset['item_id']]['location'] = "Unknown"
 
                     if asset['item_id'] in ships:
-                        location_id = asset['location_type']
+                        location_id = asset['location_id']
                         location_type = asset['location_type']
 
                         if location_type == "other":
-                            request_assets_url = 'universe/structures/{}/?datasource=tranquility'.format(location_id)
-                            esi_structure_code, esi_structure_result = common.request_esi.esi(__name__, request_assets_url,
+                            request_structure_url = 'universe/structures/{}/?datasource=tranquility'.format(location_id)
+                            esi_structure_code, esi_structure_result = common.request_esi.esi(__name__, request_structure_url,
                                                                                               method='get', charid=uid)
 
                             if esi_structure_code == 401 or esi_structure_code == 403:
@@ -284,7 +284,7 @@ def audit_pilot(entry):
                             else:
                                 if esi_structure_code != 200:
                                     # something broke severely
-                                    _logger.log('[' + __name__ + '] structure API error {0}: {1}'.format(esi_structure_code,
+                                    _logger.log('[' + __name__ + '] structure (for asset) API error {0}: {1}'.format(esi_structure_code,
                                                                                                      esi_structure_result[
                                                                                                          'error']),
                                                 _logger.LogLevel.ERROR)
