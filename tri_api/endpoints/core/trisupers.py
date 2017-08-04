@@ -68,8 +68,7 @@ def core_trisupers():
             data = future.result()
 
             try:
-                if data.get('valid', False):
-                    supers[data['uid']] = data
+                supers.update(data)
             except Exception as err:
                 _logger.log('[' + __name__ + '] super audit for failed: {0}'.format(err), _logger.LogLevel.ERROR)
 
@@ -87,7 +86,8 @@ def audit_pilot(entry):
     import common.request_esi
     import json
 
-    pilot = dict()
+    ships = dict()
+    basic_pilot = dict()
 
     uid = entry['uid']
     corpid = entry['corporation']
@@ -95,9 +95,9 @@ def audit_pilot(entry):
     token = entry['esiAccessToken']
     altOf = entry['altOf']
 
-    pilot['uid'] = uid
-    pilot['pilot'] = charname
-    pilot['valid'] = False
+    basic_pilot['uid'] = uid
+    basic_pilot['pilot'] = charname
+    basic_pilot['valid'] = False
 
     # check if asset scope is available
     scope_code, _ = _check_scope.check_scope(__name__, uid,
@@ -130,7 +130,7 @@ def audit_pilot(entry):
                 raise Exception(error)
 
 
-            main = main_result.get['characterName']
+            main = main_result['characterName']
         else:
             main = charname
 
@@ -153,66 +153,11 @@ def audit_pilot(entry):
         }
 
         if esi_ship_result['ship_type_id'] in titans.keys():
-            pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
-            pilot['super_type'] = "Titan"
-            pilot['main'] = main
-            pilot['active'] = True
-
-            pilot['valid'] = True
-        elif esi_ship_result['ship_type_id'] in supers.keys():
-            pilot['ship_type'] = supers[esi_ship_result['ship_type_id']]
-            pilot['super_type'] = "Supercarrier"
-            pilot['main'] = main
-            pilot['active'] = True
-            pilot['valid'] = True
-        elif 1==0:
-            # check if asset scope is available
-            scope_code, _ = _check_scope.check_scope(__name__, uid, ['esi-assets.read_assets.v1'])
-
-            if scope_code:
-                request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(uid)
-                esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url,
-                                                                            method='get',
-                                                                            charid=uid)
-                if esi_assets_code != 200:
-                    # something broke severely
-                    _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(esi_assets_code,
-                                                                                     esi_assets_result['error']),
-                                _logger.LogLevel.ERROR)
-                    error = esi_assets_result['error']
-                    err_result = {'code': esi_assets_code, 'error': error}
-                    return esi_assets_code, err_result
-
-                for asset in esi_assets_result:
-                    if esi_ship_result['ship_type_id'] in titans.keys():
-                        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
-                        pilot['super_type'] = "Titan"
-                        pilot['main'] = main
-                        pilot['active'] = True
-
-                    elif esi_ship_result['ship_type_id'] in supers.keys():
-                        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
-                        pilot['super_type'] = "Supercarrier"
-                        pilot['main'] = main
-                        pilot['active'] = True
-            else:
-                _logger.log(
-                    '[' + __name__ + '] no asset scope for char {}'.format(uid), _logger.LogLevel.WARNING)
-
-        if pilot['valid']:
-            request_url = 'corporations/{}/?datasource=tranquility'.format(corpid)
-            esi_code, esi_result = common.request_esi.esi(__name__, request_url, method='get')
-
-            if not esi_code == 200:
-                # something broke severely
-                _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(esi_code, esi_result['error']),
-                            _logger.LogLevel.ERROR)
-                error = esi_result['error']
-                err_result = {'code': esi_code, 'error': error}
-                return pilot
-
-            pilot['corporation'] = esi_result['corporation_name']
-
+            ships[esi_ship_result['ship_item_id']] = basic_pilot
+            ships[esi_ship_result['ship_item_id']]['ship_type'] = titans[esi_ship_result['ship_type_id']]
+            ships[esi_ship_result['ship_item_id']]['super_type'] = "Titan"
+            ships[esi_ship_result['ship_item_id']]['main'] = main
+            ships[esi_ship_result['ship_item_id']]['active'] = True
 
             request_location_url = 'characters/{}/location/?datasource=tranquility'.format(uid)
             esi_location_code, esi_location_result = common.request_esi.esi(__name__, request_location_url,
@@ -241,6 +186,90 @@ def audit_pilot(entry):
                 err_result = {'code': esi_system_code, 'error': error}
                 raise Exception(error)
 
-            pilot['location'] = esi_system_result['name']
+            ships[esi_ship_result['ship_item_id']]['location'] = esi_system_result['name']
+        elif esi_ship_result['ship_type_id'] in supers.keys():
+            ships[esi_ship_result['ship_item_id']] = basic_pilot
+            ships[esi_ship_result['ship_item_id']]['ship_type'] = supers[esi_ship_result['ship_type_id']]
+            ships[esi_ship_result['ship_item_id']]['super_type'] = "Supercarrier"
+            ships[esi_ship_result['ship_item_id']]['main'] = main
+            ships[esi_ship_result['ship_item_id']]['active'] = True
 
-    return pilot
+            request_location_url = 'characters/{}/location/?datasource=tranquility'.format(uid)
+            esi_location_code, esi_location_result = common.request_esi.esi(__name__, request_location_url,
+                                                                            method='get',
+                                                                            charid=uid)
+
+            if esi_location_code != 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] location API error {0}: {1}'.format(esi_location_code,
+                                                                                    esi_location_result['error']),
+                            _logger.LogLevel.ERROR)
+                error = esi_location_result['error']
+                err_result = {'code': esi_location_code, 'error': error}
+                raise Exception(error)
+
+            request_sys_url = 'universe/systems/{}/?datasource=tranquility'.format(
+                esi_location_result['solar_system_id'])
+            esi_system_code, esi_system_result = common.request_esi.esi(__name__, request_sys_url, method='get')
+
+            if esi_system_code != 200:
+                # something broke severely
+                _logger.log(
+                    '[' + __name__ + '] ship API error {0}: {1}'.format(esi_system_code, esi_system_result['error']),
+                    _logger.LogLevel.ERROR)
+                error = esi_system_result['error']
+                err_result = {'code': esi_system_code, 'error': error}
+                raise Exception(error)
+
+            ships[esi_ship_result['ship_item_id']]['location'] = esi_system_result['name']
+        elif 1==0:
+            # check if asset scope is available
+            scope_code, _ = _check_scope.check_scope(__name__, uid, ['esi-assets.read_assets.v1'])
+
+            if scope_code:
+                request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(uid)
+                esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url,
+                                                                            method='get',
+                                                                            charid=uid)
+                if esi_assets_code != 200:
+                    # something broke severely
+                    _logger.log('[' + __name__ + '] asset API error {0}: {1}'.format(esi_assets_code,
+                                                                                     esi_assets_result['error']),
+                                _logger.LogLevel.ERROR)
+                    error = esi_assets_result['error']
+                    err_result = {'code': esi_assets_code, 'error': error}
+                    return esi_assets_code, err_result
+
+                #for asset in esi_assets_result:
+                #    if esi_ship_result['ship_type_id'] in titans.keys():
+                #        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
+                #        pilot['super_type'] = "Titan"
+                #        pilot['main'] = main
+                #        pilot['active'] = True
+
+                #    elif esi_ship_result['ship_type_id'] in supers.keys():
+                #        pilot['ship_type'] = titans[esi_ship_result['ship_type_id']]
+                #        pilot['super_type'] = "Supercarrier"
+                #        pilot['main'] = main
+                #        pilot['active'] = True
+            else:
+                _logger.log(
+                    '[' + __name__ + '] no asset scope for char {}'.format(uid), _logger.LogLevel.WARNING)
+        if len(ships) > 0:
+            request_url = 'corporations/{}/?datasource=tranquility'.format(corpid)
+            esi_code, esi_result = common.request_esi.esi(__name__, request_url, method='get')
+
+            if not esi_code == 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(esi_code, esi_result['error']),
+                            _logger.LogLevel.ERROR)
+                error = esi_result['error']
+                err_result = {'code': esi_code, 'error': error}
+                raise Exception(error)
+
+            corp_name = esi_result['corporation_name']
+
+            for ship in ships:
+                ship['corporation'] = corp_name
+
+    return ships
