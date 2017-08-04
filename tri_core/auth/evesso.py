@@ -7,14 +7,14 @@ def auth_evesso():
 
 @app.route('/auth/eve/register_alt', methods=['GET'])
 def auth_evesso_alt():
-    from flask import request
+    from flask import request, make_response
     from tri_core.common.session import readsession
     import common.logger as _logger
 
     cookie = request.cookies.get('tri_core')
 
     if cookie == None:
-        return make_response('You need to be logged in with your main in order to register an alt')
+        return make_response('You need to be logged in with your main in order to register an alt<br>Try logging into CORE again<br>')
     else:
         payload = readsession(cookie)
         return evesso(isalt=True, altof=payload['charID'])
@@ -261,6 +261,8 @@ def auth_evesso_callback():
         else:
             _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) already registered'.format(charname, altof),_logger.LogLevel.INFO)
             _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress, detail='via alt {0}'.format(altof))
+            # register the alt
+            code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
 
     elif details == 'unregistered':
         # user is blue but unregistered
@@ -272,6 +274,7 @@ def auth_evesso_callback():
             _logger.securitylog(__name__, 'alt user registered', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
 
         code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
+
 
     expire_date = datetime.datetime.now()
     expire_date = expire_date + datetime.timedelta(days=7)
