@@ -3,7 +3,6 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
 
     import common.logger as _logger
     import common.credentials.database as _database
-    import tri_core.common.testing as _testing
     import common.credentials.ldap as _ldap
     import common.request_esi
     from common.graphite import sendmetric
@@ -43,8 +42,10 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
 
     _logger.log('[' + __name__ + '] character affiliations output for {0}: {1}'.format(charid, json.dumps(result)),_logger.LogLevel.DEBUG)
     corpid = result[0]['corporation_id']
-    allianceid = result[0]['alliance_id']
-
+    try:
+        allianceid = result[0]['alliance_id']
+    except Exception as e:
+        allianceid = None
     # username
     request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
 

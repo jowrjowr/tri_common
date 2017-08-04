@@ -14,7 +14,7 @@ def permissions(alliance_id):
         cursor = sql_conn.cursor()
     except mysql.Error as err:
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-        return(False)
+        return False
 
     try:
         query = 'SELECT forum, jabber, teamspeak, status FROM Permissions WHERE allianceID=%s'
@@ -22,7 +22,7 @@ def permissions(alliance_id):
         row = cursor.fetchone()
     except Exception as errmsg:
         _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
-        return(False)
+        return False
     finally:
         cursor.close()
         sql_conn.close()
@@ -68,7 +68,7 @@ def usertest(charid):
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return False, 'error'
+        return False, 'error', None
 
     charname = result['name']
 
@@ -81,7 +81,7 @@ def usertest(charid):
 
     if not code == 200:
         _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return False, 'error'
+        return False, 'error', None
 
     corpid = result[0]['corporation_id']
     try:
@@ -100,7 +100,7 @@ def usertest(charid):
     if not code == 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /isblue API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return(False,'error')
+        return False, 'error', None
 
     isblue = result['code']
     # see if the user is already in the database, one way or the other.
@@ -111,7 +111,7 @@ def usertest(charid):
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
     if code == False:
-        return False, 'error'
+        return False, 'error', None
 
     if result == None:
 
@@ -119,14 +119,14 @@ def usertest(charid):
         # since the user isn't in the database, we can determine how to proceed based on blue status only
         if isblue == 0:
             _logger.log('[' + __name__ + '] charid {0} ({1}) is not blue'.format(charid,charname),_logger.LogLevel.WARNING)
-            return(False, 'public')
+            return False, 'public', None
         elif isblue == 1:
             # the user is blue and is otherwise eligible for services.
             _logger.log('[' + __name__ + '] charid {0} ({1}) is blue'.format(charid,charname),_logger.LogLevel.DEBUG)
-            return(True, 'unregistered')
+            return True, 'unregistered', None
         else:
             _logger.log('[' + __name__ + '] isblue api error on charid {0} ({1})'.format(charid,charname),_logger.LogLevel.ERROR)
-            return(False, 'error')
+            return False, 'error', None
     else:
         _logger.log('[' + __name__ + '] ldap entry for {0} found'.format(charid),_logger.LogLevel.DEBUG)
     
@@ -147,22 +147,22 @@ def usertest(charid):
     if status == 'banned':
         # user is banned. 
         _logger.log('[' + __name__ + '] user tested to "banned"',_logger.LogLevel.INFO)
-        return(False, 'banned')
+        return False, 'banned', None
     elif status == 'blue':
         # the user is already in the system, but not banned
         _logger.log('[' + __name__ + '] user tested to "blue"',_logger.LogLevel.INFO)
 
         if isalt == True:
             # is an alt
-            return True, 'isalt'
+            return True, 'isalt', altof
         else:
             # is not an alt
-            return True, 'registered'
+            return True, 'registered', None
     elif status == 'public':
         # former user. no status.
         _logger.log('[' + __name__ + '] user tested to "public"',_logger.LogLevel.INFO)
-        return(False, 'public')
+        return False, 'public', None
     else:
         # should never happen
         _logger.log('[' + __name__ + '] user tested to "wtf?"',_logger.LogLevel.INFO)
-        return(False, 'error')
+        return False, 'error', None
