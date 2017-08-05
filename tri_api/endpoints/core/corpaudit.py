@@ -122,7 +122,7 @@ def core_corpaudit(charid):
             return code, result
 
     # start constructing which member has what
-
+    print(character_id_list)
     users = dict()
     with ThreadPoolExecutor(25) as executor:
         futures = { executor.submit(fetch_chardetails, user): user for user in character_id_list }
