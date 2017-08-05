@@ -34,6 +34,15 @@ def core_corpaudit(charid):
     code, result = _ldaphelpers.ldap_search(__name__, dn, '(&(|(uid={0})(altOf={0}))(esiAccessToken=*))'
                                             .format(charid), ['uid', 'corporation'])
 
+    if code==False:
+        error = 'failed to fetch characters for {0}: ({1}) {2}'.format(charid, code, result)
+        _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
+        js = json.dumps({'error': error})
+        resp = Response(js, status=500, mimetype='application/json')
+        return resp
+
+    print(result)
+
     for cn in result:
         data = result[cn]
 
