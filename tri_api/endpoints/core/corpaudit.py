@@ -27,58 +27,98 @@ def core_corpaudit(charid):
         resp = Response(js, status=401, mimetype='application/json')
         return resp
 
-    # check for roles
+    corporation_id_list = []
+    character_id_list = []
 
-    allowed_roles = ['Director', 'Personnel_Manager']
-    code, result = check_role(__name__, charid, allowed_roles)
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    code, result = _ldaphelpers.ldap_search(__name__, dn, '(&(|(uid={0})(altOf={0}))(esiAccessToken=*))'
+                                            .format(charid), ['uid', 'corporation'])
 
-    if code == 'error':
-        error = 'unable to check character roles for {0}: ({1}) {2}'.format(charid, code, result)
-        _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.ERROR)
-        js = json.dumps({ 'error': error})
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
-    elif code == False:
-        error = 'insufficient corporate roles to access this endpoint.'
-        _logger.log('[' + __name__ + '] ' + error,_logger.LogLevel.INFO)
-        js = json.dumps({ 'error': error})
-        resp = Response(js, status=403, mimetype='application/json')
-        return resp
-    else:
-        _logger.log('[' + __name__ + '] sufficient roles to view corp auditing information',_logger.LogLevel.DEBUG)
+    for cn in result:
+        data = result[cn]
 
-    # get character affiliations to determine corp (could use ldap)
-    request_url = 'characters/affiliation/?datasource=tranquility'
-    data = '[{}]'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+        allowed_roles = ['Director', 'Personnel_Manager']
+        code, result = check_role(__name__, charid, allowed_roles)
 
-    if not code == 200:
-        # something broke severely
-        _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
-            _logger.LogLevel.ERROR)
-        error = result['error']
-        result = {'code': code, 'error': error}
-        return code, result
+        if code == 'error':
+            error = 'unable to check character roles for {0}: ({1}) {2}'.format(data['uid'], code, result)
+            _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
+            js = json.dumps({'error': error})
+            resp = Response(js, status=500, mimetype='application/json')
+            return resp
+        elif code == False:
+            pass
+        else:
+            _logger.log('[' + __name__ + '] sufficient roles to view corp auditing information', _logger.LogLevel.DEBUG)
 
-    corpid = result[0]['corporation_id']
-    # get list of corp members
+        if data['corporation'] not in corporation_id_list:
+            request_url = 'corporations/{0}/members/?datasource=tranquility'.format(data['corporation'])
+            code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
 
-    request_url = 'corporations/{0}/members/?datasource=tranquility'.format(corpid)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
+            if not code == 200:
+                # something broke severely
+                _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
+                            _logger.LogLevel.ERROR)
+                error = result['error']
+                result = {'code': code, 'error': error}
+                return code, result
 
-    if not code == 200:
-        # something broke severely
-        _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
-            _logger.LogLevel.ERROR)
-        error = result['error']
-        result = {'code': code, 'error': error}
-        return code, result
+            character_id_list.append(result)
+            corporation_id_list.append(data['corporation'])
+
+    if 1==0:
+        # check for roles
+
+        allowed_roles = ['Director', 'Personnel_Manager']
+        code, result = check_role(__name__, charid, allowed_roles)
+
+        if code == 'error':
+            error = 'unable to check character roles for {0}: ({1}) {2}'.format(charid, code, result)
+            _logger.log('[' + __name__ + ']' + error,_logger.LogLevel.ERROR)
+            js = json.dumps({ 'error': error})
+            resp = Response(js, status=500, mimetype='application/json')
+            return resp
+        elif code == False:
+            error = 'insufficient corporate roles to access this endpoint.'
+            _logger.log('[' + __name__ + '] ' + error,_logger.LogLevel.INFO)
+            js = json.dumps({ 'error': error})
+            resp = Response(js, status=403, mimetype='application/json')
+            return resp
+        else:
+            _logger.log('[' + __name__ + '] sufficient roles to view corp auditing information',_logger.LogLevel.DEBUG)
+
+        # get character affiliations to determine corp (could use ldap)
+        request_url = 'characters/affiliation/?datasource=tranquility'
+        data = '[{}]'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+
+        if not code == 200:
+            # something broke severely
+            _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']),
+                _logger.LogLevel.ERROR)
+            error = result['error']
+            result = {'code': code, 'error': error}
+            return code, result
+
+        corpid = result[0]['corporation_id']
+        # get list of corp members
+
+        request_url = 'corporations/{0}/members/?datasource=tranquility'.format(corpid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
+
+        if not code == 200:
+            # something broke severely
+            _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
+                _logger.LogLevel.ERROR)
+            error = result['error']
+            result = {'code': code, 'error': error}
+            return code, result
 
     # start constructing which member has what
 
     users = dict()
     with ThreadPoolExecutor(25) as executor:
-        futures = { executor.submit(fetch_chardetails, user['character_id']): user for user in result }
+        futures = { executor.submit(fetch_chardetails, user): user for user in character_id_list }
         for future in as_completed(futures):
             charid = futures[future]['character_id']
             data = future.result()
