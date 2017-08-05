@@ -142,6 +142,8 @@ def fetch_chardetails(charid):
 
     chardetails = dict()
 
+    print(charid)
+
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(charid)
     attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf', 'corporation']
@@ -164,12 +166,12 @@ def fetch_chardetails(charid):
         code, result = common.request_esi.esi(__name__, request_url, 'get')
 
         if not code == 200:
-            _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
             charname = 'Unknown'
         try:
             charname = result['name']
         except KeyError as error:
-            _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
             charname = None
 
         try:
@@ -179,11 +181,11 @@ def fetch_chardetails(charid):
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if not code == 200:
-                _logger.log('[' + function + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
             else:
                 chardetails['corporation'] = result['corporation_name']
         except KeyError as error:
-            _logger.log('[' + function + '] User corporationid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] User corporationid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
             charname = None
 
         chardetails['charname'] = charname
