@@ -154,11 +154,11 @@ def fetch_chardetails(charid):
             code, result = common.request_esi.esi(__name__, request_url, 'get')
 
             if not code == 200:
-                _logger.log('[' + function + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
             else:
                 chardetails['corporation'] = result['corporation_name']
         except KeyError as error:
-            _logger.log('[' + function + '] User corporationid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] User corporatio nid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
             charname = None
 
         # does the char have a token?
