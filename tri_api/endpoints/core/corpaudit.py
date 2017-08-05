@@ -70,7 +70,7 @@ def core_corpaudit(charid):
                     result = {'code': code, 'error': error}
                     return code, result
 
-                character_id_list.append([char['character_id'] for char in result])
+                character_id_list += [char['character_id'] for char in result]
                 corporation_id_list.append(data['corporation'])
 
     if 1==0:
