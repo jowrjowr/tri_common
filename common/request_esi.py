@@ -65,6 +65,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
+        url = base_url + '/' + url
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
         base_url = 'https://esi.tech.ccp.is'
