@@ -74,22 +74,22 @@ def evesso(isalt=False, altof=None):
 @app.route('/auth/eve/callback', methods=['GET'])
 def auth_evesso_callback():
 
-    from flask import request, url_for, Response, session, redirect, make_response
+    from flask import request, Response, session, redirect, make_response
     from requests_oauthlib import OAuth2Session
     from tri_core.common.scopes import scope
     from tri_core.common.register import registeruser
     from tri_core.common.storetokens import storetokens
     from common.check_scope import check_scope
-
+    import common.request_esi
     import common.logger as _logger
     import common.credentials.eve as _eve
     import tri_core.common.session as _session
     import tri_core.common.testing as _testing
     import json
-    import requests
     import datetime
     import uuid
     import time
+    import requests
 
     client_id = _eve.client_id
     client_secret = _eve.client_secret
@@ -152,17 +152,25 @@ def auth_evesso_callback():
     expires_at = tokendata['ExpiresOn']
     charname = tokendata['CharacterName']
 
+    # store the tokens regardless of their status. we're greedy.
+    storetokens(charid, access_token, refresh_token)
+
+    # test the user
     status, details, registered_altof = _testing.usertest(charid)
 
-    print(status)
-    print(details)
-    print(registered_altof)
-    if details == 'isalt':
-        # this character is already a registered alt
-        if isalt == False:
-            # fix this to run the SSO process as a proper alt
-            isalt = True
-            altof = registered_altof
+    # can't proceed if error
+
+    if details == 'error':
+        _logger.log('[' + __name__ + '] error in testing user {0}'.format(charid),_logger.LogLevel.ERROR)
+        message = 'SORRY, internal error. Try again.'
+        return make_response(message)
+    # remaining details: isalt, public, registered, banned
+
+    if details == 'isalt' and isalt == False:
+        # the login process is being ran as a main. fix that.
+        isalt = True
+        altof = registered_altof
+    # remaining details: public, registered, banned
 
     # security logging
 
@@ -172,9 +180,6 @@ def auth_evesso_callback():
         _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress)
     else:
         _logger.securitylog(__name__, 'SSO callback completed', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
-
-    # store the tokens regardless of their status. we're greedy.
-    storetokens(charid, access_token, refresh_token)
 
     # verify that the atoken we get actually has the correct scopes that we requested
     # just in case someone got cute and peeled some off.
@@ -199,92 +204,88 @@ def auth_evesso_callback():
         # scopes validate
         _logger.log('[' + __name__ + '] user {0} has expected scopes'.format(charid, result),_logger.LogLevel.DEBUG)
 
+    # handle results of user test
 
-    # more complex logic for non-alts
-
-    if status == False:
-        if details == 'error':
-            _logger.log('[' + __name__ + '] error in testing user {0}'.format(charid),_logger.LogLevel.ERROR)
-            message = 'SORRY, internal error. Try again.'
-            return make_response(message)
-
-        elif details == 'banned':
-            message = 'nope.avi'
-
-            if isalt == True:
-                _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register alt {2}'.format(charid, charname, altof),_logger.LogLevel.WARNING)
-                _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
-            else:
-                _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
-                _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
-
-            return make_response(message)
-
-        elif details == 'public' and isalt == False:
-            _logger.log('[' + __name__ + '] non-blue user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
-            _logger.securitylog(__name__, 'non-blue user tried to register', charid=charid, ipaddress=ipaddress)
-            message = 'Sorry, you have to be in vanguard to register for vanguard services'
-            return make_response(message)
-
-        elif details == 'public' and isalt == True:
-            # this is fine for an alt
-            pass
-
+    if details == 'banned':
+        # banned users not allowed under any conditions
+        message = 'nope.avi'
+        if isalt == True:
+            _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register alt {2}'.format(charid, charname, altof),_logger.LogLevel.WARNING)
+            _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
         else:
-            # lol should never happen
-            _logger.log('[' + __name__ + '] wtf? {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.ERROR)
-            message = 'SORRY. There was an issue registering. Try again.'
-            return make_response(message)
+            _logger.log('[' + __name__ + '] banned user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
+            _logger.securitylog(__name__, 'banned user tried to register', charid=charid, ipaddress=ipaddress)
+        return make_response(message)
+
+    # remaining details: public, registered
+
+    if details == 'public' and isalt == False:
+        # non-blue characters who are not alts do not get to register
+
+        _logger.log('[' + __name__ + '] non-blue user {0} ({1}) tried to register'.format(charid, charname),_logger.LogLevel.WARNING)
+        _logger.securitylog(__name__, 'non-blue user tried to register', charid=charid, ipaddress=ipaddress)
+        message = 'Sorry, you have to be in vanguard to register for vanguard services'
+        return make_response(message)
+
+    if details == 'public' and isalt == True:
+        # non-blue characters can become alts
+        pass
 
     # true status is the only other return value so assume true
     # construct the session and declare victory
 
-    try:
-        if isalt == True:
-            # if the character being logged in is an alt, make a session for the main.
-            cookie = _session.makesession(altof)
-            _logger.log('[' + __name__ + '] created session for user: {0} (alt of {1})'.format(charname, altof),_logger.LogLevel.INFO)
-        else:
-            # proceed normally otherwise
-            cookie = _session.makesession(charid)
-            _logger.log('[' + __name__ + '] created session for user: {0} (charid {1})'.format(charname, charid),_logger.LogLevel.INFO)
-
-    except Exception as error:
-        _logger.log('[' + __name__ + '] unable to construct session for charid {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
-        return 'ERROR: Unable to construct session cookie :('
-
-    if details == 'registered':
-        # user is blue and already in the system.
-        if isalt == False:
-            _logger.log('[' + __name__ + '] user {0} ({1}) already registered'.format(charid, charname),_logger.LogLevel.INFO)
-            _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress)
-        else:
-            _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) already registered'.format(charname, altof),_logger.LogLevel.INFO)
-            _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress, detail='via alt {0}'.format(altof))
-            # register the alt
-            code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
-
-    elif details == 'unregistered':
-        # user is blue but unregistered
-        if isalt == False:
-            _logger.log('[' + __name__ + '] user {0} ({1}) not registered'.format(charid, charname),_logger.LogLevel.INFO)
-            _logger.securitylog(__name__, 'core user registered', charid=charid, ipaddress=ipaddress)
-        else:
-            _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) not registered'.format(charname, altof),_logger.LogLevel.INFO)
-            _logger.securitylog(__name__, 'alt user registered', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
-
-        code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
-
-
     expire_date = datetime.datetime.now()
     expire_date = expire_date + datetime.timedelta(days=7)
 
+    # construct http response
+
     if isalt == True:
+        # if the character being logged in is an alt, make a session for the main.
         response = make_response(redirect('https://www.triumvirate.rocks/altregistration'))
+        cookie = _session.makesession(altof)
+        response.set_cookie('tri_charid', str(altof), domain='.triumvirate.rocks', expires=expire_date)
+        _logger.log('[' + __name__ + '] created session for user: {0} (alt of {1})'.format(charname, altof),_logger.LogLevel.INFO)
     else:
+        # proceed normally otherwise
         response = make_response(redirect('https://www.triumvirate.rocks'))
+        cookie = _session.makesession(charid)
+        response.set_cookie('tri_charid', str(charid), domain='.triumvirate.rocks', expires=expire_date)
+        _logger.log('[' + __name__ + '] created session for user: {0} (charid {1})'.format(charname, charid),_logger.LogLevel.INFO)
 
     response.set_cookie('tri_core', cookie, domain='.triumvirate.rocks', expires=expire_date)
-    response.set_cookie('tri_charid', str(charid), domain='.triumvirate.rocks', expires=expire_date)
-    return response
+
+    if cookie == False:
+        # unable to construct session cookie
+        _logger.log('[' + __name__ + '] error in creating session cookie for user {0}'.format(charid),_logger.LogLevel.ERROR)
+        message = 'SORRY, internal error. Try again.'
+        return make_response(message)
+
+    # handle registered users
+
+    if details == 'registered':
+        # registered main.
+        _logger.log('[' + __name__ + '] user {0} ({1}) already registered'.format(charid, charname),_logger.LogLevel.INFO)
+        _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress)
+        return response
+
+    if details == 'isalt':
+        # is a registered alt
+        _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) already registered'.format(charname, altof),_logger.LogLevel.INFO)
+        _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress, detail='via alt {0}'.format(altof))
+        return response
+
+    # after this point, the only folks that are left are unregistered users
+
+    if isalt == False:
+        _logger.log('[' + __name__ + '] user {0} ({1}) not registered'.format(charid, charname),_logger.LogLevel.INFO)
+        _logger.securitylog(__name__, 'core user registered', charid=charid, ipaddress=ipaddress)
+        code, result = registeruser(charid, access_token, refresh_token, isalt=False, altof=None)
+        return response
+
+    if isalt == True:
+        _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) not registered'.format(charname, altof),_logger.LogLevel.INFO)
+        _logger.securitylog(__name__, 'alt user registered', charid=charid, ipaddress=ipaddress, detail='alt of {0}'.format(altof))
+        code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
+        return response
+
 

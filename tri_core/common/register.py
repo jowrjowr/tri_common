@@ -101,7 +101,9 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     user['charname'] = charname
     user['accountstatus'] = 'blue'
     user['corpid'] = corpid
+
     user['allianceid'] = allianceid
+
     user['atoken'] = atoken
     user['rtoken'] = rtoken
     user['password_hash'] = password_hash
@@ -142,7 +144,9 @@ def registeruser(charid, atoken, rtoken, isalt, altof):
     attrs.append(('accountStatus', [user['accountstatus']]))
     attrs.append(('authGroup', user['authgroup']))
     attrs.append(('corporation', [user['corpid']]))
-    attrs.append(('alliance', [user['allianceid']]))
+    if not allianceid == None:
+        # ldap does NOT like NoneType :/
+        attrs.append(('alliance', [user['allianceid']]))
     attrs.append(('esiAccessToken', [user['atoken']]))
     attrs.append(('esiRefreshToken', [user['rtoken']]))
     attrs.append(('userPassword', [user['password_hash']]))
