@@ -319,7 +319,6 @@ def ts3_validate_users(ts3conn):
     # start validating clients, online or otherwise
     for ts_dbid in clients:
 
-
         # this should never fail since the dbid we have is fed from the ts3 client list upstream
 
         try:
@@ -330,13 +329,13 @@ def ts3_validate_users(ts3conn):
             return
 
         user_nick = user[0]['client_nickname']
-
         _logger.log('[' + __name__ + '] Validating ts3 user "{0}"'.format(user_nick),_logger.LogLevel.DEBUG)
 
         user_lastip = user[0]['client_lastip']
         user_lastconn = int(user[0]['client_lastconnected'])
         user_conns = int(user[0]['client_totalconnections'])
         user_created = int(user[0]['client_created'])
+
         kicked = False # users can be kicked in a few spots prior to final purge spot
 
         # we explicitly check only for blue users that have this dbid.
@@ -382,7 +381,6 @@ def ts3_validate_users(ts3conn):
             _logger.log('[' + __name__ + '] multiple unique TS identities attached to accounts: {0}'.format(result),_logger.LogLevel.WARNING)
 
             orphan = True
-            print('reeeeee: '.format(user))
             # boot from TS...
             reason = 'Please re-register your TS on CORE. On only one character.'
             try:
@@ -413,9 +411,8 @@ def ts3_validate_users(ts3conn):
 
         for client in live_clients:
             clid = client['clid']
-            cldbid = client['client_database_id']
+            cldbid = int(client['client_database_id'])
             client_username = client['client_nickname']
-
             if cldbid == ts_dbid and client_username != registered_username and kicked == False:
                 # online user has a username that does not match records.
                 # "encourage" fixing this.
