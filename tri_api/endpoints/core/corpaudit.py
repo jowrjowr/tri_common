@@ -127,9 +127,9 @@ def core_corpaudit(charid):
     with ThreadPoolExecutor(25) as executor:
         futures = { executor.submit(fetch_chardetails, user): user for user in character_id_list }
         for future in as_completed(futures):
-            charid = futures[future]['character_id']
+            #charid = futures[future]['character_id']
             data = future.result()
-            users[charid] = data
+            users[data['charname']] = data
     js = json.dumps(users)
     resp = Response(js, status=200, mimetype='application/json')
     return resp
@@ -141,6 +141,8 @@ def fetch_chardetails(charid):
     import common.request_esi
 
     chardetails = dict()
+
+    print(charid)
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(charid)
