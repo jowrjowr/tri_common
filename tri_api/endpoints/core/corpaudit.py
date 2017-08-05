@@ -103,6 +103,7 @@ def fetch_chardetails(charid):
     if result == None or code == False:
         # no result? simple response.
         chardetails['location'] = 'Unknown'
+        chardetails['corporation'] = 'Unknown'
         chardetails['online'] = 'Unknown'
         chardetails['last_online'] = 'Unknown'
         chardetails['token_status'] = False
@@ -123,6 +124,22 @@ def fetch_chardetails(charid):
         except KeyError as error:
             _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
             charname = None
+
+        try:
+            corp_id = result['corporation_id']
+
+            request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+            code, result = common.request_esi.esi(__name__, request_url, 'get')
+
+            if not code == 200:
+                _logger.log('[' + function + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+            else:
+                chardetails['corporation'] = result['corporation_name']
+        except KeyError as error:
+            _logger.log('[' + function + '] User corporationid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            charname = None
+
+
 
         chardetails['charname'] = charname
 
