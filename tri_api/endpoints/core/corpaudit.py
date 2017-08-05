@@ -70,7 +70,7 @@ def core_corpaudit(charid):
                     result = {'code': code, 'error': error}
                     return code, result
 
-                character_id_list.append(result)
+                character_id_list.append([char['character_id'] for char in result])
                 corporation_id_list.append(data['corporation'])
 
     if 1==0:
@@ -124,7 +124,6 @@ def core_corpaudit(charid):
     # start constructing which member has what
 
     users = dict()
-    print(character_id_list)
     with ThreadPoolExecutor(25) as executor:
         futures = { executor.submit(fetch_chardetails, user): user for user in character_id_list }
         for future in as_completed(futures):
