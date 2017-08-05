@@ -60,20 +60,20 @@ def core_corpaudit(charid):
         else:
             _logger.log('[' + __name__ + '] sufficient roles to view corp auditing information', _logger.LogLevel.DEBUG)
 
-        if data['corporation'] not in corporation_id_list:
-            request_url = 'corporations/{0}/members/?datasource=tranquility'.format(data['corporation'])
-            code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
+            if data['corporation'] not in corporation_id_list:
+                request_url = 'corporations/{0}/members/?datasource=tranquility'.format(data['corporation'])
+                code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
 
-            if not code == 200:
-                # something broke severely
-                _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
-                            _logger.LogLevel.ERROR)
-                error = result['error']
-                result = {'code': code, 'error': error}
-                return code, result
+                if not code == 200:
+                    # something broke severely
+                    _logger.log('[' + __name__ + '] corporations API error {0}: {1}'.format(code, result['error']),
+                                _logger.LogLevel.ERROR)
+                    error = result['error']
+                    result = {'code': code, 'error': error}
+                    return code, result
 
-            character_id_list.append(result)
-            corporation_id_list.append(data['corporation'])
+                character_id_list.append(result)
+                corporation_id_list.append(data['corporation'])
 
     if 1==0:
         # check for roles
