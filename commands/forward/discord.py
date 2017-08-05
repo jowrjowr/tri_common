@@ -22,6 +22,7 @@ def start_discord(username, password, covername, handler, discord_queue):
     async def on_ready():
         _logger.log(prefix + 'discord user {0} ({1}) connected'.format(covername, username), _logger.LogLevel.INFO)
         loginmsg = '```diff' + '\n' + '+ {0} online```'.format(covername)
+        client.change_presence(game=None, status='invisible', afk=False)
         discord_queue.put(loginmsg)
 
     @client.event
