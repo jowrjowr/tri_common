@@ -63,7 +63,7 @@ def core_corpaudit(charid):
 
             if data['corporation'] not in corporation_id_list:
                 request_url = 'corporations/{0}/members/?datasource=tranquility'.format(data['corporation'])
-                code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v2')
+                code, result = common.request_esi.esi(__name__, request_url, method='get', charid=data['uid'], version='v2')
 
                 if not code == 200:
                     # something broke severely
