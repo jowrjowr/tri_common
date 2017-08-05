@@ -181,6 +181,7 @@ def audit_forums():
 
             if not code == 200:
                 _logger.log('[' + __name__ + '] error searching for user {0}: {1}'.format(charname, result['error']),_logger.LogLevel.INFO)
+                continue
             if len(result) == 0:
                 really_orphan += 1
                 users[charname]['doomheim'] = True
@@ -264,22 +265,24 @@ def audit_forums():
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
         _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
-        if not code == 200:
+        if code == 200:
+
+            portrait = result['px128x128']
+            cursor = sql_conn_forum.cursor()
+
+            query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
+            try:
+                pass
+                #cursor.execute(query, (portrait, portrait, charname,))
+                #sql_conn_forum.commit()
+            except Exception as err:
+                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                return False
+
+        else:
             # something broke severely
             _logger.log('[' + __name__ + '] /characters portrait API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
             portrait = None
-
-        portrait = result['px128x128']
-        cursor = sql_conn_forum.cursor()
-
-        query = 'UPDATE core_members SET pp_main_photo=%s, pp_thumb_photo=%s, pp_photo_type="custom" WHERE name = %s'
-        try:
-            pass
-            #cursor.execute(query, (portrait, portrait, charname,))
-            #sql_conn_forum.commit()
-        except Exception as err:
-            _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-            return False
 
         ## start doing checks
 
