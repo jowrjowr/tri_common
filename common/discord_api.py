@@ -48,6 +48,7 @@ def discord_members(function, target_channel):
         channel = _discord.Channel[target_channel].value
         channel = client.get_channel('{}'.format(channel))
         for server in servers:
+            client.request_offline_members(server)
             if server.name == 'Vanguard Leadership Discord':
                 members = server.members
 
@@ -88,7 +89,7 @@ def discord_allmembers(function, login_type, token=None, user=None, exclude=[], 
         servers = client.servers
         members = [ None ]
         for server in servers:
-
+            client.request_offline_members(server)
             if server.name in exclude:
                 print('excluding: {0}'.format(server.name))
                 # do not fetch members from this named discord
