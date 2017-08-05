@@ -59,16 +59,23 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     # request_esi hits more than just ESI-specific stuff, so some scoping of the base is necessary
 
     if base == 'esi':
+        # ESI ofc
         base_url = 'https://esi.tech.ccp.is'
         url = base_url + '/' + version + '/' + url + atoken
+    elif base == 'zkill':
+        # zkillboard
+        base_url = 'https://zkillboard.com/api'
+        url = base_url + '/' + url
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
         base_url = 'https://esi.tech.ccp.is'
         url = base_url + '/' + url
     elif base == 'triapi':
+        # tri api
         base_url = 'https://api.triumvirate.rocks'
         url = base_url + '/' + url
     elif base == 'oauth':
+        # eve oauth
         base_url = 'https://login.eveonline.com/oauth'
         url = base_url + '/' + url
 
@@ -96,11 +103,11 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     try:
 
         if method == 'post':
-            headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent}
+            headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
             headers.update(extraheaders)
             request = session.post(url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
-            headers = {'Accept': 'application/json', 'User-Agent': useragent}
+            headers = {'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
             headers.update(extraheaders)
             request = session.get(url, headers=headers, timeout=timeout)
 
