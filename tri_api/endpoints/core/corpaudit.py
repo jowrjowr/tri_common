@@ -97,7 +97,7 @@ def fetch_chardetails(charid):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(charid)
-    attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf' ]
+    attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf', 'corporation']
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
     if result == None or code == False:
@@ -146,19 +146,17 @@ def fetch_chardetails(charid):
 
         chardetails['charname'] = info['characterName']
 
-
+        corp_id = info['corporation']
         try:
-            corp_id = result['corporation_id']
+            request_url_corp = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+            code_corp, result_corp = common.request_esi.esi(__name__, request_url_corp, 'get')
 
-            request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
-            code, result = common.request_esi.esi(__name__, request_url, 'get')
-
-            if not code == 200:
-                _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+            if not code_corp == 200:
+                _logger.log('[' + __name__ + '] /corporations API error {0}: {1}'.format(code_corp, result_corp['error']), _logger.LogLevel.WARNING)
             else:
-                chardetails['corporation'] = result['corporation_name']
+                chardetails['corporation'] = result_corp['corporation_name']
         except KeyError as error:
-            _logger.log('[' + __name__ + '] User corporatio nid does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] corporation id does not exist: {0})'.format(corp_id), _logger.LogLevel.ERROR)
             charname = None
 
         # does the char have a token?
