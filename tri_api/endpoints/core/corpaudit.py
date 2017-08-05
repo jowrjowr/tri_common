@@ -31,21 +31,18 @@ def core_corpaudit(charid):
     character_id_list = []
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
-    code, result = _ldaphelpers.ldap_search(__name__, dn, '(&(|(uid={0})(altOf={0}))(esiAccessToken=*))'
-                                            .format(charid), ['uid', 'corporation'])
+    code, char_result = _ldaphelpers.ldap_search(__name__, dn, '(&(|(uid={0})(altOf={0}))(esiAccessToken=*))'
+                                                 .format(charid), ['uid', 'corporation'])
 
     if code==False:
-        error = 'failed to fetch characters for {0}: ({1}) {2}'.format(charid, code, result)
+        error = 'failed to fetch characters for {0}: ({1}) {2}'.format(charid, code, char_result)
         _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
         js = json.dumps({'error': error})
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
-    print(result)
-
-    for cn in result:
-        print(cn)
-        data = result[cn]
+    for cn in char_result:
+        data = char_result[cn]
 
         allowed_roles = ['Director', 'Personnel_Manager']
         code, result = check_role(__name__, charid, allowed_roles)
