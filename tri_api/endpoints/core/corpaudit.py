@@ -41,6 +41,8 @@ def core_corpaudit(charid):
         resp = Response(js, status=500, mimetype='application/json')
         return resp
 
+    print(result)
+
     for cn in result:
         print(cn)
         data = result[cn]
