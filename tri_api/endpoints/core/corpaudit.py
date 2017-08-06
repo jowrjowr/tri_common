@@ -137,12 +137,13 @@ def fetch_chardetails(charid):
     import common.ldaphelpers as _ldaphelpers
     import common.logger as _logger
     import common.request_esi
+    import time
 
     chardetails = dict()
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(charid)
-    attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf', 'corporation']
+    attrlist=['characterName', 'authGroup', 'teamspeakdbid', 'esiAccessToken', 'altOf', 'corporation', 'lastKill', 'lastKillTime']
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
     if result == None or code == False:
@@ -154,6 +155,8 @@ def fetch_chardetails(charid):
         chardetails['token_status'] = False
         chardetails['teamspeak_status'] = False
         chardetails['isalt'] = 'Unknown'
+        chardetails['lastKill'] = None
+        chardetails['lastKillTime'] = None
         chardetails['altof'] = None
 
         # map the id to a name
@@ -190,6 +193,20 @@ def fetch_chardetails(charid):
         (dn, info), = result.items()
 
         chardetails['charname'] = info['characterName']
+
+        # convert last kill time into human readable
+
+        try:
+            chardetails['lastKill'] = info['lastKill']
+        except Exception as e:
+            chardetails['lastKill'] = None
+
+        try:
+            killtime = int(info['lastKillTime'])
+            killtime = time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(killtime))
+            chardetails['lastKillTime'] = killtime
+        except Exception as e:
+            chardetails['lastKillTime'] = None
 
         corp_id = info['corporation']
         try:
