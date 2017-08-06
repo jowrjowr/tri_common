@@ -99,7 +99,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     # do the request, but catch exceptions for connection issues
 
-    timeout = 2
+    timeout = 10
     try:
 
         if method == 'post':
