@@ -7,7 +7,7 @@ def sendmetric(function, prefix, group, metric, value):
     # use a wrapper script to ease up the amount of bloat this adds to normal code
 
     # get log level to decide whether to enable graphite debugger output
-    debug = logging.getLogger().isEnabledFor(logging.DEBUG)
+    debug = logging.getLogger().isEnabledFor(logging.CRITICAL)
 
     # setup the graphite logger
     graphite = graphitesend.init(
@@ -21,5 +21,6 @@ def sendmetric(function, prefix, group, metric, value):
         g_result = graphite.send(metric, value)
         _logger.log('[' + function + '] graphite output: ' + str(g_result), _logger.LogLevel.DEBUG)
     except Exception as err:
-        _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.ERROR)
+        # don't really care.
+        _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.DEBUG)
 
