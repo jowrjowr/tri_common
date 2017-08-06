@@ -2,8 +2,65 @@ from flask import request
 from tri_api import app
 
 
-@app.route('/characters', methods=['GET'])
-def characters():
+@app.route('/characters/<char_id>/alts/<alt_id>/remove', methods=['GET'])
+def alt_remove(char_id, alt_id):
+    from flask import Response
+    from json import dumps
+    import ldap
+    import common.credentials.ldap as _ldap
+    import common.logger as _logger
+    import common.ldaphelpers as _ldaphelpers
+
+    # verify that the alt exists and that it has the right main
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = '(&(uid={0})(altOf={1}))'.format(alt_id, char_id)
+    attributes = [ 'uid' ]
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+    if code == False:
+        msg = 'unable to connect to ldap: {}'.format(result)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        js = dumps({'error': msg})
+        return Response(js, status=500, mimetype='application/json')
+
+    if result == None:
+        msg = 'alt+main combo does not exist'
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        js = dumps({'error': msg})
+        return Response(js, status=404, mimetype='application/json')
+
+    # just need the dn
+    (dn, info), = result.items()
+
+    # setup the ldap connection
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'unable to connect to ldap: {}'.format(error)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        js = dumps({'error': msg})
+        return Response(js, status=500, mimetype='application/json')
+
+    # remove altOf=charid from alt_id
+
+    mod_attrs = [ (ldap.MOD_DELETE, 'altOf', None ) ]
+
+    try:
+        result = ldap_conn.modify_s(dn, mod_attrs)
+    except Exception as e:
+        msg = 'unable to update existing user {0} in ldap: {1}'.format(alt_id, e)
+        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        js = dumps({'error': msg})
+        return Response(js, status=500, mimetype='application/json')
+
+    js = dumps({})
+    return Response(js, status=200, mimetype='application/json')
+
+@app.route('/characters/<char_id>', methods=['GET'])
+def characters(char_id):
     from common.check_scope import check_scope
     from common.request_esi import esi
     from tri_core.common.scopes import scope
@@ -12,16 +69,6 @@ def characters():
 
     import common.logger as _logger
     import common.ldaphelpers as _ldaphelpers
-
-    if 'char_id' not in request.args:
-        js = dumps({'error': 'no char_id supplied'})
-        return Response(js, status=401, mimetype='application/json')
-
-    try:
-        char_id = int(request.args['char_id'])
-    except ValueError:
-        js = dumps({'error': 'char_id is not an integer'})
-        return Response(js, status=401, mimetype='application/json')
 
     # assume that the char id is main
 
@@ -192,7 +239,6 @@ def characters():
                 new_entry['location'] = result['name']
 
         json_dict['alts'].append(new_entry)
-
 
     _logger.log('[' + __name__ + '] fetched characters successfully', _logger.LogLevel.DEBUG)
 
