@@ -1,7 +1,6 @@
 from flask import request
 from tri_api import app
 
-
 @app.route('/characters/<char_id>/alts/<alt_id>/remove', methods=['GET'])
 def alt_remove(char_id, alt_id):
     from flask import Response
@@ -32,6 +31,11 @@ def alt_remove(char_id, alt_id):
 
     # just need the dn
     (dn, info), = result.items()
+
+    # security logging
+
+    ipaddress = request.headers['X-Real-Ip']
+    _logger.securitylog(__name__, 'detatching alt', ipaddress=ipaddress, charid=char_id, detail='alt {0}'.format(alt_id))
 
     # setup the ldap connection
 
