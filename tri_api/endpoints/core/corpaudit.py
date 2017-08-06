@@ -43,9 +43,8 @@ def core_corpaudit(charid):
 
     for cn in char_result:
         data = char_result[cn]
-
         allowed_roles = ['Director', 'Personnel_Manager']
-        code, result = check_role(__name__, charid, allowed_roles)
+        code, result = check_role(__name__, data['uid'], allowed_roles)
 
         if code == 'error':
             error = 'unable to check character roles for {0}: ({1}) {2}'.format(data['uid'], code, result)
