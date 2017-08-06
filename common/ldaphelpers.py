@@ -198,3 +198,65 @@ def add_value(dn, attribute, value):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
 
+def ldap_altupdate(function, main_charid, alt_charid):
+    import ldap
+    import common.credentials.ldap as _ldap
+    import common.logger as _logger
+
+    # verify that the alt exists
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = 'uid={0}'.format(alt_charid)
+    attributes = [ 'uid', 'altOf' ]
+    code, result = ldap_search(function, dn, filterstr, attributes)
+
+    if code == False:
+        msg = 'unable to connect to ldap: {}'.format(result)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False, msg
+
+    if result == None:
+        msg = 'alt {0} does not exist'.format(alt_charid)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        return False, msg
+
+    # just need the dn
+    (dn, info), = result.items()
+
+    old_main = info['altOf']
+
+    if main_charid == old_main:
+        # no change
+        return None, None
+
+    msg = 'updating {0} from altOf={1} to altOf={2}'.format(alt_charid, old_main, main_charid)
+    _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.INFO)
+
+    # setup the ldap connection
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        msg = 'unable to connect to ldap: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False, msg
+
+    # adjust altOf
+
+    if main_charid == None:
+        mod_attrs = [ (ldap.MOD_DELETE, 'altOf', None ) ]
+    else:
+        change = str(main_charid).encode('utf-8')
+        mod_attrs = [ (ldap.MOD_REPLACE, 'altOf', [ change ] ) ]
+
+    # commit
+
+    try:
+        result = ldap_conn.modify_s(dn, mod_attrs)
+    except Exception as e:
+        msg = 'unable to update existing user {0} in ldap: {1}'.format(alt_id, e)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return False, msg
+
+    return True, None

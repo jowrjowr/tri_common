@@ -83,6 +83,7 @@ def auth_evesso_callback():
     import common.request_esi
     import common.logger as _logger
     import common.credentials.eve as _eve
+    import common.ldaphelpers as _ldaphelpers
     import tri_core.common.session as _session
     import tri_core.common.testing as _testing
     import json
@@ -266,12 +267,14 @@ def auth_evesso_callback():
         # registered main.
         _logger.log('[' + __name__ + '] user {0} ({1}) already registered'.format(charid, charname),_logger.LogLevel.INFO)
         _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress)
+        code, result = _ldaphelpers.ldap_altupdate(__name__, altof, charid)
         return response
 
     if details == 'isalt':
         # is a registered alt
         _logger.log('[' + __name__ + '] alt user {0} (alt of {1}) already registered'.format(charname, altof),_logger.LogLevel.INFO)
         _logger.securitylog(__name__, 'core login', charid=charid, ipaddress=ipaddress, detail='via alt {0}'.format(altof))
+        code, result = _ldaphelpers.ldap_altupdate(__name__, altof, charid)
         return response
 
     # after this point, the only folks that are left are unregistered users

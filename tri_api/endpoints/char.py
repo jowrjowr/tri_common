@@ -1,19 +1,17 @@
 from flask import request
 from tri_api import app
 
-@app.route('/characters/<char_id>/alts/<alt_id>/remove', methods=['GET'])
-def alt_remove(char_id, alt_id):
+@app.route('/characters/<main_charid>/alts/<alt_charid>/remove', methods=['GET'])
+def alt_remove(main_charid, alt_charid):
     from flask import Response
     from json import dumps
-    import ldap
-    import common.credentials.ldap as _ldap
     import common.logger as _logger
     import common.ldaphelpers as _ldaphelpers
 
     # verify that the alt exists and that it has the right main
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr = '(&(uid={0})(altOf={1}))'.format(alt_id, char_id)
+    filterstr = '(&(uid={0})(altOf={1}))'.format(alt_charid, main_charid)
     attributes = [ 'uid' ]
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
@@ -29,39 +27,19 @@ def alt_remove(char_id, alt_id):
         js = dumps({'error': msg})
         return Response(js, status=404, mimetype='application/json')
 
-    # just need the dn
-    (dn, info), = result.items()
-
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
     _logger.securitylog(__name__, 'detatching alt', ipaddress=ipaddress, charid=char_id, detail='alt {0}'.format(alt_id))
 
-    # setup the ldap connection
+    code, result = ldap_altupdate(__name__, main_charid, alt_charid)
 
-    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-    try:
-        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-    except ldap.LDAPError as error:
-        msg = 'unable to connect to ldap: {}'.format(error)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-        js = dumps({'error': msg})
+    if code == True:
+        return Response({}, status=200, mimetype='application/json')
+    else:
+        msg = 'internal error'
+        js = dumps({'error' : msg})
         return Response(js, status=500, mimetype='application/json')
-
-    # remove altOf=charid from alt_id
-
-    mod_attrs = [ (ldap.MOD_DELETE, 'altOf', None ) ]
-
-    try:
-        result = ldap_conn.modify_s(dn, mod_attrs)
-    except Exception as e:
-        msg = 'unable to update existing user {0} in ldap: {1}'.format(alt_id, e)
-        _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.ERROR)
-        js = dumps({'error': msg})
-        return Response(js, status=500, mimetype='application/json')
-
-    js = dumps({})
-    return Response(js, status=200, mimetype='application/json')
 
 @app.route('/characters/<char_id>', methods=['GET'])
 def characters(char_id):
