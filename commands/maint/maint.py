@@ -13,8 +13,8 @@ def maint_all():
     maint_tokens()
     _logger.log('[' + __name__ + '] jabber log storage', _logger.LogLevel.INFO)
     maint_jabber_logs()
-#    _logger.log('[' + __name__ + '] zkill activity', _logger.LogLevel.INFO)
-#    maint_activity()
+    _logger.log('[' + __name__ + '] zkill activity', _logger.LogLevel.INFO)
+    maint_activity()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
