@@ -216,7 +216,7 @@ def ts3_validate_users(ts3conn):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr = '(&(!(accountstatus=blue))(teamspeakuid=*))'
-    attributes = ['characterName', 'uid' ]
+    attributes = ['characterName', 'uid', 'esiAccessToken' ]
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
     if code == False:
@@ -235,6 +235,13 @@ def ts3_validate_users(ts3conn):
 
             charid = int( result[user]['uid'] )
 
+            try:
+                token = result[user]['esiAccessToken']
+            except Exception as e:
+                token = None
+            finally:
+                tokens[charid] = token
+
             # decouple their TS identities from their LDAP entry
 
             mod_attrs = []
@@ -246,7 +253,6 @@ def ts3_validate_users(ts3conn):
                 _logger.log('[' + __name__ + '] {}'.format(msg),_logger.LogLevel.INFO)
             except ldap.LDAPError as error:
                 _logger.log('[' + __name__ + '] unable to purge TS entries for {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
-
 
     # validate ts3 online users
 
@@ -336,6 +342,8 @@ def ts3_validate_users(ts3conn):
         user_conns = int(user[0]['client_totalconnections'])
         user_created = int(user[0]['client_created'])
 
+        token = None # for token checks later
+        orphan = False # for detached TS registrations
         kicked = False # users can be kicked in a few spots prior to final purge spot
 
         # we explicitly check only for blue users that have this dbid.
@@ -343,7 +351,7 @@ def ts3_validate_users(ts3conn):
 
         dn = 'ou=People,dc=triumvirate,dc=rocks'
         filterstr='(&(accountStatus=blue)(teamspeakdbid={}))'.format(ts_dbid)
-        attrlist=['characterName', 'uid' ]
+        attrlist=['characterName', 'uid', 'esiAccessToken' ]
 
         code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
 
@@ -358,11 +366,15 @@ def ts3_validate_users(ts3conn):
             orphan = True
         elif len(result) == 1:
             # the dbid is matched to an single ldap user
-            orphan = False
             (dn, info), = result.items()
             charname = info['characterName']
             charid = int( info['uid'] )
             registered_username = charname
+
+            try:
+                token = info['esiAccessToken']
+            except Exception as e:
+                token = None
 
             _logger.log('[' + __name__ + '] charid {0} validated non-orphan'.format(charid),_logger.LogLevel.DEBUG)
 
@@ -388,6 +400,7 @@ def ts3_validate_users(ts3conn):
                 _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: active orphan'.format(user_nick),_logger.LogLevel.WARNING)
                 _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
                 kicked = True
+                _logger.securitylog(__name__, 'ts3 duplicate character', charname=registered_username, date=user_lastconn, ipaddress=user_lastip)
             except ts3.query.TS3QueryError as err:
                 _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
 
@@ -413,6 +426,19 @@ def ts3_validate_users(ts3conn):
             clid = client['clid']
             cldbid = int(client['client_database_id'])
             client_username = client['client_nickname']
+
+            if client_username == registered_username and token == None and kicked == False:
+                # a registered TS user needs to have an ESI token on their LDAP
+                reason = 'Please login to CORE. Your token has become invalid.'
+                try:
+                    resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
+                    _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: no esi token'.format(user_nick),_logger.LogLevel.WARNING)
+                    _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
+                    kicked = True
+                    _logger.securitylog(__name__, 'ts3 without ESI', charname=registered_username, date=user_lastconn, ipaddress=user_lastip)
+                except ts3.query.TS3QueryError as err:
+                    _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
+
             if cldbid == ts_dbid and client_username != registered_username and kicked == False:
                 # online user has a username that does not match records.
                 # "encourage" fixing this.
@@ -421,6 +447,7 @@ def ts3_validate_users(ts3conn):
                     resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
                     _logger.log('[' + __name__ + '] ts3 user {0} kicked from server: mismatch'.format(user_nick),_logger.LogLevel.WARNING)
                     _logger.log('[' + __name__ + '] TS db: "{0}", client: "{1}"'.format(registered_username,client_username),_logger.LogLevel.DEBUG)
+                    _logger.securitylog(__name__, 'ts3 name mismatch', charname=registered_username, date=user_lastconn, ipaddress=user_lastip, detail='wrong name: {0}'.format(client_username))
                     kicked = True
                 except ts3.query.TS3QueryError as err:
                     _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.ERROR)
@@ -440,7 +467,6 @@ def ts3_validate_users(ts3conn):
                 _logger.LogLevel.WARNING
             )
 
-            _logger.securitylog(__name__, 'orphan ts3 user purge', charname=user_nick, date=user_lastconn, ipaddress=user_lastip)
 
             # first kick from the server if they are on, asking them to re-register
             # to do that i need the client id, which is not the client db id, because
@@ -454,6 +480,7 @@ def ts3_validate_users(ts3conn):
                         reason = 'You are detached from CORE. Please configure services.'
                         resp = ts3conn.clientkick(reasonid=5, reasonmsg=reason, clid=clid)
                         _logger.log('[' + __name__ + '] ts3 user {0} kicked from server (orphan user)'.format(user_nick),_logger.LogLevel.WARNING)
+                        _logger.securitylog(__name__, 'orphan ts3 user', charname=user_nick, date=user_lastconn, ipaddress=user_lastip)
                     except ts3.query.TS3QueryError as err:
                         _logger.log('[' + __name__ + '] ts3 error: "{0}"'.format(err),_logger.LogLevel.WARNING)
 
