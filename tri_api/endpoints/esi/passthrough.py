@@ -1,8 +1,8 @@
 from flask import request
 from tri_api import app
 
-@app.route('/core/esi/<path:url>', methods=['GET', 'POST'])
-def core_esi_passthrough(url):
+@app.route('/core/esi/<version>/<path:url>', methods=['GET', 'POST'])
+def core_esi_passthrough(version, url):
 
     from flask import Flask, request, url_for, json, Response
     import common.request_esi
@@ -44,9 +44,9 @@ def core_esi_passthrough(url):
     esi_url = url + '?' + parameterstring
 
     if request.method == 'GET':
-        code, result = common.request_esi.esi(__name__, esi_url, method='get', charid=charid)
+        code, result = common.request_esi.esi(__name__, esi_url, method='get', version=version, charid=charid)
     if request.method == 'POST':
-        code, result = common.request_esi.esi(__name__, esi_url, method='post', charid=charid, data=request.get_data())
+        code, result = common.request_esi.esi(__name__, esi_url, method='post', version=version, charid=charid, data=request.get_data())
 
     resp = Response(json.dumps(result), status=code, mimetype='application/json')
     return resp
