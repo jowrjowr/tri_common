@@ -60,25 +60,22 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     if base == 'esi':
         # ESI ofc
-        base_url = 'https://esi.tech.ccp.is'
-        url = base_url + '/' + version + '/' + url
+        base_url = 'https://esi.tech.ccp.is'+ '/' + version
         extraheaders.update(token_header)
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
-        url = base_url + '/' + url
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
         base_url = 'https://esi.tech.ccp.is'
-        url = base_url + '/' + url
     elif base == 'triapi':
         # tri api
         base_url = 'https://api.triumvirate.rocks'
-        url = base_url + '/' + url
     elif base == 'oauth':
         # eve oauth
         base_url = 'https://login.eveonline.com/oauth'
-        url = base_url + '/' + url
+
+    url = base_url + '/' + url
 
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
