@@ -447,7 +447,11 @@ def corp_map(corpid):
     # map corps to forum secondary groups
 
     # avalanche
-    if corpid == 98509794:       return 68
+    if corpid == 98509794:        return 68
+    # quam
+    if corpid == 614700844:       return 59
+    # NM
+    if corpid == 1975749457:      return 60
 
     # no match
 
