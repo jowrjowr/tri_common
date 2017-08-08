@@ -46,13 +46,13 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         dn, atoken = result[0]
         try:
             atoken = atoken['esiAccessToken'][0].decode('utf-8')
-            atoken = '&token=' + atoken
+            token_header = { 'Authorization': 'Bearer {0}'.format(atoken) }
         except KeyError as error:
             js = { 'error': 'no access token'}
             return 400, js
     else:
         _logger.log('[' + __name__ + '] unauthenticated esi request: {0}'.format(url),_logger.LogLevel.DEBUG)
-        atoken = ''
+        token_header = dict()
 
     # construct the full request url including api version
 
@@ -61,7 +61,8 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     if base == 'esi':
         # ESI ofc
         base_url = 'https://esi.tech.ccp.is'
-        url = base_url + '/' + version + '/' + url + atoken
+        url = base_url + '/' + version + '/' + url
+        extraheaders.update(token_header)
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
