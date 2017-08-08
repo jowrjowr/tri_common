@@ -449,9 +449,9 @@ def corp_map(corpid):
     # avalanche
     if corpid == 98509794:        return 68
     # quam
-    if corpid == 614700844:       return 59
+    if corpid == 614700844:       return 69
     # NM
-    if corpid == 1975749457:      return 60
+    if corpid == 1975749457:      return 70
 
     # no match
 
