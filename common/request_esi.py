@@ -130,8 +130,8 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     if not request.status_code == 200:
         sendmetric(function, 'esi', 'request', 'failure', 1)
-        # don't bother to log 404s
-        if not request.status_code == 404:
+        # don't bother to log 404 and 403s
+        if not request.status_code == 404 and not request.status_code == 403:
             _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.WARNING)
             _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.WARNING)
     else:
