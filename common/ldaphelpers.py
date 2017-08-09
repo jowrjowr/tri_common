@@ -119,6 +119,7 @@ def ldap_search(function, dn, filter, attributes):
 
         response[dn] = details
 
+    ldap_conn.unbind()
     return True, response
 
 def purge_authgroups(dn, groups):
@@ -147,6 +148,8 @@ def purge_authgroups(dn, groups):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} accountStatus: {1}'.format(dn,error),_logger.LogLevel.ERROR)
 
+    ldap_conn.unbind()
+
 def update_singlevalue(dn, attribute, value):
     import common.logger as _logger
     import common.credentials.ldap as _ldap
@@ -170,6 +173,7 @@ def update_singlevalue(dn, attribute, value):
         _logger.log('[' + __name__ + '] dn {0} attribute {1} set to {2}'.format(dn, attribute, value),_logger.LogLevel.INFO)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
+    ldap_conn.unbind()
 
 def ldap_adduser(dn, attributes):
 
@@ -196,6 +200,7 @@ def ldap_adduser(dn, attributes):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to create ldap dn {0}: {1}'.format(dn,error),_logger.LogLevel.ERROR)
         return False
+    ldap_conn.unbind()
 
 def add_value(dn, attribute, value):
     import common.logger as _logger
@@ -219,6 +224,7 @@ def add_value(dn, attribute, value):
         _logger.log('[' + __name__ + '] dn {0} attribute {1} set to {2}'.format(dn, attribute, value),_logger.LogLevel.INFO)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} attribute {1}: {2}'.format(dn, attribute, error),_logger.LogLevel.ERROR)
+    ldap_conn.unbind()
 
 def ldap_altupdate(function, main_charid, alt_charid):
     import ldap
@@ -280,5 +286,7 @@ def ldap_altupdate(function, main_charid, alt_charid):
         msg = 'unable to update existing user {0} in ldap: {1}'.format(alt_id, e)
         _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
         return False, msg
+    finally:
+        ldap_conn.unbind()
 
     return True, None
