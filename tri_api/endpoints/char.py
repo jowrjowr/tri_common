@@ -57,7 +57,7 @@ def characters(char_id):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='uid={0}'.format(char_id)
-    attrlist=['uid', 'characterName', 'corporation', 'alliance', 'esiAccessToken']
+    attrlist=['uid', 'characterName', 'corporation', 'alliance', 'esiAccessToken', 'authGroup']
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
     if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
@@ -81,6 +81,7 @@ def characters(char_id):
     json_dict['main']['character_name'] = info['characterName']
     json_dict['main']['corporation_id'] = info['corporation']
     json_dict['main']['alliance_id'] = info['alliance']
+    json_dict['main']['authgroups'] = info['authGroup']
 
     if 'esiAccessToken' in info:
         json_dict['main']['esi_token'] = True
