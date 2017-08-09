@@ -43,6 +43,7 @@ def alt_remove(main_charid, alt_charid):
 
 @app.route('/characters/<char_id>', methods=['GET'])
 def characters(char_id):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from common.check_scope import check_scope
     from common.request_esi import esi
     from tri_core.common.scopes import scope
@@ -91,7 +92,7 @@ def characters(char_id):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='altOf={0}'.format(char_id)
-    attrlist=['uid', 'characterName', 'corporation', 'alliance', 'esiAccessToken']
+    attrlist=['uid', 'characterName', 'corporation', 'alliance', 'esiAccessToken', 'authGroup']
     code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
     if code == False:
@@ -107,125 +108,138 @@ def characters(char_id):
         js = dumps(json_dict)
         return Response(js, status=200, mimetype='application/json')
 
-    for dn, info in users.items():
-
-        new_entry = dict()
-
-        alt_charid = info['uid']
-        alt_charname = info['characterName']
-
-        new_entry['character_id'] = alt_charid
-        new_entry['character_name'] = alt_charname
-        new_entry['corporation_id'] = info['corporation']
-
-        if 'alliance' in info:
-            new_entry['alliance_id'] = info['alliance']
-        else:
-            new_entry['alliance_id'] = None
-
-        # set some defaults
-
-        new_entry['skill_training_id'] = 'Unknown'
-        new_entry['skill_training_level'] = 'Unknown'
-        new_entry['skill_training'] = 'Unknown'
-        new_entry['skill_finish'] = 'Unknown'
-        new_entry['location'] = 'Unknown'
-        new_entry['esi_token_valid'] = False
-
-        # determine token status. everything past this requires a live token
-
-        try:
-            new_entry['esi_token'] = info['esiAccessToken']
-        except:
-            new_entry['esi_token'] = None
-
-        if new_entry['esi_token'] == None:
-            # we're done with this char
-            new_entry['esi_token'] = False
-            json_dict['alts'].append(new_entry)
-            continue
-        else:
-            # valid token. check scopes.
-            code, result = check_scope('acc_management', charid=alt_charid, scopes=scope)
-            # the default is already 'false'
-            if code == True:
-                new_entry['esi_token_valid'] = True
-
-        # we'll let the token scope status fall where it may and try to get other details
-
-        # fetch skill queue
-        request_url = 'characters/' + str(alt_charid) + '/skillqueue/?datasource=tranquility'
-        code, result = esi(__name__, request_url, 'get', charid=alt_charid, version='v2')
-        _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
-
-        if not code == 200:
-            _logger.log('[' + __name__ + '] /characters skillqueue API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            skill_training_id = None
-
-        if len(result) == 0:
-            skill_training_id = None
-            current_skill = None
-
-        if len(result) > 0:
-            try:
-                current_skill = result[0]
-            except Exception as e:
-                skill_training_id = None
-                current_skill = None
-
-        if not current_skill == None:
-            new_entry['skill_training_id'] = current_skill['skill_id']
-            new_entry['skill_training_level'] = current_skill['finished_level']
-            try:
-                new_entry['skill_finish'] = current_skill['finish_date']
-            except Exception as e:
-                new_entry['skill_finish'] = 'N/A'
-            skill_training_id = current_skill['skill_id']
-
-        if not skill_training_id == None:
-            # map the skill id to a name
-            request_url = 'universe/names/?datasource=tranquility'
-            data = '[{}]'.format(skill_training_id)
-            code, result = esi(__name__, request_url, data=data, method='post', version='v2')
-            _logger.log('[' + __name__ + '] /universe output: {}'.format(result), _logger.LogLevel.DEBUG)
-
-            if not code == 200:
-                _logger.log('[' + __name__ + '] /universe API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-                new_entry['skill_training'] = 'Unknown'
-            else:
-                new_entry['skill_training'] = result[0]['name']
-
-        # fetch alt location
-        request_url = 'characters/{0}/location/?datasource=tranquility'.format(alt_charid)
-        code, result = esi(__name__, request_url, method='get', charid=alt_charid, version='v1')
-        _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
-
-        if not code == 200:
-            _logger.log('[' + __name__ + '] /characters location API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            location = None
-        else:
-            location = result['solar_system_id']
-
-        new_entry['location_id'] = location
-
-        # map the location to a name
-        if location == None:
-            new_entry['location'] = 'Unknown'
-        else:
-            request_url = 'universe/systems/{0}/?datasource=tranquility'.format(location)
-            code, result = esi(__name__, request_url, 'get')
-            if not code == 200:
-                _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.INFO)
-                new_entry['location'] = 'Unknown'
-            else:
-                new_entry['location'] = result['name']
-
-        json_dict['alts'].append(new_entry)
+    with ThreadPoolExecutor(25) as executor:
+        futures = { executor.submit(fetch_chardetails, info): info for dn, info in users.items() }
+        for future in as_completed(futures):
+            data = future.result()
+            json_dict['alts'].append(data)
 
     _logger.log('[' + __name__ + '] fetched characters successfully', _logger.LogLevel.DEBUG)
 
     js = dumps(json_dict)
     return Response(js, status=200, mimetype='application/json')
+
+def fetch_chardetails(info):
+    from common.check_scope import check_scope
+    from common.request_esi import esi
+    from tri_core.common.scopes import scope
+    from json import dumps
+
+    import common.logger as _logger
+    import common.ldaphelpers as _ldaphelpers
+    new_entry = dict()
+
+    alt_charid = info['uid']
+    alt_charname = info['characterName']
+
+    new_entry['character_id'] = alt_charid
+    new_entry['character_name'] = alt_charname
+    new_entry['corporation_id'] = info['corporation']
+    new_entry['authgroups'] = info['authGroup']
+
+    if 'alliance' in info:
+        new_entry['alliance_id'] = info['alliance']
+    else:
+        new_entry['alliance_id'] = None
+
+    # set some defaults
+
+    new_entry['skill_training_id'] = 'Unknown'
+    new_entry['skill_training_level'] = 'Unknown'
+    new_entry['skill_training'] = 'Unknown'
+    new_entry['skill_finish'] = 'Unknown'
+    new_entry['location'] = 'Unknown'
+    new_entry['esi_token_valid'] = False
+
+    # determine token status. everything past this requires a live token
+
+    token = info.get('esiAccessToken')
+    if token == None:
+        new_entry['esi_token'] = False
+        new_entry['esi_token_valid'] = False
+    else:
+        new_entry['esi_token'] = True
+
+    if token == None:
+        # we're done with this char
+        return new_entry
+    else:
+        # valid token. check scopes.
+        code, result = check_scope('acc_management', charid=alt_charid, scopes=scope)
+        # the default is already 'false'
+        if code == True:
+            new_entry['esi_token_valid'] = True
+
+    # we'll let the token scope status fall where it may and try to get other details
+
+    # fetch skill queue
+    request_url = 'characters/' + str(alt_charid) + '/skillqueue/?datasource=tranquility'
+    code, result = esi(__name__, request_url, 'get', charid=alt_charid, version='v2')
+    _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /characters skillqueue API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        skill_training_id = None
+
+    if len(result) == 0:
+        skill_training_id = None
+        current_skill = None
+
+    if len(result) > 0:
+        try:
+            current_skill = result[0]
+        except Exception as e:
+            skill_training_id = None
+            current_skill = None
+
+    if not current_skill == None:
+        new_entry['skill_training_id'] = current_skill['skill_id']
+        new_entry['skill_training_level'] = current_skill['finished_level']
+        try:
+            new_entry['skill_finish'] = current_skill['finish_date']
+        except Exception as e:
+            new_entry['skill_finish'] = 'N/A'
+        skill_training_id = current_skill['skill_id']
+
+    if not skill_training_id == None:
+        # map the skill id to a name
+        request_url = 'universe/names/?datasource=tranquility'
+        data = '[{}]'.format(skill_training_id)
+        code, result = esi(__name__, request_url, data=data, method='post', version='v2')
+        _logger.log('[' + __name__ + '] /universe output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+        if not code == 200:
+            _logger.log('[' + __name__ + '] /universe API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+            new_entry['skill_training'] = 'Unknown'
+        else:
+            new_entry['skill_training'] = result[0]['name']
+
+    # fetch alt location
+    request_url = 'characters/{0}/location/?datasource=tranquility'.format(alt_charid)
+    code, result = esi(__name__, request_url, method='get', charid=alt_charid, version='v1')
+    _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /characters location API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        location = None
+    else:
+        location = result['solar_system_id']
+
+    new_entry['location_id'] = location
+
+    # map the location to a name
+    if location == None:
+        new_entry['location'] = 'Unknown'
+    else:
+        request_url = 'universe/systems/{0}/?datasource=tranquility'.format(location)
+        code, result = esi(__name__, request_url, 'get')
+        if not code == 200:
+            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.INFO)
+            new_entry['location'] = 'Unknown'
+        else:
+            new_entry['location'] = result['name']
+
+    return new_entry
 
 
 @app.route('/groups', methods=['GET'])
