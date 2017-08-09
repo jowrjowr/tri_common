@@ -14,3 +14,5 @@ import tri_api.endpoints.core.trisupers
 import tri_api.endpoints.auth
 import tri_api.endpoints.char
 import tri_api.endpoints.fleet
+
+import tri_api.endpoints.tools.paste
