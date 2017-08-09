@@ -1,7 +1,7 @@
 from flask import request
 from tri_api import app
 
-@app.route('/characters/<main_charid>/alts/<alt_charid>/remove', methods=['GET'])
+@app.route('/characters/<main_charid>/alts/<alt_charid>/remove', methods=['GET', 'DELETE'])
 def alt_remove(main_charid, alt_charid):
     from flask import Response
     from json import dumps
@@ -30,9 +30,9 @@ def alt_remove(main_charid, alt_charid):
     # security logging
 
     ipaddress = request.headers['X-Real-Ip']
-    _logger.securitylog(__name__, 'detatching alt', ipaddress=ipaddress, charid=char_id, detail='alt {0}'.format(alt_id))
+    _logger.securitylog(__name__, 'detatching alt', ipaddress=ipaddress, charid=alt_charid, detail='alt of {0}'.format(main_charid))
 
-    code, result = ldap_altupdate(__name__, main_charid, alt_charid)
+    code, result = _ldaphelpers.ldap_altupdate(__name__, None, alt_charid)
 
     if code == True:
         return Response({}, status=200, mimetype='application/json')
