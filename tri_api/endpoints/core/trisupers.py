@@ -178,7 +178,7 @@ def audit_pilot(entry):
             ships[asset_id]['type'] = supers[asset_typeid]
             ships[asset_id]['class'] = "Supercarrier"
         if asset_typeid in list(titans):
-            ships[asset_id]['type'] = supers[asset_typeid]
+            ships[asset_id]['type'] = titans[asset_typeid]
             ships[asset_id]['class'] = "Titan"
 
     # is this character flying a titan/super?
