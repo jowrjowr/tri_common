@@ -40,14 +40,19 @@ def check_scope(function, charid, scopes, atoken=None):
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
         return 'error', 'broken verify request'
-    charscopes = result['Scopes']
+    token_scopes = result['Scopes']
+    token_charid = result['CharacterID']
+
+    if not token_charid == charid:
+        _logger.log('[' + __name__ + '] stored token for charid {0} belongs to charid {1}'.format(charid, token_charid),_logger.LogLevel.ERROR)
+        return 'error', 'stored token owner mismatch'
     # so given an array of scopes, let's check that what we want is in the list of scopes the character's token has
 
     # character scopes come out in a space delimited list
-    charscopes = charscopes.split()
+    token_scopes = token_scopes.split()
 
     # i want the set difference to be what is in the requested scope list, but NOT in the available scope list.
-    difference = set(scopes) - set(charscopes)
+    difference = set(scopes) - set(token_scopes)
     if difference == set([]):
         # the scopes requested matches what's available
         return True, []
