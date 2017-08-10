@@ -1,13 +1,31 @@
 #!/usr/bin/python3
 
 import sleekxmpp
-import sys
-import netifaces
 import xmltodict
-import dns.resolver
 import common.logger as _logger
 from common.discord_api import discord_forward
-from IPy import IP
+
+def jid_ping(self, jid):
+
+    # XEP 0199 - pinging a jid
+
+    jid_short, detail= jid.split('/')
+
+    # ping
+
+    try:
+        result = self['xep_0199'].ping(
+            jid = jid,
+            timeout = 2,
+            ifrom = self.boundjid,
+        )
+    except sleekxmpp.exceptions.IqTimeout as error:
+        # maybe setup a retry loop? idk
+        _logger.log('[' + __name__ + '] timeout pinging {0}'.format(jid_short),_logger.LogLevel.WARNING)
+        print('ERRRROR')
+        return None
+
+    return result
 
 class Jabber(sleekxmpp.ClientXMPP):
 
@@ -16,24 +34,28 @@ class Jabber(sleekxmpp.ClientXMPP):
     identifier = 'unknown'
     sessionid = 'unknown'
 
-    def __init__(self, identifier, jid, password, sessionid):
+    def __init__(self, identifier, jid, password, clients):
         super(Jabber, self).__init__(jid, password)
         self.identifier = identifier
-        self.sessionid = sessionid
+        self.clients = clients
         # ping
         self.register_plugin('xep_0199')
         # service discovery
         self.register_plugin('xep_0030')
+        # capabilities
+        self.register_plugin('xep_0115')
+
         ## add xmpp event handlers
-
-        # does something:
-
+        self.add_event_handler('ssl_invalid_cert', self.discard)
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('failed_auth', self.failure)
 
     def failure(self, event):
         _logger.log('[' + str(self.identifier) + '] Unable to login user',_logger.LogLevel.ERROR)
         self.disconnect(reconnect=False, wait=False, send_close=True)
+
+    def discard(self, event, *args):
+        return
 
     def start(self, event):
         #self.send_presence(ptype='away', ppriority='-1')
@@ -43,96 +65,133 @@ class Jabber(sleekxmpp.ClientXMPP):
         # we do not want this.
 
         # https://xmpp.org/extensions/xep-0030.html#schemas-info
-        try:
-            print(self.sessionid)
-            items_xml = self['xep_0030'].get_info(
-                jid         =   self.sessionid,
-                local       =   False,
-                block       =   True,
-            )
-        except sleekxmpp.exceptions.IqTimeout as error:
-            # maybe setup a retry loop? idk
-            _logger.log('[' + __name__ + '] Disconnecting due to timeout on get_info query to {0}'.format(self.sessionid),_logger.LogLevel.WARNING)
-            return
-        except sleekxmpp.exceptions.IqError as error_xml:
-            error = xmltodict.parse(str(error_xml))
-            _logger.log('[' + __name__ + '] Client {0} does not support disco_info queries'.format(self.sessionid),_logger.LogLevel.WARNING)
-            return
-        finally:
-            # once we get the disco_info response we are done no matter what
-            self.disconnect(reconnect=False, wait=False, send_close=True)
-        print(items_xml)
+        clients = self.clients
+        for client in clients:
 
-        items = xmltodict.parse(str(items_xml))
-        try:
-            identity = items['iq']['query']['identity']
-            id_cat = identity['@category']
-            id_type = identity['@type']
-            if id_type == 'bot':
-                _logger.log('[' + __name__ + '] BOT type detected on jid: {0} (category: {1})'.format(self.sessionid,id_cat),_logger.LogLevel.WARNING)
+            jid_short, detail= client.split('/')
 
-        except sleekxmpp.exceptions.IqError as error:
-            _logger.log('[' + __name__ + '] error queryin jid {0}: {1}'.format(self.sessionid, error),_logger.LogLevel.ERROR)
+            # ping w/ xep 0199
+#            ping = jid_ping(self, client)
+#            print('ping for {0}: {1}'.format(jid_short, ping))
 
-        except KeyError as error:
-            # this only happens on goofball identity responses or blowback from timeouts
-            pass
+            # service discovery
 
+            try:
+                result = self['xep_0030'].get_info(
+                    jid = client,
+                    local = False,
+                    block = True,
+                )
+            except sleekxmpp.exceptions.IqTimeout as error:
+                # maybe setup a retry loop? idk
+                _logger.log('[' + __name__ + '] Disconnecting due to timeout on get_info query to {0}'.format(self.sessionid),_logger.LogLevel.WARNING)
+                print('ERRRROR')
+                print(jid_short)
+                continue
+            except sleekxmpp.exceptions.IqError as error_xml:
+                error = xmltodict.parse(str(error_xml))
+                _logger.log('[' + __name__ + '] Client {0} does not support disco_info queries'.format(self.sessionid),_logger.LogLevel.WARNING)
+                print('ERRRROR')
+                print(jid_short)
+                continue
+
+            # process disco_info
+
+            disco_info = xmltodict.parse(str(result))
+
+            iq = disco_info.get('iq')
+            if iq == None:
+                print(disco_info)
+            query = iq.get('query')
+
+
+            # https://itunes.apple.com/us/app/im-instant-messenger/id285688934?mt=8
+            # seems not to give a useful response to disc_info queries, eg:
+            # OrderedDict([('@xmlns', 'http://jabber.org/protocol/disco#info'), ('feature', [OrderedDict([('@var', 'http://jabber.org/protocol/disco#info')]), OrderedDict([('@var', 'http://jabber.org/protocol/si/profile/file-transfer')])])])
+
+            if query == None:
+                print(disco_info)
+                continue
+
+            identity = query.get('identity')
+
+            if identity == None:
+                if detail == 'IM+' or detail == 'IM+ Android':
+                    _logger.log('[' + __name__ + '] {0} using known shit client: IM+'.format(jid_short),_logger.LogLevel.WARNING)
+                else:
+                    print('mystery: {0} : {1}'.format(jid_short, query))
+
+            c_features = query.get('feature')
+
+            # nothing else useful in the identity query
+
+            if not identity == None:
+                c_category = identity.get('@category')
+                c_type = identity.get('@type')
+                c_name = identity.get('@name')
+            else:
+                continue
+
+            if len(c_features) < 10:
+                print(jid_short, len(c_features), c_category, c_type, c_name)
+
+            if c_type == 'bot':
+                # default bot configuration for my spy tool
+                print('EEEEEEEEEEEEEEEEEEE')
+
+            if c_name == None:
+                # default bot configuration for my spy tool
+                print('EEEEEEEEEEEEEEEEEEE')
+        self.disconnect(reconnect=False, wait=False, send_close=True)
 
 def audit_bothunt():
 
-    import common.credentials.jabber as _jabber
+    import common.credentials.broadcast as _jabber
     import common.logger as _logger
     import common.credentials.bothunt as _bothunt
-
+    import re
     import logging
     import requests
     import json
 
-    _logger.log('[' + __name__ + '] auditing jabber active sessions',_logger.LogLevel.DEBUG)
+    import subprocess
 
-    logging.getLogger("requests").setLevel(logging.WARNING)
+    _logger.log('[' + __name__ + '] auditing jabber active sessions',_logger.LogLevel.INFO)
 
-    # get all jabber users
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': str(_jabber.atoken)}
+    j_user = _jabber.broadcast_user
+    j_pass = _jabber.broadcast_password
 
-    # hardcode service user for testing
-    jabber_url = _jabber.baseurl + 'sessions/'
+    # fetch the session information from jabber
+    # this runs fine even when ran as root
 
-    try:
-        request = requests.get(jabber_url, headers=headers, timeout=10)
-    except Exception as err:
-        return False
+    data = subprocess.run(["sudo", "ejabberdctl", "connected_users_info"], stdout=subprocess.PIPE)
 
-    if request.status_code == 404:
-        _logger.log('[' + __name__ + '] jabber /users endpoint does not exist?!',_logger.LogLevel.WARNING)
+    # parse output
+    stdout = data.stdout.decode('utf-8')
+    clients = dict()
 
-    if request.status_code != 200 and request.status_code != 404:
-        # errors that aren't "not found":
-        # hard fail on breakage? not sure.
-        _logger.log('[' + __name__ + '] Unable to access /users endpoint',_logger.LogLevel.WARNING)
-        return
+    regex = r"^" + j_user
 
-    result_parsed = json.loads(request.text)
+    for raw_line in stdout.split('\n'):
 
-    for session in result_parsed['session']:
+        if raw_line == '': continue
 
-        sessionid = session['sessionId']
-        sessionid_base = sessionid.split('/')[0]
-        ip = session['hostAddress']
-        user = _bothunt.user
-        password = _bothunt.password
-        server = _bothunt.server
-        jid = user.lower() + '@' + server
+        info = dict()
+        jid, info['conn_type'], info['client_ip'], info['client_port'], info['client_priority'], info['node'], info['uptime'] = raw_line.split('\t')
 
-        # do not check my own session
-        if not jid == sessionid_base:
+        # don't match self
+        if re.match(regex, jid):
+            continue
+        else:
+            clients[jid] = info
 
-            # test jabber client directly for lazy bots
-            _logger.log('[' + __name__ + '] checking session: {0} from: {1}'.format(sessionid, ip),_logger.LogLevel.INFO)
-            jabber = Jabber('bothunt',jid, password, sessionid)
-            jabber.connect()
-            jabber.process(block=False)
+    _logger.log('[' + __name__ + '] {0} active jabber sessions'.format(len(clients)),_logger.LogLevel.INFO)
+
+    thing = 'saekatyr@triumvirate.rocks/729827350702828396058635616511165752724531413542125212543'
+#    clients = {thing: None}
+    jabber = Jabber('bothunt', j_user, j_pass, clients)
+    jabber.connect()
+    jabber.process(block=False)
 
     return
 
