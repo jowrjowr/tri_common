@@ -13,7 +13,7 @@ def current_ship(charid):
 
     if scope_code == False:
         # does not have proper scopes
-        msg = 'character {0} ({1}) missing ESI scopes: {2}'.format(charid, charname, result)
+        msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
         
@@ -25,7 +25,7 @@ def current_ship(charid):
     if esi_ship_code != 200:
         # something broke severely
         _logger.log('[' + __name__ + '] /characters/ship API error {0}: {1}'.format(esi_ship_code, esi_ship_result['error']),_logger.LogLevel.WARNING)
-        False, None
+        return False, None
         
     return True, esi_ship_result
 
@@ -43,7 +43,7 @@ def find_types(charid, types):
 
     if scope_code == False:
         # does not have proper scopes
-        msg = 'character {0} ({1}) missing ESI scopes: {2}'.format(charid, charname, result)
+        msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
         
