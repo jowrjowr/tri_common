@@ -121,7 +121,7 @@ def char_location(charid):
             # unable to resolve structure name if the character has no ACL
             structure_name = 'UNAUTHORIZED STRUCTURE'
         else:
-            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.WARNING)
+            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
     else:
         structure_name = None
