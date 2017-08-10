@@ -101,7 +101,7 @@ def char_location(charid):
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
     _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
-        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(data['error']), _logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
         location_name = 'Unknown'
     else:
         location_name = result['solar_system_name']
