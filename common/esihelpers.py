@@ -78,7 +78,7 @@ def char_location(charid):
 
     if scope_code == False:
         # does not have proper scopes
-        msg = 'character {0} missing ESI scopes: {2}'.format(charid, result)
+        msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
         
