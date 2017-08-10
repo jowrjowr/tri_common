@@ -152,7 +152,7 @@ def audit_pilot(entry):
     if not altOf == None:
         result = _ldaphelpers.ldap_uid2name(__name__, altOf)
         if result == None:
-            msg = 'failed to find main for {0}: ({1}) {2}'.format(altOf, main_code, main_result)
+            msg = 'failed to find main for {0}'.format(altOf)
             _logger.log('[' + __name__ + ']' + msg, _logger.LogLevel.WARNING)
         try:
             main = result['characterName']
