@@ -19,7 +19,7 @@ def current_ship(charid):
         
     # fetch current ship
     request_ship_url = 'characters/{}/ship/?datasource=tranquility'.format(charid)
-    esi_ship_code, esi_ship_result = common.request_esi.esi(__name__, request_ship_url, version='latest', method='get', charid=charid)
+    esi_ship_code, esi_ship_result = common.request_esi.esi(__name__, request_ship_url, version='v1', method='get', charid=charid)
     _logger.log('[' + __name__ + '] /characters output: {}'.format(esi_ship_result), _logger.LogLevel.DEBUG)
 
     if esi_ship_code != 200:
