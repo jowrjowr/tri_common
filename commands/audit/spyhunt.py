@@ -1,4 +1,4 @@
-def audit_security():
+def audit_security(targets=None):
 
     import common.request_esi
     import common.logger as _logger
@@ -35,9 +35,10 @@ def audit_security():
 
     # fetch the last week's security log stuff
 
-    time_range = time.time() - 86400*7
+    time_range = time.time() - 86400*14
     cursor = sql_conn.cursor()
 
+    time_range=0
     query = 'SELECT charID, charName, date, IP, action FROM Security WHERE date > FROM_UNIXTIME(%s)'
     try:
         cursor.execute(query, (time_range,))
@@ -56,8 +57,9 @@ def audit_security():
     ts3_logins = defaultdict(list)
     jabber_logins = defaultdict(list)
 
-    for charid, charname, date, IP, action in rows:
+    all_ips = set()
 
+    for charid, charname, date, IP, action in rows:
         # a quick dict of ip to charid associations
         data['ip'][IP][charid] = date
 
@@ -65,12 +67,14 @@ def audit_security():
 
         data['action'][action][charid] = IP
 
+        all_ips.add(IP)
+        # build lists of ips based on specific actions
         if action == 'ts3 login':
             ts3_logins[charid].append(IP)
-        if action == 'jabber login (successful)':
+        if action == 'jabber login':
             jabber_logins[charid].append(IP)
 
-    print(set(data['action'].keys()))
+    #print(set(data['action'].keys()))
     # test for tor
 
     ips = set(data['action'][IP])
@@ -89,6 +93,33 @@ def audit_security():
     geo_asn = open_database('/opt/geoip/GeoLite2-ASN.mmdb')
     geo_city = open_database('/opt/geoip/GeoLite2-City.mmdb')
     geo_country = open_database('/opt/geoip/GeoLite2-Country.mmdb')
+
+    # test for AWS/azure/etc ASes
+    # 16509 : AWS,
+
+    aws = [ 16509, 14618, ]
+    digocean = [ 393406, 14061 ]
+    azure = [ 8075 ]
+
+    bad_asns = aws + azure + digocean
+
+    for ip in list(all_ips):
+        try:
+            asn_detail = geo_asn.get(ip)
+        except Exception as e:
+            continue
+
+        if asn_detail == None: continue
+        asn = asn_detail.get('autonomous_system_number')
+        asn_owner = asn_detail.get('autonomous_system_organization')
+
+#        print(ip, asn, asn_owner)
+        if asn in bad_asns:
+            charids = list(data['ip'][ip])
+            if not charids == [ None ]:
+                _logger.log('[' + __name__ + '] ip {0} in bad asn {1} ({2})'.format(ip, asn, asn_owner),_logger.LogLevel.WARNING)
+                _logger.log('[' + __name__ + '] ip {0} used by charids: {1}'.format(ip, charids),_logger.LogLevel.WARNING)
+    return
 
     for charid in jabber_logins:
 

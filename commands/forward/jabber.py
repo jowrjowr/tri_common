@@ -66,7 +66,7 @@ class JabberForwarder(ClientXMPP):
         info.add_identity(
             category  = 'client',
             itype     = 'pc',
-            name      = None,
+            name      = 'Pidgin',
         )
         return info
 
