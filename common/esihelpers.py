@@ -51,8 +51,8 @@ def find_types(charid, types):
     esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, version='v1', method='get', charid=charid)
     _logger.log('[' + __name__ + '] /characters output: {}'.format(esi_assets_result), _logger.LogLevel.DEBUG)
     if esi_assets_code != 200:
-        _logger.log('[' + __name__ + '] /characters/assets API error {0}: {1}'.format(esi_ship_code, esi_ship_result['error']),_logger.LogLevel.WARNING)
-        False, None
+        _logger.log('[' + __name__ + '] /characters/assets API error {0}: {1}'.format(esi_assets_code, esi_assets_result['error']),_logger.LogLevel.WARNING)
+        return False, None
         
     # locate the typeids in question
 
