@@ -131,7 +131,7 @@ def audit_pilot(entry):
 
     code, current_ship = _esihelpers.current_ship(uid)
 
-    if uid == 1293888334:
+    if uid == 1293888334 or uid == "1293888334":
         print("CURRENT_SHIP:" + current_ship)
 
     if code == False:
