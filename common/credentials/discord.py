@@ -11,8 +11,10 @@ class Channel(Enum):
     everyone = 269993133268271106
     tri_administration = 269997361827151872
 
-# oauth stuff for spy registration
+# oauth stuff for discord registration
 # not currently the same as sovereign
 
-client_id = '295122632507129856'
-client_secret = 'WzwA1KaM6oEBmf9pl1UMJ_Czqt4BGqYx'
+client_id = '345393204784267265'
+client_secret = 'zp31sVBvYop6boVIfQXNtcEv28fU4lPV'
+base_url = 'https://discordapp.com/api/v6'
+redirect_url = 'https://auth.triumvirate.rocks/discord/callback?server_type=discord'

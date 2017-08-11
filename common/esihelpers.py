@@ -81,7 +81,7 @@ def char_location(charid):
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
-        
+
     # fetch character location
     request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
@@ -94,7 +94,7 @@ def char_location(charid):
     location_id = result.get('solar_system_id')
     structure_id = result.get('structure_id')
     station_id = result.get('station_id')
-    
+
     # map the solar system to a name
 
     request_url = 'universe/systems/{0}/?datasource=tranquility'.format(location_id)
@@ -105,14 +105,12 @@ def char_location(charid):
         location_name = 'Unknown'
     else:
         location_name = result['solar_system_name']
-        
+
     # map the structure to a name
-    
-    if not structure_id == None or not station_id == None:
-        if not structure_id == None:
-            request_url = 'universe/structures/{}/?datasource=tranquility'.format(structure_id)
-        if not station_id == None:
-            request_url = 'universe/structures/{}/?datasource=tranquility'.format(station_id)
+
+    if structure_id is not None:
+        # resolve a structure name
+        request_url = 'universe/structures/{}/?datasource=tranquility'.format(structure_id)
         code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1', charid=charid)
         _logger.log('[' + __name__ + '] /universe/structures output: {}'.format(result), _logger.LogLevel.DEBUG)
         if code == 200:
@@ -123,14 +121,26 @@ def char_location(charid):
         else:
             _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
+    if station_id is not None:
+        request_url = 'universe/names/?datasource=tranquility'
+        data = '[{}]'.format(station_id)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', version='v2', data=data)
+        _logger.log('[' + __name__ + '] /universe/structures output: {}'.format(result), _logger.LogLevel.DEBUG)
+        if code == 200:
+            structure_name = result[0]['name']
+        else:
+            print(type(station_id))
+            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
+            structure_name = 'Unknown'
+
     else:
         structure_name = None
-        
+
     char_location = dict()
     char_location['location_id'] = location_id
     char_location['location'] = location_name
     char_location['structure_id'] = structure_id
     char_location['structure_name'] = structure_name
     char_location['station_id'] = station_id
-    
+
     return True, char_location

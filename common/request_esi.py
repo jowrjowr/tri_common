@@ -1,57 +1,68 @@
-def do_esi(function, url, method, charid=None, data=None, version='latest', base='esi', extraheaders=dict()):
+def do_esi(function, url, method, charid=None, data=None, version='latest', base='esi', extraheaders={}):
 
     import requests
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     import logging
     import json
     import redis
-    import ldap
     from cachecontrol import CacheControl
     from cachecontrol.caches.redis_cache import RedisCache
     from common.graphite import sendmetric
 
+    # headers
+
     useragent = 'triumvirate services - yell at saeka'
+    headers = {'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
+
+    if method == 'post':
+        # add a header for POST data
+        headers['Content-Type'] = 'application/json'
+
+    if extraheaders is not {}:
+        # add any custom headers as necessary
+        headers.update(extraheaders)
+
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
-
 
     # if a charid is specified, this is going to be treated as an authenticated request
     # where an access token is added to the esi request url automatically
 
     # snag the user's ldap token
-    if not charid == None:
-        _logger.log('[' + __name__ + '] authenticated esi request for {0}: {1}'.format(charid, url),_logger.LogLevel.DEBUG)
-        # setup ldap
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        try:
-            ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-        except ldap.LDAPError as error:
-            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+    if charid is not None:
+
+        _logger.log('[' + __name__ + '] authenticated {0} request for {1}: {2}'.format(base, charid, url),_logger.LogLevel.DEBUG)
+
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        filterstr='(uid={})'.format(charid)
+        attrlist=[ 'esiAccessToken', 'discordAccessToken' ]
+        code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+        if code == False:
+            _logger.log('[' + __name__ + '] LDAP connectionerror: {}'.format(error),_logger.LogLevel.ERROR)
             js = { 'error': 'internal ldap error'}
-            return 500, js
-        # snag the token
-        try:
-            result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(uid={0}))'.format(charid), attrlist=['esiAccessToken'])
-            user_count = result.__len__()
-        except ldap.LDAPError as error:
-            _logger.log('[' + __name__ + '] unable to fetch ldap information: {}'.format(error),_logger.LogLevel.ERROR)
-            js = { 'error': 'internal ldap error'}
-            return 500, js
-        # this shouldn't happen often tbh
-        if user_count == 0:
-            js = { 'error': 'no token for uid {0}'.format(charid)}
             return 500, js
 
-        dn, atoken = result[0]
-        try:
-            atoken = atoken['esiAccessToken'][0].decode('utf-8')
-            token_header = { 'Authorization': 'Bearer {0}'.format(atoken) }
-        except KeyError as error:
-            js = { 'error': 'no access token'}
+        if result == None:
+            js = { 'error': 'no tokens for uid {0}'.format(charid)}
+            return 500, js
+
+        (dn, result), = result.items()
+
+        esi_atoken = result.get('esiAccessToken')
+        discord_atoken = result.get('discordAccessToken')
+
+        if esi_atoken == None and base == 'esi':
+            js = { 'error': 'no stored esi access token'}
             return 400, js
+
+        if discord_atoken == None and base == 'discord':
+            js = { 'error': 'no stored discord access token'}
+            return 400, js
+
     else:
-        _logger.log('[' + __name__ + '] unauthenticated esi request: {0}'.format(url),_logger.LogLevel.DEBUG)
+        _logger.log('[' + __name__ + '] unauthenticated {0} request: {1}'.format(base, url),_logger.LogLevel.DEBUG)
         token_header = dict()
 
     # construct the full request url including api version
@@ -60,8 +71,19 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     if base == 'esi':
         # ESI ofc
-        base_url = 'https://esi.tech.ccp.is'+ '/' + version
-        extraheaders.update(token_header)
+        base_url = 'https://esi.tech.ccp.is/'+ version
+
+        if charid is not None:
+            # add the authenticated header
+            headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
+    elif base == 'discord':
+        # discord api
+        base_url = 'https://discordapp.com/api/' + version
+
+        if charid is not None:
+            # add the authenticated header
+            headers['Authorization'] = 'Bearer {0}'.format(discord_atoken)
+
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
@@ -86,62 +108,57 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         r.client_list()
         session = CacheControl(session, RedisCache(r))
     except redis.exceptions.ConnectionError as err:
-        sendmetric(function, 'esi', 'request', 'rediserror', 1)
+        sendmetric(function, base, 'request', 'rediserror', 1)
         _logger.log('[' + function + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
     except redis.exceptions.ConnectionRefusedError as err:
-        sendmetric(function, 'esi', 'request', 'rediserror', 1)
+        sendmetric(function, base, 'request', 'rediserror', 1)
         _logger.log('[' + function + '] Redis connection error: ' + str(err), _logger.LogLevel.ERROR)
     except Exception as err:
-        sendmetric(function, 'esi', 'request', 'rediserror', 1)
+        sendmetric(function, base, 'request', 'rediserror', 1)
         logger.error('[' + function + '] Redis generic error: ' + str(err))
 
     # do the request, but catch exceptions for connection issues
 
     timeout = 10
     try:
-
         if method == 'post':
-            headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
-            headers.update(extraheaders)
             request = session.post(url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
-            headers = {'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
-            headers.update(extraheaders)
             request = session.get(url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
-        sendmetric(function, 'esi', 'request', 'connection_error', 1)
+        sendmetric(function, base, 'request', 'connection_error', 1)
         _logger.log('[' + function + '] ESI connection error:: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection error: ' + str(err)})
     except requests.exceptions.ReadTimeout as err:
-        sendmetric(function, 'esi', 'request', 'read_timeout', 1)
+        sendmetric(function, base, 'request', 'read_timeout', 1)
         _logger.log('[' + function + '] ESI connection read timeout: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection read timeout: ' + str(err)})
     except requests.exceptions.Timeout as err:
-        sendmetric(function, 'esi', 'request','timeout' , 1)
+        sendmetric(function, base, 'request','timeout' , 1)
         _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
-        sendmetric(function, 'esi', 'request', 'general_error', 1)
+        sendmetric(function, base, 'request', 'general_error', 1)
         _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'General error: ' + str(err)})
 
     # need to also check that the api thinks this was success.
 
     if not request.status_code == 200:
-        sendmetric(function, 'esi', 'request', 'failure', 1)
+        sendmetric(function, base, 'request', 'failure', 1)
         # don't bother to log 404 and 403s
         if not request.status_code == 404 and not request.status_code == 403:
             _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.WARNING)
             _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.WARNING)
     else:
-        sendmetric(function, 'esi', 'request', 'success', 1)
+        sendmetric(function, base, 'request', 'success', 1)
 
     # do metrics
 
     elapsed_time = request.elapsed.total_seconds()
-    sendmetric(function, 'esi', 'request', 'elapsed', elapsed_time)
-    sendmetric(function, 'esi', 'request', request.status_code, 1)
+    sendmetric(function, base, 'request', 'elapsed', elapsed_time)
+    sendmetric(function, base, 'request', request.status_code, 1)
 
     # shouldn't have to typecast it but sometimes:
     # TypeError: the JSON object must be str, not 'LocalProxy'
@@ -172,12 +189,12 @@ def esi(function, url, method='get', charid=None, data=None, version='latest', b
 
         if code >= 500:
             retry_count += 1
-            sendmetric(function, 'esi', 'request', 'retry' , 1)
+            sendmetric(function, base, 'request', 'retry' , 1)
             _logger.log('[' + function + '] ESI call failed. sleeping {0} seconds before retrying'.format(sleep), _logger.LogLevel.WARNING)
             time.sleep(1)
         else:
             return(code, result)
-    sendmetric(function, 'esi', 'request', 'retry_maxed', 1)
+    sendmetric(function, base, 'request', 'retry_maxed', 1)
     _logger.log('[' + function + '] ESI call failed {0} times. giving up. '.format(retry_max), _logger.LogLevel.WARNING)
     # return the last code/result
     return(code, result)
