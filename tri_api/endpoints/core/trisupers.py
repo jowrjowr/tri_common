@@ -91,9 +91,8 @@ def audit_pilot(entry):
     basic_pilot = dict()
 
     uid = entry['uid']
+
     _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.DEBUG)
-    _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.INFO)
-    _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.WARNING)
 
     corpid = entry['corporation']
     charname = entry['characterName']
@@ -131,6 +130,9 @@ def audit_pilot(entry):
     # fetch current ship
 
     code, current_ship = _esihelpers.current_ship(uid)
+
+    if uid == 1293888334:
+        print("CURRENT_SHIP:" + current_ship)
 
     if code == False:
         return ships
