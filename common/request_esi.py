@@ -1,55 +1,58 @@
-def do_esi(function, url, method, charid=None, data=None, version='latest', base='esi', extraheaders=dict()):
+def do_esi(function, url, method, charid=None, data=None, version='latest', base='esi', extraheaders={}):
 
     import requests
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     import logging
     import json
     import redis
-    import ldap
     from cachecontrol import CacheControl
     from cachecontrol.caches.redis_cache import RedisCache
     from common.graphite import sendmetric
 
+    # headers
+
     useragent = 'triumvirate services - yell at saeka'
+    headers = {'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
+
+    if method == 'post':
+        # add a header for POST data
+        headers['Content-Type'] = 'application/json'
+
+    if extraheaders is not {}:
+        # add any custom headers as necessary
+        headers.update(extraheaders)
+
     # shut the FUCK up.
     logging.getLogger("requests").setLevel(logging.WARNING)
-
 
     # if a charid is specified, this is going to be treated as an authenticated request
     # where an access token is added to the esi request url automatically
 
     # snag the user's ldap token
-    if not charid == None:
+    if charid is not None:
         _logger.log('[' + __name__ + '] authenticated esi request for {0}: {1}'.format(charid, url),_logger.LogLevel.DEBUG)
-        # setup ldap
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        try:
-            ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-        except ldap.LDAPError as error:
-            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        code, result = _ldaphelpers.ldap_search(__name__, dn, '(uid={})'.format(charid), ['esiAccessToken'])
+
+        if code == 'error':
+            _logger.log('[' + __name__ + '] LDAP connectionerror: {}'.format(error),_logger.LogLevel.ERROR)
             js = { 'error': 'internal ldap error'}
             return 500, js
-        # snag the token
-        try:
-            result = ldap_conn.search_s('ou=People,dc=triumvirate,dc=rocks', ldap.SCOPE_SUBTREE, filterstr='(&(objectclass=pilot)(uid={0}))'.format(charid), attrlist=['esiAccessToken'])
-            user_count = result.__len__()
-        except ldap.LDAPError as error:
-            _logger.log('[' + __name__ + '] unable to fetch ldap information: {}'.format(error),_logger.LogLevel.ERROR)
-            js = { 'error': 'internal ldap error'}
-            return 500, js
-        # this shouldn't happen often tbh
-        if user_count == 0:
+
+        if result == None:
             js = { 'error': 'no token for uid {0}'.format(charid)}
             return 500, js
 
-        dn, atoken = result[0]
-        try:
-            atoken = atoken['esiAccessToken'][0].decode('utf-8')
-            token_header = { 'Authorization': 'Bearer {0}'.format(atoken) }
-        except KeyError as error:
+        (dn, result), = result.items()
+
+        atoken = result.get('esiAccessToken')
+
+        if atoken == None:
             js = { 'error': 'no access token'}
             return 400, js
+
     else:
         _logger.log('[' + __name__ + '] unauthenticated esi request: {0}'.format(url),_logger.LogLevel.DEBUG)
         token_header = dict()
@@ -61,7 +64,11 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     if base == 'esi':
         # ESI ofc
         base_url = 'https://esi.tech.ccp.is'+ '/' + version
-        extraheaders.update(token_header)
+
+        if charid is not None:
+            # add the authenticated header
+            headers['Authorization'] = 'Bearer {0}'.format(atoken)
+
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
@@ -99,14 +106,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     timeout = 10
     try:
-
         if method == 'post':
-            headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
-            headers.update(extraheaders)
             request = session.post(url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
-            headers = {'Accept': 'application/json', 'User-Agent': useragent, 'Accept-Encoding': 'gzip'}
-            headers.update(extraheaders)
             request = session.get(url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
