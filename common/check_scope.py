@@ -7,6 +7,8 @@ def check_scope(function, charid, scopes, atoken=None):
 
     # we want to check an array of scopes and make sure that the token has access to them
 
+    charid = int(charid)
+
     if atoken == None:
         # in case we want to try a token directly rather than fetch from ldap
 
@@ -41,7 +43,7 @@ def check_scope(function, charid, scopes, atoken=None):
         _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
         return 'error', 'broken verify request'
     token_scopes = result['Scopes']
-    token_charid = result['CharacterID']
+    token_charid = int(result['CharacterID'])
 
     if not token_charid == charid:
         _logger.log('[' + __name__ + '] stored token for charid {0} belongs to charid {1}'.format(charid, token_charid),_logger.LogLevel.ERROR)
