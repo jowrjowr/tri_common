@@ -92,6 +92,8 @@ def audit_pilot(entry):
 
     uid = entry['uid']
     _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.DEBUG)
+    _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.INFO)
+    _logger.log('[' + __name__ + '] auditing character ' + uid, _logger.LogLevel.WARNING)
 
     corpid = entry['corporation']
     charname = entry['characterName']
