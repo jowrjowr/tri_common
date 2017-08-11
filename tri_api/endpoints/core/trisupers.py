@@ -210,6 +210,7 @@ def audit_pilot(entry):
 
     if uid == 1293888334 or uid == "1293888334":
         print("FINISHED CORRECTLY")
+        print(json.dumps(ships))
 
     return ships
 
