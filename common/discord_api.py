@@ -13,6 +13,8 @@ def discord_forward(message, dest='ping_forwarding'):
     async def on_ready():
         _logger.log('[' + __name__ + '] Discord connected', _logger.LogLevel.DEBUG)
 
+        client.change_presence(game=None, status='invisible', afk=False)
+
         # channel ids are integer but have to be quoted?
         channel = _discord.Channel[dest].value
         channel = client.get_channel('{}'.format(channel))
@@ -77,49 +79,70 @@ def discord_allmembers(function, login_type, token=None, user=None, exclude=[], 
     import common.logger as _logger
     import discord
     import asyncio
+    import time
+    import logging
+
+    logging.getLogger('discord.state').setLevel(logging.CRITICAL)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = discord.Client(loop=loop,cache_auth=False)
 
-    users = [ None ]
+    users = dict()
     @client.event
     async def on_ready():
         _logger.log('[' + function + '] Discord connected', _logger.LogLevel.DEBUG)
+        client.change_presence(game=None, status='invisible', afk=False)
         servers = client.servers
-        members = [ None ]
         for server in servers:
-            client.request_offline_members(server)
+
+            users[server.id] = []
+
+            large = server.large
+            if large == True:
+                # as per discord api, "large" servers won't return offline members
+                client.request_offline_members(server)
+
             if server.name in exclude:
-                print('excluding: {0}'.format(server.name))
+                msg = 'excluding discord: {0}'.format(server.name)
+                _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.DEBUG)
                 # do not fetch members from this named discord
                 continue
 
             if server.name in include or include == []:
-                print('including: {0}'.format(server.name))
+                msg = 'including discord: {0}'.format(server.name)
+                _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.DEBUG)
                 # only fetch specifically included discords
                 pass
             else:
-                print('excluding: {0}'.format(server.name))
+                msg = 'excluding discord: {0}'.format(server.name)
+                _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.DEBUG)
                 continue
 
             members = server.members
 
             for member in members:
                 member_detail = dict()
-                member_detail[member.name] = dict()
-                member_detail[member.name]['id'] =  member.id
-                member_detail[member.name]['bot'] =  member.bot
-                member_detail[member.name]['name'] = member.name
-                member_detail[member.name]['display_name'] = member.display_name
-                member_detail[member.name]['server'] = member.server.name
-                member_detail[member.name]['discriminator'] = member.discriminator
-                member_detail[member.name]['joined_at'] = member.joined_at
 
-                if member.bot == True:
-                    print('bot user: {0}'.format(member.name))
-                    print('server: {0}'.format(server.name))
-                users.append(member_detail)
+                # map the join time to epoch
+                joined_at = member.joined_at
+                joined_at = time.mktime(joined_at.timetuple())
+                joined_at = int(joined_at)
+
+                member_detail['id'] =  member.id
+                member_detail['bot'] =  member.bot
+                member_detail['name'] = member.name
+                member_detail['display_name'] = member.display_name
+                member_detail['server_name'] = member.server.name
+                member_detail['server_id'] = member.server.id
+                member_detail['discriminator'] = member.discriminator
+                member_detail['joined_at'] = joined_at
+                member_detail['status'] = str(member.status)
+                member_detail['member_nick'] = member.nick
+                member_detail['top_role'] = str(member.top_role)
+                member_detail['server_permissions'] = member.server_permissions.value
+
+                users[server.id].append(member_detail)
 
         await client.close()
     try:
@@ -139,6 +162,9 @@ def discord_userdetails(function, login_type, token=None, user=None, target_serv
     import common.logger as _logger
     import discord
     import asyncio
+    import logging
+
+    logging.getLogger('discord.state').setLevel(logging.CRITICAL)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -149,6 +175,8 @@ def discord_userdetails(function, login_type, token=None, user=None, target_serv
     @client.event
     async def on_ready():
         _logger.log('[' + function + '] Discord connected', _logger.LogLevel.DEBUG)
+        client.change_presence(game=None, status='invisible', afk=False)
+
         for server in client.servers:
             if server.name == target_server:
                 # we're only looking at a specific server

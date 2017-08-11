@@ -2,6 +2,7 @@ from commands.maint.tokens import maint_tokens
 from commands.maint.ldapgroups import maint_ldapgroups
 from commands.maint.jabberlogs import maint_jabber_logs
 from commands.maint.activity import maint_activity
+from commands.maint.discordusers import maint_discordusers
 import common.logger as _logger
 import argparse
 
@@ -15,6 +16,8 @@ def maint_all():
     maint_jabber_logs()
     _logger.log('[' + __name__ + '] zkill activity', _logger.LogLevel.INFO)
     maint_activity()
+#    _logger.log('[' + __name__ + '] discord users', _logger.LogLevel.INFO)
+#    maint_discordusers()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -47,11 +50,14 @@ class parseaction(argparse.Action):
         elif values == 'activity':
             _logger.log('[' + __name__ + '] zkill activity', _logger.LogLevel.INFO)
             maint_activity()
+        elif values == 'discordusers':
+            _logger.log('[' + __name__ + '] discord users', _logger.LogLevel.INFO)
+            maint_discordusers()
 
 def add_arguments(parser):
     parser.add_argument("--maint",
         dest='maint_target',
-        choices=['tokens', 'ldapgroups', 'jabberlogs', 'activity', 'all'],
+        choices=['tokens', 'ldapgroups', 'jabberlogs', 'activity', 'discordusers', 'all'],
         default='all',
         action=parseaction,
         help='core maintenance commands',
