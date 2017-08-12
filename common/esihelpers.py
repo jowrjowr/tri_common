@@ -173,10 +173,11 @@ def character_info(char_id):
 def corporation_info(corp_id):
 
     request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='latest')
 
     if not code == 200:
-        _logger.log('[' + __name__ + '] /corporations/ID API error ' + str(code) + ': ' + str(result['error']),
+        _logger.log('[' + __name__ + '] /corporations/{0} API error '
+                    .format(corp_id) + str(code) + ': ' + str(result['error']),
                     _logger.LogLevel.WARNING)
         return None
 
