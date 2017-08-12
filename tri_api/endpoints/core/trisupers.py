@@ -187,12 +187,8 @@ def audit_pilot(entry):
     # is this character flying a titan/super?
     # this is last to override the asset search with the active super (if any)
 
-    if uid == 1293888334 or uid == "1293888334":
-        print("DUMP")
-        print(json.dumps(current_ship))
-
     active_typeid = current_ship.get('ship_type_id')
-    active_id = current_ship.get('item_id')
+    active_id = current_ship.get('"ship_item_id"')
 
     if active_typeid in list(titans) + list(supers):
         # setup basics
@@ -211,10 +207,6 @@ def audit_pilot(entry):
     if active_typeid in list(supers):
         ships[active_id]['type'] = supers[active_typeid]
         ships[active_id]['class'] = "Supercarrier"
-
-    if uid == 1293888334 or uid == "1293888334":
-        print("FINISHED CORRECTLY")
-        print(json.dumps(ships))
 
     return ships
 
