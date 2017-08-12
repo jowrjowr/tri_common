@@ -242,6 +242,9 @@ def purge_authgroups(dn, groups):
     import ldap
     import ldap.modlist
 
+    if groups == []:
+        return
+
     # remove the authGroups from a user
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
@@ -257,7 +260,7 @@ def purge_authgroups(dn, groups):
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)
-        _logger.log('[' + __name__ + '] extra authgroups removed from dn {0}'.format(dn),_logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] extra authgroups removed from dn {0}: {1}'.format(dn, groups),_logger.LogLevel.INFO)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} accountStatus: {1}'.format(dn,error),_logger.LogLevel.ERROR)
 
@@ -279,7 +282,10 @@ def update_singlevalue(dn, attribute, value):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
-    mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
+    if value is None:
+        mod_attrs = [ (ldap.MOD_DELETE, attribute, None) ]
+    else:
+        mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)

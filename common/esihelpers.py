@@ -165,12 +165,15 @@ def character_info(char_id):
     if not code == 200:
         _logger.log('[' + __name__ + '] /characters/ID API error ' + str(code) + ': ' + str(result['error']),
                     _logger.LogLevel.WARNING)
-        return None
+        return False
 
     return result
 
 
 def corporation_info(corp_id):
+
+    if corp_id == None:
+        return None
 
     request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='latest')
@@ -179,12 +182,15 @@ def corporation_info(corp_id):
         _logger.log('[' + __name__ + '] /corporations/{0} API error '
                     .format(corp_id) + str(code) + ': ' + str(result['error']),
                     _logger.LogLevel.WARNING)
-        return None
+        return False
 
     return result
 
 
 def alliance_info(alliance_id):
+
+    if alliance_id == None:
+        return None
 
     request_url = 'alliances/{0}/?datasource=tranquility'.format(alliance_id)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
@@ -192,6 +198,6 @@ def alliance_info(alliance_id):
     if not code == 200:
         _logger.log('[' + __name__ + '] /alliances/ID API error ' + str(code) + ': ' + str(result['error']),
                     _logger.LogLevel.WARNING)
-        return None
+        return False
 
     return result
