@@ -86,6 +86,7 @@ def audit_corp(charid, allianceid, corp_id):
     import common.logger as _logger
     import common.check_scope as _check_scope
     import common.request_esi
+    import common.esihelpers as _esihelpers
     import json
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
@@ -93,6 +94,13 @@ def audit_corp(charid, allianceid, corp_id):
     corp_result = {}
 
     corp_result['id'] = corp_id
+
+    alliance_info = _esihelpers.alliance_info(allianceid)
+
+    if alliance_info is not None:
+        corp_result['alliance_name'] = alliance_info['alliance_name']
+    else:
+        corp_result['alliance_name'] = "N/A"
 
     request_url = 'corporations/{}/?datasource=tranquility'.format(corp_id)
     esi_corporation_code, esi_corporation_result = common.request_esi.esi(__name__, request_url, method='get')
