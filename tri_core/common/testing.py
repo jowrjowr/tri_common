@@ -1,7 +1,38 @@
+import json
+import MySQLdb as mysql
+import common.database as _database
+import common.ldaphelpers as _ldaphelpers
+import common.logger as _logger
+
+def vg_alliances():
+    try:
+        sql_conn = mysql.connect(
+            database=_database.DB_DATABASE,
+            user=_database.DB_USERNAME,
+            password=_database.DB_PASSWORD,
+            host=_database.DB_HOST)
+        cursor = sql_conn.cursor()
+    except mysql.Error as err:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+        return False
+
+    try:
+        query = 'SELECT allianceID FROM Permissions'
+        cursor.execute(query)
+    except Exception as errmsg:
+        _logger.log('[' + __name__ + '] mysql error: ' + str(errmsg), _logger.LogLevel.ERROR)
+
+    alliances = []
+
+    for item, in cursor.fetchall():
+        alliances.append(item)
+
+    cursor.close()
+    sql_conn.close()
+
+    return alliances
+
 def permissions(alliance_id):
-    import MySQLdb as mysql
-    import common.database as _database
-    import common.logger as _logger
 
     # what can this alliance in terms of services?
 
@@ -49,11 +80,6 @@ def permissions(alliance_id):
 
 def usertest(charid):
     # determine user status with more detail than blue or not
-
-    import json
-    import common.ldaphelpers as _ldaphelpers
-    import common.logger as _logger
-    import common.request_esi
 
     # determine the status of the user and how to proceed
     _logger.log('[' + __name__ + '] determining status of {0}'.format(charid),_logger.LogLevel.INFO)
