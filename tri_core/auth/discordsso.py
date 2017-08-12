@@ -59,7 +59,7 @@ def auth_discord_register():
         auto_refresh_url=token_url,
     )
     auth_url, state = oauth_session.authorization_url(base_auth_url)
-    session['oauth_state'] = state
+    session['oauth2_state'] = state
 
     return redirect(auth_url, code=302)
 

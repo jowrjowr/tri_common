@@ -73,7 +73,7 @@ def audit_core():
     for i in range(0, chunks):
         chunk = data[:chunksize]
         del data[:chunksize]
-        _logger.log('[' + __name__ + '] passing {0} items to affiliations endpoint'.format(len(chunk)), _logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] passing {0} items to affiliations endpoint'.format(len(chunk)), _logger.LogLevel.DEBUG)
         request_url = 'characters/affiliation/?datasource=tranquility'
         chunk = json.dumps(chunk)
         code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk)
