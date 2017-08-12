@@ -68,9 +68,7 @@ def core_trisupers():
             data = future.result()
 
             try:
-                n = len(supers)
                 supers.update(data)
-                print("CNT:" + str(len(supers)-n))
             except Exception as err:
                 _logger.log('[' + __name__ + '] super audit for failed: {0}'.format(err), _logger.LogLevel.ERROR)
 
@@ -188,6 +186,10 @@ def audit_pilot(entry):
 
     # is this character flying a titan/super?
     # this is last to override the asset search with the active super (if any)
+
+    if uid == 1293888334 or uid == "1293888334":
+        print("DUMP")
+        print(json.dumps(current_ship))
 
     active_typeid = current_ship.get('ship_type_id')
     active_id = current_ship.get('item_id')
