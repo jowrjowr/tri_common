@@ -2,6 +2,7 @@ from common.check_role import check_role
 import common.logger as _logger
 import common.check_scope as _check_scope
 import common.request_esi
+import urllib
 
 def user_search(charname):
     # use esi search to find character
