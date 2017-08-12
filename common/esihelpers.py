@@ -65,7 +65,6 @@ def find_types(charid, types):
     return True, asset_result
     
 def char_location(charid):
-
     from common.check_role import check_role
     import common.logger as _logger
     import common.check_scope as _check_scope
@@ -144,3 +143,54 @@ def char_location(charid):
     char_location['station_id'] = station_id
 
     return True, char_location
+
+
+def character_info(char_id):
+    from common.check_role import check_role
+    import common.logger as _logger
+    import common.check_scope as _check_scope
+    import common.request_esi
+
+    request_url = 'characters/{0}/?datasource=tranquility'.format(char_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /characters/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
+
+
+def corporation_info(corp_id):
+    from common.check_role import check_role
+    import common.logger as _logger
+    import common.check_scope as _check_scope
+    import common.request_esi
+
+    request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /corporations/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
+
+
+def alliance_info(alliance_id):
+    from common.check_role import check_role
+    import common.logger as _logger
+    import common.check_scope as _check_scope
+    import common.request_esi
+
+    request_url = 'alliances/{0}/?datasource=tranquility'.format(alliance_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /alliances/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
