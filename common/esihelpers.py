@@ -1,13 +1,33 @@
+from common.check_role import check_role
+import common.logger as _logger
+import common.check_scope as _check_scope
+import common.request_esi
+import urllib
+
+def user_search(charname):
+    # use esi search to find character
+
+    query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
+    query = urllib.parse.urlencode(query)
+    esi_url = 'search/?' + query
+    code, result = common.request_esi.esi(__name__, esi_url, method='get', version='v1')
+    _logger.log('[' + __name__ + '] /search output: {}'.format(result), _logger.LogLevel.DEBUG)
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] error searching for user {0}: {1}'.format(charname, result['error']),_logger.LogLevel.INFO)
+        return False
+    else:
+        # quantify the result
+        _logger.log('[' + __name__ + '] found {0} matches for "{1}"'.format(len(result), charname),_logger.LogLevel.DEBUG)
+
+    return result
+
 def current_ship(charid):
-    from common.check_role import check_role
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
-    
+
     # fetch the current ship typeID charid is flying
-    
+
     # check if ship scope is available
-    
+
     test_scopes = ['esi-location.read_ship_type.v1']
     scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
 
@@ -16,7 +36,7 @@ def current_ship(charid):
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
-        
+
     # fetch current ship
     request_ship_url = 'characters/{}/ship/?datasource=tranquility'.format(charid)
     esi_ship_code, esi_ship_result = common.request_esi.esi(__name__, request_ship_url, version='v1', method='get', charid=charid)
@@ -30,10 +50,7 @@ def current_ship(charid):
     return True, esi_ship_result
 
 def find_types(charid, types):
-    from common.check_role import check_role
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
+
     # look through character assets to find matching typeids
     
     # check if ship scope is available
@@ -66,10 +83,6 @@ def find_types(charid, types):
     
 def char_location(charid):
 
-    from common.check_role import check_role
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
     
     # check if location scope is available
     
