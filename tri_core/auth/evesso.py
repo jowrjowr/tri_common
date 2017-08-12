@@ -1,5 +1,25 @@
-from flask import request
 from tri_api import app
+from flask import request, Response, session, redirect, make_response, json
+
+import datetime
+import uuid
+import time
+import requests
+import common.request_esi
+import common.logger as _logger
+import common.credentials.eve as _eve
+import common.ldaphelpers as _ldaphelpers
+from common.check_scope import check_scope
+
+import tri_core.common.session as _session
+import tri_core.common.testing as _testing
+
+from tri_core.common.register import registeruser
+from tri_core.common.storetokens import storetokens
+from tri_core.common.scopes import scope
+from tri_core.common.session import readsession
+
+from requests_oauthlib import OAuth2Session
 
 @app.route('/auth/eve/register', methods=['GET'])
 def auth_evesso():
@@ -7,9 +27,6 @@ def auth_evesso():
 
 @app.route('/auth/eve/register_alt', methods=['GET'])
 def auth_evesso_alt():
-    from flask import request, make_response
-    from tri_core.common.session import readsession
-    import common.logger as _logger
 
     cookie = request.cookies.get('tri_core')
 
@@ -20,12 +37,6 @@ def auth_evesso_alt():
         return evesso(isalt=True, altof=payload['charID'])
 
 def evesso(isalt=False, altof=None):
-    from flask import request, Response, session, redirect, make_response
-    from requests_oauthlib import OAuth2Session
-    from tri_core.common.scopes import scope
-    from tri_core.common.session import readsession
-    import common.credentials.eve as _eve
-    import common.logger as _logger
 
     client_id = _eve.client_id
     client_secret = _eve.client_secret
@@ -74,23 +85,6 @@ def evesso(isalt=False, altof=None):
 @app.route('/auth/eve/callback', methods=['GET'])
 def auth_evesso_callback():
 
-    from flask import request, Response, session, redirect, make_response
-    from requests_oauthlib import OAuth2Session
-    from tri_core.common.scopes import scope
-    from tri_core.common.register import registeruser
-    from tri_core.common.storetokens import storetokens
-    from common.check_scope import check_scope
-    import common.request_esi
-    import common.logger as _logger
-    import common.credentials.eve as _eve
-    import common.ldaphelpers as _ldaphelpers
-    import tri_core.common.session as _session
-    import tri_core.common.testing as _testing
-    import json
-    import datetime
-    import uuid
-    import time
-    import requests
 
     client_id = _eve.client_id
     client_secret = _eve.client_secret
