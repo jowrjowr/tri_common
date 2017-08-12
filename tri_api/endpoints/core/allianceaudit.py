@@ -18,20 +18,10 @@ def core_audit_alliance(allianceid):
     if ipaddress is None:
         ipaddress = request.headers['X-Real-Ip']
 
-    cookie = request.cookies.get('tri_core')
-
-    if cookie is not None:
-        payload = readsession(cookie)
-    else:
-        payload = None
-
-    if payload is not None:
-        charid = payload['charID']
-    else:
-        charid = request.args.get('charid')
+    charid = request.args.get('charid')
 
     if charid is None:
-        msg = 'need a charid to authenticate with'
+        error = 'need a charid to authenticate with'
         js = json.dumps({'error': error})
         resp = Response(js, status=405, mimetype='application/json')
         return resp
