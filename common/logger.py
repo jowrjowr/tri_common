@@ -198,7 +198,10 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
         esi_url = 'characters/{0}/?datasource=tranquility'.format(charid)
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
-        if not code == 200:
+        if code == 404:
+            _logger.log('[' + function + '] character id {0} not found'.format(charid), _logger.LogLevel.WARNING)
+            return False
+        elif not code == 200:
             _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
             return False
         try:
