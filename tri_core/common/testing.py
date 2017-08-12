@@ -3,6 +3,7 @@ import MySQLdb as mysql
 import common.database as _database
 import common.ldaphelpers as _ldaphelpers
 import common.logger as _logger
+import common.request_esi
 
 def vg_alliances():
     try:

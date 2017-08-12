@@ -5,7 +5,6 @@ import datetime
 import uuid
 import time
 import requests
-import common.request_esi
 import common.logger as _logger
 import common.credentials.eve as _eve
 import common.ldaphelpers as _ldaphelpers
