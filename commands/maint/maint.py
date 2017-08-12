@@ -16,8 +16,8 @@ def maint_all():
     maint_jabber_logs()
     _logger.log('[' + __name__ + '] zkill activity', _logger.LogLevel.INFO)
     maint_activity()
-#    _logger.log('[' + __name__ + '] discord users', _logger.LogLevel.INFO)
-#    maint_discordusers()
+    _logger.log('[' + __name__ + '] discord users', _logger.LogLevel.INFO)
+    maint_discordusers()
 
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):

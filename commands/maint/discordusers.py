@@ -96,6 +96,8 @@ def maint_discordusers():
                         user['top_role'],
                         user['server_permissions'],
                     ))
-                except Exception as e:
-                    print(e)
-                    print(user)
+                except Exception as err:
+                    _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                finally:
+                    sql_conn.commit()
+    sql_conn.close()

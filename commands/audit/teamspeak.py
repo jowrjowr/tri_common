@@ -87,8 +87,12 @@ def ts3_logs(ts3conn):
                 logcount += 1
                 entry = line['l']
                 # parse the log
-                date, level, target, server, logline = entry.split('|', 4)
 
+                try:
+                    date, level, target, server, logline = entry.split('|', 4)
+                except ValueError as err:
+                    _logger.log('[' + __name__ + '] ts3 log line unparsable: {0}'.format(logline),_logger.LogLevel.ERROR)
+                    continue
                 # convert the date into epoch
 
                 # example date: 2017-05-13 14:34:58.223587
@@ -234,13 +238,6 @@ def ts3_validate_users(ts3conn):
         for user in result.keys():
 
             charid = int( result[user]['uid'] )
-
-            try:
-                token = result[user]['esiAccessToken']
-            except Exception as e:
-                token = None
-            finally:
-                tokens[charid] = token
 
             # decouple their TS identities from their LDAP entry
 
