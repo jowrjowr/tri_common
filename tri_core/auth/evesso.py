@@ -285,4 +285,4 @@ def auth_evesso_callback():
         code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
         return response
 
-
+    return make_response('wtf happened?')
