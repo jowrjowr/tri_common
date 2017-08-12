@@ -1,5 +1,118 @@
+import common.logger as _logger
+import common.credentials.ldap as _ldap
+import common.esihelpers as _esihelpers
+import common.request_esi
+import ldap
+import hashlib
+import uuid
+
+from passlib.hash import ldap_salted_sha1
+
+def ldap_create_stub(function, charname):
+
+    # make a very basic ldap entry for charname
+
+
+    # find the user's uid before proceeding further
+
+    result = _esihelpers.user_search(charname)
+    user = dict()
+
+    if result == False:
+        # damage
+        msg = 'ESI search error'
+        return False, msg
+    elif len(result) is 0:
+        # nothing found.
+        msg = 'no such character'
+        return False, msg
+    elif len(result) > 1:
+        # too much found
+        msg = 'too many results'
+        return False, msg
+
+    # okay hopefuly nothing else fucked up by now
+
+    charid = result['character'][0]
+
+    user['uid'] = charid
+
+    # get affiliations and shit
+
+    try:
+        request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
+    except Exception as error:
+        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
+        return False
+
+    charname = result['name']
+    user['characterName'] = charname
+
+    cn = charname.replace(" ", '')
+    cn = cn.replace("'", '')
+    cn = cn.lower()
+    dn = "cn={},ou=People,dc=triumvirate,dc=rocks".format(cn)
+
+    user['cn'] = cn
+    user['sn'] = cn
+    user['accountStatus'] = 'public'
+    user['authGroup'] = 'public'
+
+    # build the stub
+
+    attrs = []
+
+    # generate a bullshit password
+
+    password = uuid.uuid4().hex
+    password_hash = ldap_salted_sha1.hash(password)
+
+    user['userPassword'] = password_hash
+
+    # handle rest of crap
+
+    for item in user.keys():
+        user[item] = [ str(user[item]).encode('utf-8') ]
+        attrs.append((item, user[item]))
+
+    attrs.append(('objectClass', ['top'.encode('utf-8'), 'pilot'.encode('utf-8'), 'simpleSecurityObject'.encode('utf-8'), 'organizationalPerson'.encode('utf-8')]))
+
+    # ldap binding
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+        return False, error
+
+    # add the stub to ldap
+
+    try:
+        ldap_conn.add_s(dn, attrs)
+    except Exception as error:
+        return False, error
+    finally:
+        ldap_conn.unbind()
+
+    # no error. done!
+
+    return True, None
+
+def ldap_binding(function):
+
+    # make an ldap connection
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+        return None
+
+    return ldap_conn
+
 def ldap_uid2name(function, uid):
-    import common.logger as _logger
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(uid)
@@ -12,8 +125,8 @@ def ldap_uid2name(function, uid):
         return None
 
     if result == None:
-        msg = 'cn {0} not in ldap'.format(cn)
-        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        msg = 'uid {0} not in ldap'.format(uid)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.DEBUG)
         return None
     (dn, info), = result.items()
 
@@ -34,7 +147,7 @@ def ldap_cn2id(function, cn):
 
     if result == None:
         msg = 'cn {0} not in ldap'.format(cn)
-        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.DEBUG)
         return None
     (dn, info), = result.items()
 
@@ -56,7 +169,7 @@ def ldap_name2id(function, charname):
 
     if result == None:
         msg = 'charname {0} not in ldap'.format(charid)
-        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.WARNING)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.DEBUG)
         return None
     (dn, info), = result.items()
 
