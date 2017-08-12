@@ -76,7 +76,7 @@ def core_trisupers():
     return Response(js, status=200, mimetype='application/json')
 
 
-@app.route('/core/corpsupers/', methods=[ 'GET' ])
+@app.route('/core/corpsupers/', methods=['GET'])
 def core_corpsupers():
     from flask import request, Response
     from concurrent.futures import ThreadPoolExecutor, as_completed
