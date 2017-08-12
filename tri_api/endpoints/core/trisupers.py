@@ -1,28 +1,31 @@
-from flask import request
+from flask import request, Response, json
 from tri_api import app
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from common.check_role import check_role
+import common.request_esi
+import common.ldaphelpers as _ldaphelpers
+import common.logger as _logger
+import common.esihelpers as _esihelpers
+import common.check_scope as _check_scope
 
 @app.route('/core/trisupers/', methods=[ 'GET' ])
 def core_trisupers():
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.logger as _logger
-    import json
 
-    ipaddress = request.headers['X-Real-Ip']
+    # logging
 
+    ipaddress = request.args.get('log_ip')
+    if ipaddress is None:
+        ipaddress = request.headers['X-Real-Ip']
 
-    try:
-        charid = int(request.args.get('charid'))
-    except ValueError:
-        _logger.log('[' + __name__ + '] charid parameters must be integer: {0}'.format(request.args.get('charid')),
-                    _logger.LogLevel.WARNING)
-        js = json.dumps({'error': 'charid parameter must be integer'})
-        resp = Response(js, status=401, mimetype='application/json')
+    charid = request.args.get('charid')
+
+    if charid is None:
+        error = 'need a charid to authenticate with'
+        js = json.dumps({'error': error})
+        resp = Response(js, status=405, mimetype='application/json')
         return resp
 
-    _logger.securitylog(__name__, 'corp audit information request', ipaddress=ipaddress, charid=charid)
+    _logger.securitylog(__name__, 'supers audit', ipaddress=ipaddress, charid=charid)
 
     # check for auth groups
 
@@ -62,7 +65,7 @@ def core_trisupers():
 
     supers = dict()
 
-    with ThreadPoolExecutor(30) as executor:
+    with ThreadPoolExecutor(75) as executor:
         futures = { executor.submit(audit_pilot, result_supers[cn]): cn for cn in result_supers }
         for future in as_completed(futures):
             data = future.result()
@@ -78,24 +81,19 @@ def core_trisupers():
 
 @app.route('/core/corpsupers/', methods=[ 'GET' ])
 def core_corpsupers():
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.logger as _logger
-    import common.request_esi
-    import json
 
-    ipaddress = request.headers['X-Real-Ip']
+    # logging
 
+    ipaddress = request.args.get('log_ip')
+    if ipaddress is None:
+        ipaddress = request.headers['X-Real-Ip']
 
-    try:
-        charid = int(request.args.get('charid'))
-    except ValueError:
-        _logger.log('[' + __name__ + '] charid parameters must be integer: {0}'.format(request.args.get('charid')),
-                    _logger.LogLevel.WARNING)
-        js = json.dumps({'error': 'charid parameter must be integer'})
-        resp = Response(js, status=401, mimetype='application/json')
+    charid = request.args.get('charid')
+
+    if charid is None:
+        error = 'need a charid to authenticate with'
+        js = json.dumps({'error': error})
+        resp = Response(js, status=405, mimetype='application/json')
         return resp
 
     _logger.securitylog(__name__, 'corp audit information request', ipaddress=ipaddress, charid=charid)
@@ -165,15 +163,6 @@ def core_corpsupers():
 
 
 def audit_pilot(entry):
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.esihelpers as _esihelpers
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
-    import json
 
     ships = dict()
     basic_pilot = dict()
@@ -189,6 +178,7 @@ def audit_pilot(entry):
 
     # data pollution fix
     if altOf == 'None': altOf = None
+
 
     basic_pilot['uid'] = uid
     basic_pilot['pilot'] = charname
@@ -305,15 +295,6 @@ def audit_pilot(entry):
     return ships
 
 def audit_pilot_byid(char_id):
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.esihelpers as _esihelpers
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
-    import json
 
     ships = dict()
     basic_pilot = dict()
