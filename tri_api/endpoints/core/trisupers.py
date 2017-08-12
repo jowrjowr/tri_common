@@ -188,7 +188,7 @@ def audit_pilot(entry):
     # this is last to override the asset search with the active super (if any)
 
     active_typeid = current_ship.get('ship_type_id')
-    active_id = current_ship.get('"ship_item_id"')
+    active_id = current_ship.get('ship_item_id')
 
     if active_typeid in list(titans) + list(supers):
         # setup basics
