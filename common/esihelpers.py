@@ -2,7 +2,6 @@ from common.check_role import check_role
 import common.logger as _logger
 import common.check_scope as _check_scope
 import common.request_esi
-import urllib
 
 def user_search(charname):
     # use esi search to find character
@@ -23,11 +22,11 @@ def user_search(charname):
     return result
 
 def current_ship(charid):
-
+    
     # fetch the current ship typeID charid is flying
-
+    
     # check if ship scope is available
-
+    
     test_scopes = ['esi-location.read_ship_type.v1']
     scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
 
@@ -36,7 +35,7 @@ def current_ship(charid):
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
-
+        
     # fetch current ship
     request_ship_url = 'characters/{}/ship/?datasource=tranquility'.format(charid)
     esi_ship_code, esi_ship_result = common.request_esi.esi(__name__, request_ship_url, version='v1', method='get', charid=charid)
@@ -50,7 +49,6 @@ def current_ship(charid):
     return True, esi_ship_result
 
 def find_types(charid, types):
-
     # look through character assets to find matching typeids
     
     # check if ship scope is available
@@ -83,9 +81,8 @@ def find_types(charid, types):
     
 def char_location(charid):
 
-    
     # check if location scope is available
-    
+
     test_scopes = ['esi-location.read_online.v1']
     scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
 
@@ -157,3 +154,42 @@ def char_location(charid):
     char_location['station_id'] = station_id
 
     return True, char_location
+
+
+def character_info(char_id):
+
+    request_url = 'characters/{0}/?datasource=tranquility'.format(char_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /characters/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
+
+
+def corporation_info(corp_id):
+
+    request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /corporations/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
+
+
+def alliance_info(alliance_id):
+
+    request_url = 'alliances/{0}/?datasource=tranquility'.format(alliance_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+
+    if not code == 200:
+        _logger.log('[' + __name__ + '] /alliances/ID API error ' + str(code) + ': ' + str(result['error']),
+                    _logger.LogLevel.WARNING)
+        return None
+
+    return result
