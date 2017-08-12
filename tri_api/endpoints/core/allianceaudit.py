@@ -1,31 +1,41 @@
-from flask import request
+from flask import request, Response, json
 from tri_api import app
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from common.check_role import check_role
+import common.ldaphelpers as _ldaphelpers
+import common.logger as _logger
+import common.esihelpers as _esihelpers
+import common.request_esi
+from tri_core.common.testing import vg_alliances
+from collections import defaultdict
 
 @app.route('/core/allianceaudit/<allianceid>/', methods=[ 'GET' ])
 def core_audit_alliance(allianceid):
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
-    import json
 
-    ipaddress = request.headers['X-Real-Ip']
-    log_charid = request.args.get('log_charid')
+    # logging
 
-    _logger.securitylog(__name__, 'corp audit information request', ipaddress=ipaddress, charid=log_charid)
+    ipaddress = request.args.get('log_ip')
+    if ipaddress is None:
+        ipaddress = request.headers['X-Real-Ip']
 
-    try:
-        charid = int(request.args.get('charid'))
-    except ValueError:
-        _logger.log('[' + __name__ + '] charid parameters must be integer: {0}'.format(request.args.get('charid')),
-                    _logger.LogLevel.WARNING)
-        js = json.dumps({'error': 'charid parameter must be integer'})
-        resp = Response(js, status=401, mimetype='application/json')
+    charid = request.args.get('charid')
+
+    if charid is None:
+        error = 'need a charid to authenticate with'
+        js = json.dumps({'error': error})
+        resp = Response(js, status=405, mimetype='application/json')
         return resp
 
+    _logger.securitylog(__name__, 'alliance audit', ipaddress=ipaddress, charid=charid, detail='alliance {0}'.format(allianceid))
+
+    # ALL is a meta-endpoint for all the vanguard alliances, plus viral
+
+    viral = 99003916
+    alliances = [ allianceid ]
+
+    if allianceid == 'ALL':
+        alliances = vg_alliances()
+        alliances.append(viral)
     # check for auth groups
 
     allowed_roles = ['tsadmin']
@@ -55,39 +65,64 @@ def core_audit_alliance(allianceid):
         resp = Response(js, status=403, mimetype='application/json')
         return resp
 
-    # get alliance corporations
-    request_url = 'alliances/{}/corporations/?datasource=tranquility'.format(allianceid)
+    alliancedata = defaultdict(list)
+
+    # process each alliance with an individual process
+
+    with ProcessPoolExecutor(5) as executor:
+        futures = { executor.submit(alliance_data, charid, alliance): allianceid for alliance in alliances }
+        for future in as_completed(futures):
+            data = future.result()
+            alliance_id = data['alliance_id']
+            alliance_name = data['alliance_name']
+
+            alliancedata[alliance_id] = dict()
+            alliancedata[alliance_id]['name'] = alliance_name
+            alliancedata[alliance_id]['corp_data'] = data['alliance_corps']
+
+    js = json.dumps(alliancedata)
+    resp = Response(js, status=200, mimetype='application/json')
+
+    return resp
+
+def alliance_data(charid, alliance_id):
+
+    returndata = dict()
+
+    # populate alliance data
+
+    alliance_info = _esihelpers.alliance_info(alliance_id)
+    if alliance_info is not None:
+        alliance_name = alliance_info['alliance_name']
+    else:
+        alliance_name = 'Unknown'
+
+    returndata['alliance_id'] = alliance_id
+    returndata['alliance_name'] = alliance_name
+
+    corps = dict()
+
+    # get alliance corporation
+    request_url = 'alliances/{}/corporations/?datasource=tranquility'.format(alliance_id)
     esi_corp_code, esi_corp_result = common.request_esi.esi(__name__, request_url, method='get')
 
     if not esi_corp_code == 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(esi_corp_code, esi_corp_result['error']),
-                    _logger.LogLevel.ERROR)
-        error = esi_corp_result['error']
-        err_result = {'code': esi_corp_code, 'error': error}
-        return esi_corp_code, err_result
+        _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(esi_corp_code, esi_corp_result['error']), _logger.LogLevel.ERROR)
+        return returndata
 
-    corps = dict()
 
     with ThreadPoolExecutor(10) as executor:
-        futures = { executor.submit(audit_corp, charid, allianceid, corp_id): corp_id for corp_id in esi_corp_result }
+        futures = { executor.submit(audit_corp, charid, corp_id): corp_id for corp_id in esi_corp_result }
         for future in as_completed(futures):
             data = future.result()
             corps[data['id']] = data
 
-    js = json.dumps(corps)
-    return Response(js, status=200, mimetype='application/json')
+    returndata['alliance_corps'] = corps
 
-def audit_corp(charid, allianceid, corp_id):
-    from flask import request, Response
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from common.check_role import check_role
-    import common.ldaphelpers as _ldaphelpers
-    import common.logger as _logger
-    import common.check_scope as _check_scope
-    import common.request_esi
-    import common.esihelpers as _esihelpers
-    import json
+    return returndata
+
+def audit_corp(charid, corp_id):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
 
@@ -95,12 +130,6 @@ def audit_corp(charid, allianceid, corp_id):
 
     corp_result['id'] = corp_id
 
-    alliance_info = _esihelpers.alliance_info(allianceid)
-
-    if alliance_info is not None:
-        corp_result['alliance_name'] = alliance_info['alliance_name']
-    else:
-        corp_result['alliance_name'] = "N/A"
 
     request_url = 'corporations/{}/?datasource=tranquility'.format(corp_id)
     esi_corporation_code, esi_corporation_result = common.request_esi.esi(__name__, request_url, method='get')
@@ -110,9 +139,7 @@ def audit_corp(charid, allianceid, corp_id):
         _logger.log('[' + __name__ + '] corporation API error {0}: {1}'.format(esi_corporation_code,
                                                                                esi_corporation_result['error']),
                     _logger.LogLevel.ERROR)
-        error = esi_corporation_result['error']
-        err_result = {'code': esi_corporation_code, 'error': error}
-        return esi_corporation_code, err_result
+        return corp_result
 
     corp_result['name'] = esi_corporation_result['corporation_name']
     corp_result['members'] = esi_corporation_result['member_count']
@@ -123,9 +150,7 @@ def audit_corp(charid, allianceid, corp_id):
     if code_mains == 'error':
         error = 'unable to count main ldap users {0}: ({1}) {2}'.format(charid, code_mains, result_mains)
         _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
-        js = json.dumps({'error': error})
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
+        return corp_result
 
     code_registered, result_registered = _ldaphelpers.ldap_search(__name__, dn, 'corporation={0}'.format(corp_id),
                                                                   ['uid'])
@@ -134,9 +159,7 @@ def audit_corp(charid, allianceid, corp_id):
         error = 'unable to count registered ldap users {0}: ({1}) {2}'\
             .format(charid, code_registered, result_registered)
         _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
-        js = json.dumps({'error': error})
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
+        return corp_result
 
     code_tokens, result_tokens = _ldaphelpers.ldap_search(__name__, dn, '(&(corporation={0})(esiAccessToken=*))'
                                                           .format(corp_id), ['uid'])
@@ -144,9 +167,7 @@ def audit_corp(charid, allianceid, corp_id):
     if code_tokens == 'error':
         error = 'unable to count token\'d ldap users {0}: ({1}) {2}'.format(charid, code_tokens, result_tokens)
         _logger.log('[' + __name__ + ']' + error, _logger.LogLevel.ERROR)
-        js = json.dumps({'error': error})
-        resp = Response(js, status=500, mimetype='application/json')
-        return resp
+        return corp_result
 
     if result_tokens is None:
         corp_result['tokens'] = 0
