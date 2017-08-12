@@ -68,7 +68,9 @@ def core_trisupers():
             data = future.result()
 
             try:
+                n = len(supers)
                 supers.update(data)
+                print("CNT:" + str(len(supers)-n))
             except Exception as err:
                 _logger.log('[' + __name__ + '] super audit for failed: {0}'.format(err), _logger.LogLevel.ERROR)
 
