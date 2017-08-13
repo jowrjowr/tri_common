@@ -10,13 +10,17 @@ def sendmetric(function, prefix, group, metric, value):
     debug = logging.getLogger().isEnabledFor(logging.CRITICAL)
 
     # setup the graphite logger
-    graphite = graphitesend.init(
-        debug=debug,
-        connect_on_create=True,
-        graphite_server='localhost',
-        prefix=prefix,
-        group=group,
-    )
+    try:
+        graphite = graphitesend.init(
+            debug=debug,
+            connect_on_create=True,
+            graphite_server='localhost',
+            prefix=prefix,
+            group=group,
+        )
+    except Exception as err:
+        _logger.log('[' + function + '] graphite error: ' + str(err), _logger.LogLevel.DEBUG)
+
     try:
         g_result = graphite.send(metric, value)
         _logger.log('[' + function + '] graphite output: ' + str(g_result), _logger.LogLevel.DEBUG)

@@ -1,7 +1,4 @@
 import common.logger as _logger
-import common.credentials.ldap as _ldap
-import common.esihelpers as _esihelpers
-import common.request_esi
 import ldap
 import hashlib
 import uuid
@@ -9,6 +6,10 @@ import uuid
 from passlib.hash import ldap_salted_sha1
 
 def ldap_create_stub(function, charname):
+
+    import common.request_esi
+    import common.esihelpers as _esihelpers
+    import common.credentials.ldap as _ldap
 
     # make a very basic ldap entry for charname
 
@@ -102,6 +103,7 @@ def ldap_create_stub(function, charname):
 def ldap_binding(function):
 
     # make an ldap connection
+    import common.credentials.ldap as _ldap
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
@@ -222,7 +224,13 @@ def ldap_search(function, dn, filter, attributes):
             try:
                 # only return an array for multiple items
                 # or authGroup, a helpful typecast
-                if len(info[attribute]) > 1 or attribute == 'authGroup':
+                if len(info[attribute]) > 1:
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'esiScope':
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'corporationRole':
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'authGroup':
                     details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
                 else:
                     details[attribute] = info[attribute][0].decode('utf-8')
@@ -242,6 +250,9 @@ def purge_authgroups(dn, groups):
     import ldap
     import ldap.modlist
 
+    if groups == []:
+        return
+
     # remove the authGroups from a user
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
@@ -257,7 +268,7 @@ def purge_authgroups(dn, groups):
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)
-        _logger.log('[' + __name__ + '] extra authgroups removed from dn {0}'.format(dn),_logger.LogLevel.INFO)
+        _logger.log('[' + __name__ + '] extra authgroups removed from dn {0}: {1}'.format(dn, groups),_logger.LogLevel.INFO)
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] unable to update dn {0} accountStatus: {1}'.format(dn,error),_logger.LogLevel.ERROR)
 
@@ -279,7 +290,10 @@ def update_singlevalue(dn, attribute, value):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
-    mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
+    if value is None:
+        mod_attrs = [ (ldap.MOD_DELETE, attribute, None) ]
+    else:
+        mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)

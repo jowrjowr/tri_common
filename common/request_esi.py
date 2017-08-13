@@ -90,6 +90,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
         base_url = 'https://esi.tech.ccp.is'
+        if charid is not None:
+            # add the authenticated header
+            headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
     elif base == 'triapi':
         # tri api
         base_url = 'https://api.triumvirate.rocks'

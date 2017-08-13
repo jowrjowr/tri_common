@@ -1,62 +1,46 @@
+
 def check_scope(function, charid, scopes, atoken=None):
 
-    import common.request_esi
     import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    import ldap
+    import common.ldaphelpers as _ldaphelpers
+    import common.request_esi
 
     # we want to check an array of scopes and make sure that the token has access to them
 
-    charid = int(charid)
+    if atoken is not None:
+        # grap token scopes direct from token
 
-    if atoken == None:
-        # in case we want to try a token directly rather than fetch from ldap
-
-        ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
-        try:
-            ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
-        except ldap.LDAPError as error:
-            _logger.log('[' + function + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
-        # snag the token
-        try:
-            result = ldap_conn.search_s(
-                'ou=People,dc=triumvirate,dc=rocks',
-                ldap.SCOPE_SUBTREE,
-                filterstr='(&(objectclass=pilot)(uid={0})(esiAccessToken=*))'.format(charid),
-                attrlist=['esiAccessToken']
-                )
-            user_count = result.__len__()
-        except ldap.LDAPError as error:
-            _logger.log('[' + function + '] unable to fetch ldap information: {}'.format(error),_logger.LogLevel.ERROR)
-            return 'error', 'broken ldap'
-            # this shouldn't happen often tbh
-        if user_count == 0:
-            return 'error', 'no token in ldap'
-        dn, atoken = result[0]
-        atoken = atoken['esiAccessToken'][0].decode('utf-8')
-
-    # determine the scopes the token has access to
-
-    verify_url = 'verify/?datasource=tranquility&token={0}'.format(atoken)
-    code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
-    if not code == 200:
-        _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
-        return 'error', 'broken verify request'
-    token_scopes = result['Scopes']
-    token_charid = int(result['CharacterID'])
-
-    if not token_charid == charid:
-        _logger.log('[' + __name__ + '] stored token for charid {0} belongs to charid {1}'.format(charid, token_charid),_logger.LogLevel.ERROR)
-        return 'error', 'stored token owner mismatch'
-    # so given an array of scopes, let's check that what we want is in the list of scopes the character's token has
-
-    # character scopes come out in a space delimited list
-    token_scopes = token_scopes.split()
-
-    # i want the set difference to be what is in the requested scope list, but NOT in the available scope list.
-    difference = set(scopes) - set(token_scopes)
-    if difference == set([]):
-        # the scopes requested matches what's available
-        return True, []
+        verify_url = 'verify/?datasource=tranquility&token={0}'.format(atoken)
+        code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
+        if not code == 200:
+            _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
+            return 'error', 'broken verify request'
+        token_scopes = result['Scopes']
+        token_scopes = token_scopes.split()
     else:
-        return False, difference
+
+        # grab token scopes from ldap
+        dn = 'ou=People,dc=triumvirate,dc=rocks'
+        filterstr = 'uid={}'.format(charid)
+        attrlist = ['esiScope']
+
+        code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+        if code == False:
+            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+            return
+
+        if result == None:
+            return
+
+        (dn, info), = result.items()
+
+        token_scopes = info.get('esiScope')
+
+    token_scopes = set(token_scopes)
+    intersection = token_scopes.intersection(scopes)
+
+    if len(intersection) > 0:
+        return True, ''
+    else:
+        return False, ''
