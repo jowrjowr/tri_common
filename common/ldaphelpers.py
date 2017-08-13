@@ -103,6 +103,7 @@ def ldap_create_stub(function, charname):
 def ldap_binding(function):
 
     # make an ldap connection
+    import common.credentials.ldap as _ldap
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
