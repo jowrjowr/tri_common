@@ -374,11 +374,10 @@ def audit_pilot_capitals(entry):
     corpid = entry['corporation']
     charname = entry['characterName']
     altOf = entry['altOf']
-    corpid = entry['corporation']
 
     # data pollution fix
-    if altOf == 'None': altOf = None
-
+    if altOf == 'None':
+        altOf = None
 
     basic_pilot['uid'] = uid
     basic_pilot['pilot'] = charname
@@ -432,12 +431,6 @@ def audit_pilot_capitals(entry):
     if code == False:
         return ships
 
-    # fetch main charname, if it exists
-
-    dn = 'ou=People,dc=triumvirate,dc=rocks'
-    filterstr = 'uid={}'.format(altOf)
-    attrlist = ['uid', 'characterName']
-
     if not altOf == None:
         result = _ldaphelpers.ldap_uid2name(__name__, altOf)
         if result == None:
@@ -479,7 +472,7 @@ def audit_pilot_capitals(entry):
     active_typeid = current_ship.get('ship_type_id')
     active_id = current_ship.get('ship_item_id')
 
-    if active_typeid in list(carriers) + list(dreads) + list(dreads):
+    if active_typeid in list(carriers) + list(dreads) + list(fax):
         # setup basics
         ships[active_id] = basic_pilot
         ships[active_id]['typeid'] = active_typeid
