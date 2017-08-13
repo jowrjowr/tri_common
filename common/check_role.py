@@ -1,17 +1,24 @@
 import common.logger as _logger
 import common.ldaphelpers as _ldaphelpers
-import common.request_esi
 
 def check_role(function, charid, roles):
 
     # check to make sure that the user has the expected corp roles
 
-    request_url = 'characters/{0}/roles/?datasource=tranquility'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
-    if not code == 200:
-        error = 'unable to get character roles for {0}: ({1}) {2}'.format(charid, code, result['error'])
-        _logger.log('[' + function + ']' + error,_logger.LogLevel.ERROR)
-        return 'error', error
+    # grab roles from ldap
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = 'uid={}'.format(charid)
+    attrlist = ['corporationRole']
+
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
+
+    if code == False:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+        return False, ''
+
+    (dn, info), = result.items()
+
+    result = info.get('corporationRole')
 
     char_roles = set(result)
     intersection = char_roles.intersection(roles)
