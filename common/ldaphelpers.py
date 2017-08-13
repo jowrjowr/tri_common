@@ -1,7 +1,4 @@
 import common.logger as _logger
-import common.credentials.ldap as _ldap
-import common.esihelpers as _esihelpers
-import common.request_esi
 import ldap
 import hashlib
 import uuid
@@ -9,6 +6,10 @@ import uuid
 from passlib.hash import ldap_salted_sha1
 
 def ldap_create_stub(function, charname):
+
+    import common.request_esi
+    import common.esihelpers as _esihelpers
+    import common.credentials.ldap as _ldap
 
     # make a very basic ldap entry for charname
 
@@ -222,7 +223,13 @@ def ldap_search(function, dn, filter, attributes):
             try:
                 # only return an array for multiple items
                 # or authGroup, a helpful typecast
-                if len(info[attribute]) > 1 or attribute == 'authGroup':
+                if len(info[attribute]) > 1:
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'esiScope':
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'corporationRole':
+                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
+                elif attribute == 'authGroup':
                     details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
                 else:
                     details[attribute] = info[attribute][0].decode('utf-8')
