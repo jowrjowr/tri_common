@@ -37,6 +37,9 @@ def check_scope(function, charid, scopes, atoken=None):
 
         token_scopes = info.get('esiScope')
 
+    if token_scopes == None:
+        return False, ''
+
     token_scopes = set(token_scopes)
     intersection = token_scopes.intersection(scopes)
 
