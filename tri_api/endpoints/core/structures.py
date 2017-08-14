@@ -55,7 +55,7 @@ def core_structures():
     # get corpid
     request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(id)
-    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', version=v1, data=data)
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character affiliations for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return(False, 'error')

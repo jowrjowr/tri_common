@@ -18,7 +18,13 @@ def check_role(function, charid, roles):
 
     (dn, info), = result.items()
 
+    if result == None:
+        return False, ''
+
     result = info.get('corporationRole')
+
+    if result == None:
+        return False, ''
 
     char_roles = set(result)
     intersection = char_roles.intersection(roles)
