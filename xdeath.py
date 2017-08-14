@@ -30,9 +30,12 @@ def new_thing(object):
 
         # we only care about message from the bot
 
-        if not username == 'xxdeathxx_bot': continue
 
         content = item.message.message
+        print(username, content)
+
+        if not username == 'xxdeathxx_bot': continue
+
         en_content = rus_to_en(content)
 
         cover = 'xdeathx'
@@ -61,7 +64,12 @@ def forward_telegram_xdeath():
     # construct client
 
     client = TelegramClient(session_id, api_id, api_hash)
-    client.connect()
+
+    try:
+        client.connect()
+    except Exception as e:
+        print('unable to connect to telegram: {}'.format(e))
+        return
 
     # this will create a session file in CWD named "session_id".session
     if not client.is_user_authorized():
@@ -75,30 +83,31 @@ def forward_telegram_xdeath():
 
     # this is currently the xdeath bot, but the ordering might change? we'll see.
     # seems to follow the client ordering, starting frm top down with index 0
-    entity = entities[1]
-    #entity = entities[2]
 
-    total_count, messages, senders = client.get_message_history(entity, limit=10)
 
-    for msg, sender in zip(reversed(messages), reversed(senders)):
+    for entity in entities:
+        total_count, messages, senders = client.get_message_history(entity, limit=5)
+        print('total old messages: {0}'.format(total_count))
+        for msg, sender in zip(reversed(messages), reversed(senders)):
 
-        try:
-            username = sender.username
-            content = msg.message
-            date = msg.date
-        except Exception as e:
-            continue
-        # we don't care about non-ping messages
+            try:
+                username = sender.username
+                content = msg.message
+                date = msg.date
+            except Exception as e:
+                print('failure')
+                continue
+            # we don't care about non-ping messages
 
-        if not username == 'xxdeathxx_bot': continue
+            if not username == 'xxdeathxx_bot': continue
 
-        en_content = rus_to_en(content)
+            en_content = rus_to_en(content)
 
-        print('ping:')
-        print('date: {0}'.format(date))
-        print('original: {0}'.format(content))
-        print('english: {0}'.format(en_content))
-        print('')
+            print('ping:')
+            print('date: {0}'.format(date))
+            print('original: {0}'.format(content))
+            print('english: {0}'.format(en_content))
+            print('')
 
     # infinite loop to monitor for updates
     client.add_update_handler(new_thing)
