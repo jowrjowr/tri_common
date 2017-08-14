@@ -421,7 +421,7 @@ def audit_pilot_capitals(entry):
 
     # fetch super/titan typeids out of char assets
 
-    code, char_assets = _esihelpers.find_types(uid, list(carriers) + list(dreads) + list(dreads))
+    code, char_assets = _esihelpers.find_types(uid, list(carriers) + list(dreads) + list(fax))
     if code == False:
         return ships
 
@@ -448,7 +448,7 @@ def audit_pilot_capitals(entry):
     for asset in char_assets:
         asset_typeid = asset.get('type_id')
         asset_id = asset.get('item_id')
-        if asset_typeid in list(carriers) + list(dreads) + list(dreads):
+        if asset_typeid in list(carriers) + list(dreads) + list(fax):
             ships[asset_id] = basic_pilot
             ships[asset_id]['typeid'] = asset_typeid
             ships[asset_id]['main_charname'] = main
