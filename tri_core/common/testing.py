@@ -89,7 +89,7 @@ def usertest(charid):
 
     esi_url = 'characters/{}/?datasource=tranquility'.format(charid)
 
-    code, result = common.request_esi.esi(__name__, esi_url, 'get')
+    code, result = common.request_esi.esi(__name__, esi_url, method='get', version='v4')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
@@ -104,7 +104,7 @@ def usertest(charid):
 
     request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data, version='v1')
 
     if not code == 200:
         _logger.log('[' + __name__ + '] affiliations API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)

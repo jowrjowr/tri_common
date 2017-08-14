@@ -80,7 +80,7 @@ def audit_core():
         _logger.log('[' + __name__ + '] passing {0} items to affiliations endpoint'.format(len(chunk)), _logger.LogLevel.DEBUG)
         request_url = 'characters/affiliation/?datasource=tranquility'
         chunk = json.dumps(chunk)
-        code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk)
+        code, result = common.request_esi.esi(__name__, request_url, method='post', data=chunk, version='v1')
         for item in result:
 
             # locate the dn from the charid
