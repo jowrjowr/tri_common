@@ -78,11 +78,6 @@ def maint_discordusers():
     warnings.filterwarnings('error', category=mysql.Warning)
     cursor.close()
 
-    # saeka hardcode
-    rows = list(rows)
-    rows.append(('saeka', 'jowr.pi@gmail.com','sN0nOOR6ZMfB'))
-    rows = tuple(rows)
-
     for covername, username, password in rows:
         member_info = discord_allmembers(__name__, 'user', user=(username, password))
 
@@ -98,7 +93,7 @@ def maint_discordusers():
             except Exception as err:
                 server_name = None
 
-            print(server, server_name)
+            #print(server, server_name)
             # remove this discord from the list
 
             discords.discard(server)
@@ -107,14 +102,14 @@ def maint_discordusers():
 
             table = 'users_{0}'.format(server)
 
+
             query = 'CREATE TABLE IF NOT EXISTS {0} ('.format(table)
-            query += 'member_id bigint(8) NOT NULL PRIMARY KEY, bot int(1), display_name varchar(256), '
+            query += 'member_id bigint(8) NOT NULL PRIMARY KEY, bot int(1), username varchar(256), '
             query += 'server_name varchar(256), discriminator smallint(4), joined_at timestamp, '
             query += 'status varchar(256), member_nick varchar(256), top_role varchar(256), server_permissions int(16)'
             query += ' )'
             query += ' CHARACTER SET utf8mb4'
 
-#            cursor.execute('drop table {}'.format(table))
             try:
                 result = cursor.execute(query)
 
@@ -125,6 +120,8 @@ def maint_discordusers():
                 _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                 continue
 
+#            cursor.execute('drop table {}'.format(table))
+#            continue
             users = member_info[server]
 
             # loop through the users and store the data
@@ -142,7 +139,7 @@ def maint_discordusers():
                 # insert each data
 
                 query = 'REPLACE INTO {0} ('.format(table)
-                query += 'member_id, bot, display_name, server_name, discriminator, '
+                query += 'member_id, bot, username, server_name, discriminator, '
                 query += 'joined_at, status, member_nick, top_role, server_permissions '
                 query += ') VALUES (%s, %s, %s, %s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s)'
 
@@ -150,7 +147,7 @@ def maint_discordusers():
                     cursor.execute(query, (
                         user['id'],
                         user['bot'],
-                        user['display_name'],
+                        user['name'],
                         user['server_name'],
                         user['discriminator'],
                         user['joined_at'],

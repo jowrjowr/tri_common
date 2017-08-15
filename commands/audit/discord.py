@@ -72,6 +72,7 @@ def audit_discord():
     n_discords.append(163975909580341249)   # scc lounge
     n_discords.append(222565109627617280)   # NETC
     n_discords.append(259950272065830912)   # pubg squad
+    n_discords.append(81384788765712384)    # discord api
 
     # fetch all the various discord tables
 
@@ -97,13 +98,8 @@ def audit_discord():
 
     sql_conn.select_db('discord')
 
-
-    member_info = dict()
-
     all_member = defaultdict(list)
     all_discord = defaultdict(list)
-#    all_discord = lambda: defaultdict(all_discord)
-
 
     for server in discords:
 
@@ -111,7 +107,7 @@ def audit_discord():
 
         table = 'users_{}'.format(server)
 
-        query = "SELECT member_id, display_name, discriminator, member_nick, top_role, server_permissions FROM {0}".format(table)
+        query = "SELECT member_id, username, discriminator, member_nick, top_role, server_permissions FROM {0}".format(table)
         try:
             cursor.execute(query)
             discord_users = cursor.fetchall()
@@ -121,14 +117,14 @@ def audit_discord():
 
         all_discord[server] = dict()
 
-        for member_id, display_name, discriminator, member_nick, top_role, permissions in discord_users:
+        for member_id, username, discriminator, member_nick, top_role, permissions in discord_users:
             # all servers a given member is on
 
             all_member[member_id].append(server)
 
             # information on this particular member
             server_info = dict()
-            server_info['display_name'] = display_name
+            server_info['username'] = username
             server_info['discriminator'] = discriminator
             server_info['member_nick'] = member_nick
             server_info['permissions'] = permissions
@@ -168,12 +164,14 @@ def audit_discord():
         h_servers = []
         n_servers = []
 
+        username = None
+
         for server in list( servers ):
 
             server_info = all_discord[server][f_user]
 
-            display_name = server_info['display_name']
-            discriminator = server_info['discriminator']
+            # literally the same across every server anyway
+            username = '{0}#{1}'.format(server_info['username'], server_info['discriminator'])
             member_nick = server_info['member_nick']
             permissions = server_info['permissions']
             top_role = server_info['top_role']
@@ -189,7 +187,7 @@ def audit_discord():
             # show the identity used
 
 
-            server_name = '{0} || name: {1} || nick: {2} || top role: {3}'.format(server_name, member_nick, display_name, top_role)
+            server_name = '{0} || server nick: {1} || top role: {2}'.format(server_name, member_nick, top_role)
 
             # classify the membership
 
@@ -200,7 +198,7 @@ def audit_discord():
             else:
                 h_servers.append(server_name)
 
-        print('matching member')
+        print('matching member: {0}'.format(username))
         print('friendly discords: {0}'.format(f_servers))
         print('hostile discords: {0}'.format(h_servers))
         print('neutral discords: {0}'.format(n_servers))
