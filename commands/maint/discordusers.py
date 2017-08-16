@@ -93,15 +93,24 @@ def maint_discordusers():
             except Exception as err:
                 server_name = None
 
-            #print(server, server_name)
             # remove this discord from the list
 
             discords.discard(server)
 
-            # make sure the mysql table for the server user data exists
-
             table = 'users_{0}'.format(server)
 
+            # empty out the table so contents 100% current
+            # not keeping archivala data here
+
+            query = 'DELETE FROM {}'.format(table)
+
+            try:
+                cursor.execute(query)
+            except Exception as err:
+                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                continue
+
+            # make sure the mysql table for the server user data exists
 
             query = 'CREATE TABLE IF NOT EXISTS {0} ('.format(table)
             query += 'member_id bigint(8) NOT NULL PRIMARY KEY, bot int(1), username varchar(256), '
@@ -112,7 +121,6 @@ def maint_discordusers():
 
             try:
                 result = cursor.execute(query)
-
             except mysql.Warning as err:
                 # nobody cares if the table exists already
                 _logger.log('[' + __name__ + '] mysql warning: ' + str(err), _logger.LogLevel.DEBUG)
