@@ -73,7 +73,7 @@ def test_char(charid):
     # get character affiliations
     request_url = 'characters/affiliation/?datasource=tranquility'
     data = '[{}]'.format(charid)
-    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data)
+    code, result = common.request_esi.esi(__name__, request_url, method='post', data=data, version='v1')
     _logger.log('[' + __name__ + '] affiliations output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
