@@ -177,7 +177,7 @@ def fcon_parser(presence_from, message):
 
         author = ' to '.join(footer[:-2]).split('broadcast from')[1].lstrip()
 
-        return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
+        return "@here\nFROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
             .format(author, presence_from, target, str(text).replace('@', '#'))
     except Exception:
         return message
