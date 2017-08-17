@@ -141,6 +141,10 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         sendmetric(function, base, 'request','timeout' , 1)
         _logger.log('[' + function + '] ESI connection timeout: ' + str(err), _logger.LogLevel.WARNING)
         return(500, { 'error': 'API connection timeout: ' + str(err)})
+    except requests.exceptions.SSLError as err:
+        sendmetric(function, base, 'request','ssl_error' , 1)
+        _logger.log('[' + function + '] ESI SSL error: ' + str(err), _logger.LogLevel.WARNING)
+        return(500, { 'error': 'API connection timeout: ' + str(err)})
     except Exception as err:
         sendmetric(function, base, 'request', 'general_error', 1)
         _logger.log('[' + function + '] ESI generic error: ' + str(err), _logger.LogLevel.WARNING)
