@@ -9,6 +9,8 @@ def sendmetric(function, prefix, group, metric, value):
     # get log level to decide whether to enable graphite debugger output
     debug = logging.getLogger().isEnabledFor(logging.CRITICAL)
 
+    return
+
     # setup the graphite logger
     try:
         graphite = graphitesend.init(

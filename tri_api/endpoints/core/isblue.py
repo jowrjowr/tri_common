@@ -5,9 +5,12 @@ from tri_api import app
 def core_isblue():
 
     from flask import Flask, request, url_for, json, Response
+    import common.ldaphelpers as _ldaphelpers
     import common.request_esi
     import common.logger as _logger
     import json
+
+    from tri_core.common.testing import vg_alliances
 
     # core isblue function that tells whether a user, corp, or alliance is currently blue to triumvirate
     _logger.log('[' + __name__ + '] testing {0}'.format(request.args['id']), _logger.LogLevel.DEBUG)
@@ -27,6 +30,41 @@ def core_isblue():
         js = json.dumps({ 'error': 'id parameter must be integer'})
         resp = Response(js, status=401, mimetype='application/json')
         return resp
+
+    # query ldap first
+
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr = 'uid={}'.format(id)
+    attributes = ['accountStatus']
+    code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attributes)
+
+    if code == False:
+        msg = 'unable to connect to ldap'
+        _logger.log('[' + __name__ + '] {0}'.format(msg),_logger.LogLevel.ERROR)
+        js = json.dumps({ 'error': msg })
+        resp = Response(js, status=500, mimetype='application/json')
+        return resp
+
+    # if ldap says you are blue, that is sufficient.
+
+
+    if result is not None:
+
+        (dn, info), = result.items()
+
+        status = info['accountStatus']
+
+        if status == 'blue':
+            js = json.dumps( { 'code': 1 } )
+        else:
+            # not blue
+            js = json.dumps( { 'code': 0 } )
+
+        resp = Response(js, status=200, mimetype='application/json')
+        return resp
+
+
+    # past here, you have no status in the system so we have to hit ESI
 
     # query esi to determine id type and proceed accordingly
 
@@ -111,15 +149,15 @@ def test_char(charid):
         _logger.log('[' + __name__ + '] error testing alliance {0} for charid {1}: {2}'.format(allianceid, charid, error), _logger.LogLevel.ERROR)
         result = { 'code': code, 'error': error }
         return code, result
-        
+
     if result['code'] == 1:
         # the direct corporation test is passed
         return 200, result
-        
+
     # failed corp and alliance level testing. not blue.
     result = { 'code': 0 }
     return 200, result
-    
+
 def test_corp(corpid):
 
     # everything for testing if this is a corp and if the corp / parent
@@ -182,7 +220,7 @@ def test_alliance(allianceid):
         _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
         result = { 'code': 500, 'error': 'unable to connect to mysql: ' + str(err)}
         return 500, result
-    
+
     # check the alliance id against the blue list
 
     cursor = sql_conn.cursor()
