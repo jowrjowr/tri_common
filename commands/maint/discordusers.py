@@ -81,6 +81,11 @@ def maint_discordusers():
     for covername, username, password in rows:
         member_info = discord_allmembers(__name__, 'user', user=(username, password))
 
+        if member_info == None:
+            msg = 'user {0} lost access'.format(username)
+            _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.ERROR)
+            continue
+
         for server in member_info:
 
             cursor = sql_conn.cursor()
@@ -93,22 +98,13 @@ def maint_discordusers():
             except Exception as err:
                 server_name = None
 
+            print(server, server_name)
             # remove this discord from the list
 
             discords.discard(server)
 
             table = 'users_{0}'.format(server)
 
-            # empty out the table so contents 100% current
-            # not keeping archivala data here
-
-            query = 'DELETE FROM {}'.format(table)
-
-            try:
-                cursor.execute(query)
-            except Exception as err:
-                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
-                continue
 
             # make sure the mysql table for the server user data exists
 
@@ -128,6 +124,17 @@ def maint_discordusers():
                 _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
                 continue
 
+            # empty out the table so contents 100% current
+            # not keeping archivala data here
+
+            query = 'DELETE FROM {}'.format(table)
+
+            try:
+                cursor.execute(query)
+            except Exception as err:
+                _logger.log('[' + __name__ + '] mysql error: ' + str(err), _logger.LogLevel.ERROR)
+                continue
+
 #            cursor.execute('drop table {}'.format(table))
 #            continue
             users = member_info[server]
@@ -138,7 +145,7 @@ def maint_discordusers():
 
                 # store the server name
 
-                if server_name == None:
+                if server_name == None or server_name == 'None':
                     try:
                         r.set(server, user['server_name'])
                     except Exception as err:

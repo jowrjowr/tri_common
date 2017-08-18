@@ -73,6 +73,15 @@ def audit_discord():
     n_discords.append(222565109627617280)   # NETC
     n_discords.append(259950272065830912)   # pubg squad
     n_discords.append(81384788765712384)    # discord api
+    n_discords.append(332880147810353153)   # book club
+    n_discords.append(216398568049737728)   # weebfleet
+    n_discords.append(299888109003472896)   # csm12
+    n_discords.append(229744043737874434)   # zulu
+    n_discords.append(336324139809767425)   # cap escalation [albion]
+    n_discords.append(174613404005302272)   # talking in stations
+    n_discords.append(296890122824187904)   # wspace pub
+    n_discords.append(213691723329699841)   # ISD RUS
+    n_discords.append(327311033771360256)   # crossout
 
     # fetch all the various discord tables
 
