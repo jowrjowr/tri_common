@@ -164,8 +164,12 @@ def parse_message(cover, presence_from, message):
     else:
         body = message
 
-    return "**[{0}]** | __{1}__\n```css\n{2}```"\
-        .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
+    if cover == "fcon":
+        return "@here\n**[{0}]** | __{1}__\n```css\n{2}```" \
+            .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
+    else:
+        return "**[{0}]** | __{1}__\n```css\n{2}```"\
+            .format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), body)
 
 def fcon_parser(presence_from, message):
     try:
@@ -177,7 +181,7 @@ def fcon_parser(presence_from, message):
 
         author = ' to '.join(footer[:-2]).split('broadcast from')[1].lstrip()
 
-        return "@here\nFROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
+        return "FROM: {0} | {1}\nTO: {2}\n--------------------\n{3}" \
             .format(author, presence_from, target, str(text).replace('@', '#'))
     except Exception:
         return message
