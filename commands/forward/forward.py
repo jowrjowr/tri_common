@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from commands.forward.discord import start_discord
 from commands.forward.jabber import start_jabber
 from commands.forward.telegram import start_telegram
+from commands.forward.slack import start_slack
 
 def forward():
 
@@ -59,7 +60,8 @@ def forward():
     discord_queue = Queue()
 
     # telegram
-    pool.submit(start_telegram)
+    # this exists outside kinda with how the auth works and limited uses
+    pool.submit(start_telegram, discord_queue)
 
     for row in rows:
         covername = row[1]
@@ -71,11 +73,11 @@ def forward():
 
         if server_type == 'discord':
             pool.submit(start_discord, username, password, covername, handler, discord_queue)
-        if server_type == 'jabber':
+        elif server_type == 'slack':
+            pool.submit(start_slack, username, password, covername, handler, server, discord_queue)
+        elif server_type == 'jabber':
             jid = username + '@' + server
             pool.submit(start_jabber, jid, password, covername, handler, discord_queue)
-
-
 
     while True:
         _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.INFO)
@@ -85,11 +87,8 @@ def forward():
         discord_queue.task_done()
         time.sleep(1)
 
-
 class parseaction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
-       # if nargs is not None:
-        #    raise ValueError("nargs not allowed")
         super(parseaction, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)

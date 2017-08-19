@@ -5,9 +5,8 @@ import common.logger as _logger
 import common.request_esi
 import urllib
 import time
-from common.discord_api import discord_forward
 
-def new_thing(object):
+def new_thing(discord_queue, object):
 
     # this specifically processes update objects from telegram
 
@@ -34,14 +33,14 @@ def new_thing(object):
     ping += 'ORIGINAL RUS: {0}\n\n'.format(content)
     ping += 'ENGLISH: {0}\n'.format(en_content)
     ping = "**[{0}]** | __{1}__\n```css\n{2}```".format(cover, time.strftime("%H:%M:%S %z / %d-%m-%Y", time.localtime(None)), ping)
-    discord_forward(ping)
+    discord_queue.put(msg)
 
-def start_telegram():
+def start_telegram(discord_queue):
     # right now just xdeath
 
-    forward_telegram_xdeath()
+    forward_telegram_xdeath(discord_queue)
 
-def forward_telegram_xdeath():
+def forward_telegram_xdeath(discord_queue):
 
     # constants
 
@@ -61,7 +60,7 @@ def forward_telegram_xdeath():
         _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.ERROR)
 
         msg = '```diff' + '\n' + '- xdeath offline```'
-        discord_forward(msg)
+        discord_queue.put(msg)
 
         return
 
@@ -69,14 +68,14 @@ def forward_telegram_xdeath():
     if not client.is_user_authorized():
 
         msg = '```diff' + '\n' + '- xdeath AUTHENTICATION REQUIRED```'
-        discord_forward(msg)
+        discord_queue.put(msg)
 
         print('need to reauthorize xdeath tool')
         client.send_code_request(phone)
         client.sign_in(phone, input('Enter code: '))
     else:
         msg = '```diff' + '\n' + '+ xdeath online```'
-        discord_forward(msg)
+        discord_queue.put(msg)
 
     # pickup the last so many dialogs (distinct groups/messages?) sent to the client
 
