@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from commands.forward.discord import start_discord
 from commands.forward.jabber import start_jabber
+from commands.forward.telegram import start_telegram
 
 def forward():
 
@@ -57,6 +58,9 @@ def forward():
     pool = ThreadPoolExecutor(count + 5)
     discord_queue = Queue()
 
+    # telegram
+    pool.submit(start_telegram)
+
     for row in rows:
         covername = row[1]
         username = row[2]
@@ -70,6 +74,8 @@ def forward():
         if server_type == 'jabber':
             jid = username + '@' + server
             pool.submit(start_jabber, jid, password, covername, handler, discord_queue)
+
+
 
     while True:
         _logger.log('[' + __name__ + '] waiting for queue messages', _logger.LogLevel.INFO)
