@@ -60,6 +60,7 @@ def audit_discord():
     f_discords.append(322163331047882754)   # unofficial vg
     f_discords.append(283533833326821376)   # quam
     f_discords.append(269991543627055114)   # vg leadership
+    f_discords.append(186667149060734976)   # nullify
 
     # neutral discord hardcode. only useful for helping find an identity
 
