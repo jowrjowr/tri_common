@@ -284,4 +284,4 @@ def auth_evesso_callback():
         code, result = registeruser(charid, access_token, refresh_token, isalt=isalt, altof=altof)
         return response
 
-    return make_response('wtf happened?')
+    return make_response('wtf happened? run registration again. this is a catchall failure.')

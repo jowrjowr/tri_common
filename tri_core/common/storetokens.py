@@ -3,6 +3,7 @@ def storetokens(charid, atoken, rtoken, expires=None, token_type='esi'):
 
     import common.logger as _logger
     import common.credentials.ldap as _ldap
+    import common.ldaphelpers as _ldaphelpers
     import ldap
     import time
 
@@ -26,9 +27,16 @@ def storetokens(charid, atoken, rtoken, expires=None, token_type='esi'):
 
     if user_count == 0:
         # why are we modifyin something that doesn't exist?
-        return(False, 'error')
+        # create the stub user
+        code, dn =_ldaphelpers.ldap_create_stub(__name__, charid)
 
-    dn = users[0][0]
+        if code == False:
+            # couldn't make the stub
+            return False
+    else:
+        # a user was returned
+        dn = users[0][0]
+
     atoken = [ atoken.encode('utf-8') ]
     rtoken = [ rtoken.encode('utf-8') ]
 

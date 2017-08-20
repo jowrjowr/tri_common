@@ -121,7 +121,7 @@ def usertest(charid):
 
 
     # validate that the person who wants services is, in fact, blue to us
-    request_url = 'core/isblue?id={0}'.format(charid)
+    request_url = 'core/{0}/isblue'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, 'get', base='triapi')
 
     if not code == 200:

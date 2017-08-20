@@ -87,7 +87,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     elif base == 'zkill':
         # zkillboard
-        base_url = 'https://zkillboard.com/api/'
+        base_url = 'https://zkillboard.com/api'
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
         base_url = 'https://esi.tech.ccp.is'
@@ -96,14 +96,14 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
             headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
     elif base == 'triapi':
         # tri api
-        base_url = 'https://api.triumvirate.rocks/'
+        base_url = 'https://api.triumvirate.rocks'
     elif base == 'oauth':
         # eve oauth
-        base_url = 'https://login.eveonline.com/oauth/'
+        base_url = 'https://login.eveonline.com/oauth'
     elif base == 'g_translate':
         # google translate
         base_url = 'https://translation.googleapis.com/language/translate/v2'
-        base_url = base_url + '?key={0}&target=en&source=text&model=nmt&'.format(translate_api_key)
+        base_url += '?key={0}&target=en&source=text&model=nmt&'.format(translate_api_key)
 
     # special google translate bullshit
 
