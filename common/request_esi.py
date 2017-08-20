@@ -72,7 +72,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
 
     if base == 'esi':
         # ESI ofc
-        base_url = 'https://esi.tech.ccp.is/'+ version
+        base_url = 'https://esi.tech.ccp.is/' + version
 
         if charid is not None:
             # add the authenticated header
@@ -90,7 +90,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         base_url = 'https://zkillboard.com/api/'
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
-        base_url = 'https://esi.tech.ccp.is/'
+        base_url = 'https://esi.tech.ccp.is'
         if charid is not None:
             # add the authenticated header
             headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
@@ -105,7 +105,12 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         base_url = 'https://translation.googleapis.com/language/translate/v2'
         base_url = base_url + '?key={0}&target=en&source=text&model=nmt&'.format(translate_api_key)
 
-    url = base_url + url
+    # special google translate bullshit
+
+    if base == 'g_translate':
+        url = base_url + url
+    else:
+        url = base_url + '/' + url
 
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
