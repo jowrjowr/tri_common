@@ -111,7 +111,7 @@ def forward_telegram_xdeath(discord_queue):
             _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.INFO)
 
     # infinite loop to monitor for updates
-    client.add_update_handler(new_thing)
+    client.add_update_handler(discord_queue, new_thing)
     tick = 0
     while True:
         time.sleep(1)
