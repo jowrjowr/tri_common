@@ -2,6 +2,4 @@
 __pycache__/
 *.py[cod]
 *.swp
-logs/*
 *.save
-env
