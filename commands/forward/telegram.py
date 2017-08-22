@@ -113,15 +113,41 @@ def forward_telegram_xdeath(discord_queue):
     # infinite loop to monitor for updates
     client.add_update_handler(discord_queue, new_thing)
     tick = 0
-    while True:
-        time.sleep(1)
+    authorized = True
+    while authorized:
+        time.sleep(30)
         tick += 1
-        if tick % 3600 == 0:
+        authorized = client.is_user_authorized()
+
+        if authorized is False:
+            # we disconnected. try to reconnect.
+            # redo the connection sequence
+            client.disconnect()
+            msg = '```diff' + '\n' + '- xdeath offline```'
+            discord_queue.put(msg)
+
+            # reinitialize the telegram client
+            client = TelegramClient(session_id, api_id, api_hash)
+
+            try:
+                client.connect()
+                client.add_update_handler(discord_queue, new_thing)
+            except Exception as e:
+                msg = 'unable to reconnect to xdeath telegram: {0}'.format(e)
+                _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.ERROR)
+                return
+
+            # we reconnected?
+
+            authorized = client.is_user_authorized()
+
+        if tick % 120 == 0:
             # every hour log that you are alive
             msg = 'xdeath life ping'
             _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.INFO)
-    return
 
+    msg = '```diff' + '\n' + '- xdeath offline```'
+    discord_queue.put(msg)
 
 def rus_to_en(content):
 

@@ -99,6 +99,8 @@ class Jabber(sleekxmpp.ClientXMPP):
 
             disco_info = xmltodict.parse(str(result))
 
+#            print(disco_info)
+
             iq = disco_info.get('iq')
             if iq == None:
                 print(disco_info)
@@ -124,7 +126,7 @@ class Jabber(sleekxmpp.ClientXMPP):
             c_features = query.get('feature')
 
             # nothing else useful in the identity query
-
+            print(identity)
             if not identity == None:
                 c_category = identity.get('@category')
                 c_type = identity.get('@type')
@@ -132,7 +134,7 @@ class Jabber(sleekxmpp.ClientXMPP):
             else:
                 continue
 
-            if len(c_features) < 10:
+            if len(c_features) < 1:
                 print(jid_short, len(c_features), c_category, c_type, c_name)
 
             if c_type == 'bot':
@@ -187,8 +189,9 @@ def audit_bothunt():
 
     _logger.log('[' + __name__ + '] {0} active jabber sessions'.format(len(clients)),_logger.LogLevel.INFO)
 
-    thing = 'saekatyr@triumvirate.rocks/729827350702828396058635616511165752724531413542125212543'
-#    clients = {thing: None}
+    thing = 'rainbowarielmoon@triumvirate.rocks/6447582518372469981144650259794242310811493004068295965831'
+#    thing = 'saekatyr@triumvirate.rocks/729827350702828396058635616511165752724531413542125212543'
+    clients = {thing: None}
     jabber = Jabber('bothunt', j_user, j_pass, clients)
     jabber.connect()
     jabber.process(block=False)

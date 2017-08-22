@@ -91,8 +91,15 @@ def start_slack(username, password, covername, handler, server, discord_queue):
         discord_queue.put(msg)
         return
 
+    tick = 0
     while True:
         process_update( discord_queue, covername, client, client.rtm_read() )
+        tick += 1
+        if tick % 3600 == 0:
+            # every hour log that you are alive
+            msg = '{1} life ping'.format(covername)
+            _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.INFO)
+
         sleep(1)
 
     msg = '{0} slack irrevocably disconnected'.format(covername)
@@ -111,6 +118,8 @@ def process_update(discord_queue, covername, client, item):
     else:
         item = item[0]
 
+    msg = '{0} slack debug. item: {1}'.format(covername, item)
+    _logger.log('[' + __name__ + '] {0}'.format(msg), _logger.LogLevel.INFO)
     # past here, each update has a distinct type which we are interested in
 
     item_type = item['type']
