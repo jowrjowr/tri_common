@@ -238,6 +238,11 @@ def ldap_search(function, dn, filter, attributes):
                 _logger.log('[' + function + '] dn {0} missing attribute {1}'.format(dn, attribute),_logger.LogLevel.DEBUG)
                 details[attribute] = None
 
+            # NoneType contamination fix
+
+            if details[attribute] == 'None':
+                details[attribute] = None
+
         response[dn] = details
 
     ldap_conn.unbind()
