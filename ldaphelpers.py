@@ -114,6 +114,25 @@ def ldap_binding(function):
 
     return ldap_conn
 
+def ldap_userinfo(uid):
+    dn = 'ou=People,dc=triumvirate,dc=rocks'
+    filterstr='(uid={})'.format(uid)
+    attrlist=['characterName', 'uid', 'altOf', 'authGroup', 'accountStatus' ]
+    code, result = ldap_search(__name__, dn, filterstr, attrlist)
+    function = __name__
+    if code == False:
+        msg = 'unable to fetch ldap information: {}'.format(error)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.ERROR)
+        return None
+
+    if result == None:
+        msg = 'uid {0} not in ldap'.format(uid)
+        _logger.log('[' + function + '] {}'.format(msg),_logger.LogLevel.DEBUG)
+        return None
+    (dn, info), = result.items()
+
+    return info
+
 def ldap_uid2name(function, uid):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'

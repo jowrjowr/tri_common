@@ -4,6 +4,51 @@ import common.check_scope as _check_scope
 import common.request_esi
 import urllib
 
+
+def esi_affiliations(charid):
+    # a more complete ESI affiliations check
+
+    affiliations = dict()
+
+    # character info
+
+    request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
+    if not code == 200:
+        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        affiliations['corpid'] = False
+        return affiliations
+
+    affiliations['charname'] = result['name']
+    affiliations['corpid'] = result.get('corporation_id')
+
+    # alliance id, if any
+    request_url = 'corporations/{0}/?datasource=tranquility'.format(affiliations['corpid'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
+    if not code == 200:
+        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        affiliations['allianceid'] = False
+        return affiliations
+
+    affiliations['allianceid'] = result.get('alliance_id')
+    affiliations['corpname'] = result.get('corporation_name')
+
+    if not affiliations['allianceid']:
+        # no alliance so we're done getting information
+        affiliations['alliancename'] = None
+        return affiliations
+
+    # alliance name
+    request_url = 'alliances/{0}/?datasource=tranquility'.format(affiliations['allianceid'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
+    if not code == 200:
+        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        affiliations['alliancename'] = False
+        return affiliations
+    affiliations['alliancename'] = result.get('alliance_name')
+
+    return affiliations
+
 def user_search(charname):
     # use esi search to find character
 
