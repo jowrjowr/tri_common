@@ -6,7 +6,6 @@ def refresh_token(old_rtoken):
     import oauthlib.oauth2
     import common.credentials.eve as _eve
     import common.logger as _logger
-    import flask
 
     base_url = 'https://login.eveonline.com'
     token_url = base_url + '/oauth/token'
