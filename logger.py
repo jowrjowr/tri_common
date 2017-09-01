@@ -154,6 +154,7 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
 
     import MySQLdb as mysql
     import common.credentials.database as _database
+    import common.esihelpers as _esihelpers
     import common.logger as _logger
     import common.request_esi
     import time
@@ -195,20 +196,8 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
 
     # try to get character name if a charid (but no charname) is supplied
     if charname == None and not charid == None:
-        esi_url = 'characters/{0}/?datasource=tranquility'.format(charid)
-        code, result = common.request_esi.esi(__name__, esi_url, 'get')
-
-        if code == 404:
-            _logger.log('[' + function + '] character id {0} not found'.format(charid), _logger.LogLevel.WARNING)
-            return False
-        elif not code == 200:
-            _logger.log('[' + function + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-            return False
-        try:
-            charname = result['name']
-        except KeyError as error:
-            _logger.log('[' + function + '] User does not exist: {0})'.format(charid), _logger.LogLevel.ERROR)
-            charname = None
+        affiliations = _esihelpers.esi_affiliations(charid)
+        charname = affiliations.get('charname')
 
     # log to file
 

@@ -39,15 +39,10 @@ def ldap_create_stub(function, charname):
     user['uid'] = charid
 
     # get affiliations and shit
+    affiliations = _esihelpers.esi_affiliations(charid)
 
-    try:
-        request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
-        code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
-    except Exception as error:
-        _logger.log('[' + __name__ + '] /characters API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.ERROR)
-        return False
+    charname = affiliations.get('charname')
 
-    charname = result['name']
     user['characterName'] = charname
 
     cn = charname.replace(" ", '')
