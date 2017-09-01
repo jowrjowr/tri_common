@@ -171,6 +171,14 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     else:
         sendmetric(function, base, 'request', 'success', 1)
 
+    # check for warning headers. mostly for esi.
+
+    warning = request.headers.get('warning')
+
+    if warning:
+        msg = '{0} deprecated endpoint alert: {1}'.format(base, warning)
+        _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.WARNING)
+
     # do metrics
 
     elapsed_time = request.elapsed.total_seconds()
