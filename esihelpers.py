@@ -16,7 +16,6 @@ def esi_affiliations(charid):
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if not code == 200:
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
-        affiliations['corpid'] = False
         return affiliations
 
     affiliations['charname'] = result['name']
