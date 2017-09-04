@@ -19,7 +19,6 @@ def esi_affiliations(charid):
         return affiliations
 
     affiliations['charname'] = result['name']
-    affiliations['allianceid'] = result.get('alliance_id')
     affiliations['corpid'] = result.get('corporation_id')
 
     # alliance id, if any
@@ -30,6 +29,7 @@ def esi_affiliations(charid):
         affiliations['allianceid'] = False
         return affiliations
 
+    affiliations['allianceid'] = result.get('alliance_id')
     affiliations['corpname'] = result.get('corporation_name')
 
     if not affiliations['allianceid']:
