@@ -15,6 +15,7 @@ def esi_affiliations(charid):
     request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if not code == 200:
+        error = result['error']
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         return affiliations
 
@@ -25,6 +26,7 @@ def esi_affiliations(charid):
     request_url = 'corporations/{0}/?datasource=tranquility'.format(affiliations['corpid'])
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
     if not code == 200:
+        error = result['error']
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         affiliations['allianceid'] = False
         return affiliations
@@ -41,6 +43,7 @@ def esi_affiliations(charid):
     request_url = 'alliances/{0}/?datasource=tranquility'.format(affiliations['allianceid'])
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
     if not code == 200:
+        error = result['error']
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         affiliations['alliancename'] = False
         return affiliations
@@ -153,13 +156,13 @@ def char_location(charid):
     # map the solar system to a name
 
     request_url = 'universe/systems/{0}/?datasource=tranquility'.format(location_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
     _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
         _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
         location_name = 'Unknown'
     else:
-        location_name = result['solar_system_name']
+        location_name = result['name']
 
     # map the structure to a name
 
