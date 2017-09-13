@@ -17,6 +17,7 @@ def esi_affiliations(charid):
     if not code == 200:
         error = result['error']
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        affiliations['error'] = error
         return affiliations
 
     affiliations['charname'] = result['name']
@@ -27,8 +28,9 @@ def esi_affiliations(charid):
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
     if not code == 200:
         error = result['error']
-        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] unable to get corp info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         affiliations['allianceid'] = False
+        affiliations['error'] = error
         return affiliations
 
     affiliations['allianceid'] = result.get('alliance_id')
@@ -44,8 +46,9 @@ def esi_affiliations(charid):
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
     if not code == 200:
         error = result['error']
-        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
+        _logger.log('[' + __name__ + '] unable to get alliance info for {0}: {1}'.format(affiliations['allianceid'], error),_logger.LogLevel.ERROR)
         affiliations['alliancename'] = False
+        affiliations['error'] = error
         return affiliations
     affiliations['alliancename'] = result.get('alliance_name')
 
