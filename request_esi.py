@@ -108,9 +108,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     # special google translate bullshit
 
     if base == 'g_translate':
-        url = base_url + url
+        full_url = base_url + url
     else:
-        url = base_url + '/' + url
+        full_url = base_url + '/' + url
 
     # setup redis caching for the requests object
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -135,9 +135,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     timeout = 10
     try:
         if method == 'post':
-            request = session.post(url, headers=headers, timeout=timeout, data=data)
+            request = session.post(full_url, headers=headers, timeout=timeout, data=data)
         elif method == 'get':
-            request = session.get(url, headers=headers, timeout=timeout)
+            request = session.get(full_url, headers=headers, timeout=timeout)
 
     except requests.exceptions.ConnectionError as err:
         sendmetric(function, base, 'request', 'connection_error', 1)
@@ -176,7 +176,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     warning = request.headers.get('warning')
 
     if warning:
-        msg = '{0} deprecated endpoint alert: {1}'.format(base, warning)
+        msg = '{0} deprecated endpoint: {1} - {2}'.format(base, url, warning)
         _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.WARNING)
 
     # do metrics
