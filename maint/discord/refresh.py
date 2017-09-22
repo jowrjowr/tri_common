@@ -11,6 +11,8 @@ def refresh_token(old_rtoken):
     client_secret = _discord.client_secret
     redirect_url = _discord.redirect_url
 
+    base_url = 'https://discordapp.com/api'
+
     token_url = base_url + '/oauth2/token'
     base_auth_url = base_url + '/oauth2/authorize'
 
@@ -26,7 +28,6 @@ def refresh_token(old_rtoken):
     try:
         result = discord.refresh_token(
             token_url,
-            redirect_uri=redirect,
             refresh_token=old_rtoken,
             **extra,
         )

@@ -6,12 +6,15 @@ f_discords.append(301016648339423232)   # avalanche
 f_discords.append(212890573156253696)   # wombo
 f_discords.append(275395882415816705)   # no mercy
 f_discords.append(233545865053077504)   # steel fury
-f_discords.append(322163331047882754)   # unofficial vg
+f_discords.append(358117641724100609)   # tri social
 f_discords.append(283533833326821376)   # quam
 f_discords.append(269991543627055114)   # vg leadership
 f_discords.append(186667149060734976)   # nullify
 f_discords.append(110544661776453632)   # superflous wanderlust
 f_discords.append(192421707657641984)   # CO2
+f_discords.append(344057988593483777)   # f... con
+f_discords.append(351087227952037890)   # gemicide
+f_discords.append(357603206198722560)   # vegas planning
 
 # neutral discord hardcode. only useful for helping find an identity
 
@@ -34,7 +37,15 @@ n_discords.append(174613404005302272)   # talking in stations
 n_discords.append(296890122824187904)   # wspace pub
 n_discords.append(213691723329699841)   # ISD RUS
 n_discords.append(327311033771360256)   # crossout
-
+n_discords.append(295234728674590720)   # pubg
+n_discords.append(244226954423828490)   # metashow
+n_discords.append(201159880768225281)   # an investor thing, not eve
+n_discords.append(109745593068371968)   # blue donut
+n_discords.append(241797508668325888)   # statecraft:eve
+n_discords.append(289437048908283915)   # opux bot
+n_discords.append(41771983423143937)    # discord devs
+n_discords.append(110373943822540800)   # discord bots
+n_discords.append(221557748419002368)   # dramiel
 # explicitly hostile discords
 
 h_discords = []
