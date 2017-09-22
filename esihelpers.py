@@ -14,7 +14,13 @@ def esi_affiliations(charid):
 
     request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
-    if not code == 200:
+    if code == 404:
+        # 404's are a problem but not an ERROR problem
+        error = result['error']
+        _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.DEBUG)
+        affiliations['error'] = result['error']
+        return affiliations
+    elif not code == 200:
         error = result['error']
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         affiliations['error'] = error
@@ -129,7 +135,60 @@ def find_types(charid, types):
             asset_result.append(asset)
 
     return True, asset_result
-    
+
+def solar_system_info(solar_system_id):
+
+    # return all the useful solar system info in one shot
+
+    info = dict()
+    info['error'] = False
+
+    # solar system level info
+
+    request_url = 'universe/systems/{0}/?datasource=tranquility'.format(solar_system_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
+    _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
+    if not code == 200:
+        msg = '/universe/systems api error {0}: {1}'.format(code, result.get('error'))
+        _logger.log('[' + __name__ + '] {}'.format(msg), _logger.LogLevel.WARNING)
+        info['error'] = True
+        info['solar_system_name'] = 'Unknown'
+        return info
+    else:
+        info['constellation_id'] = result['constellation_id']
+        info['solar_system_name'] = result['name']
+
+    # constellation level info
+
+    request_url = 'universe/constellations/{0}/?datasource=tranquility'.format(info['constellation_id'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    _logger.log('[' + __name__ + '] /universe/constellations output: {}'.format(result), _logger.LogLevel.DEBUG)
+    if not code == 200:
+        msg = '/universe/constellations api error {0}: {1}'.format(code, result.get('error'))
+        _logger.log('[' + __name__ + '] {}'.format(msg), _logger.LogLevel.WARNING)
+        info['error'] = True
+        info['constellation_name'] = 'Unknown'
+        return info
+    else:
+        info['region_id'] = result['region_id']
+        info['constellation_name'] = result['name']
+
+    # region level info
+
+    request_url = 'universe/regions/{0}/?datasource=tranquility'.format(info['region_id'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    _logger.log('[' + __name__ + '] /universe/regions output: {}'.format(result), _logger.LogLevel.DEBUG)
+    if not code == 200:
+        msg = '/universe/regions api error {0}: {1}'.format(code, result.get('error'))
+        _logger.log('[' + __name__ + '] {}'.format(msg), _logger.LogLevel.WARNING)
+        info['error'] = True
+        info['region_name'] = 'Unknown'
+        return info
+    else:
+        info['region_name'] = result['name']
+
+    return info
+
 def char_location(charid):
 
     # check if location scope is available
@@ -158,14 +217,8 @@ def char_location(charid):
 
     # map the solar system to a name
 
-    request_url = 'universe/systems/{0}/?datasource=tranquility'.format(location_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
-    _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
-    if not code == 200:
-        _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
-        location_name = 'Unknown'
-    else:
-        location_name = result['name']
+    location_info = solar_system_name(location_id)
+    location_name = location_info.get('solar_system_name')
 
     # map the structure to a name
 
