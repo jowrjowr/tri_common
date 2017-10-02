@@ -46,6 +46,8 @@ n_discords.append(289437048908283915)   # opux bot
 n_discords.append(41771983423143937)    # discord devs
 n_discords.append(110373943822540800)   # discord bots
 n_discords.append(221557748419002368)   # dramiel
+n_discords.append(190646276256169994)   # goon INN discord
+
 # explicitly hostile discords
 
 h_discords = []
@@ -59,6 +61,11 @@ h_discords.append(306135559275937802)   # dreddit
 h_discords.append(336319028748615683)   # brand newbros (also test)
 h_discords.append(261264601503498261)   # IRC
 h_discords.append(282380059107393537)   # seraph's faggot den
+h_discords.append(356398105404375041)   # test bacon bar thing
+h_discords.append(326875011853975552)   # razor
+h_discords.append(281175860457898016)   # horde foreign legion
+h_discords.append(201704763874738176)   # horde
+h_discords.append(173578429206102016)   # army of new eden
 
 discords = dict()
 discords['friendly'] = f_discords
