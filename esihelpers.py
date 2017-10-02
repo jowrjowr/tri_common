@@ -3,7 +3,7 @@ import common.logger as _logger
 import common.check_scope as _check_scope
 import common.request_esi
 import urllib
-
+import time
 
 def esi_affiliations(charid):
     # a more complete ESI affiliations check
@@ -217,7 +217,7 @@ def char_location(charid):
 
     # map the solar system to a name
 
-    location_info = solar_system_name(location_id)
+    location_info = solar_system_info(location_id)
     location_name = location_info.get('solar_system_name')
 
     # map the structure to a name
