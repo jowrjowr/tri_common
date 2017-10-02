@@ -190,7 +190,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     try:
         result = json.loads(str(request.text))
     except TypeError as error:
-        return(500, { 'code': 500, 'error': 'cant convert esi response to json'})
+        msg = 'google CDN error - cant convert esi response to json'
+        _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.WARNING)
+        return(500, { 'code': 500, 'error': msg })
 
     return(request.status_code, result)
 
