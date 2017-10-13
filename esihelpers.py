@@ -5,6 +5,39 @@ import common.request_esi
 import urllib
 import time
 
+def region_solar_systems(region_id):
+    # spew out every solar system in a region
+
+    info = dict()
+    info['error'] = False
+    info['region_id'] = region_id
+    info['systems'] = dict()
+
+    request_url = 'universe/regions/{0}'.format(region_id)
+    code, result = common.request_esi.esi(__name__, request_url, version='v1')
+
+    if not code == 200:
+        info['error'] = True
+        msg = '/universe/regions error: {0}'.format(result['error'])
+        _logger.log('[' + __name__ + '] {0}'.format(msg),_logger.LogLevel.ERROR)
+        return info
+
+    for constellation_id in result['constellations']:
+        request_url = 'universe/constellations/{0}'.format(constellation_id)
+        code, result = common.request_esi.esi(__name__, request_url, version='v1')
+        if not code == 200:
+            info['error'] = True
+            msg = '/universe/constellation error: {0}'.format(result['error'])
+            _logger.log('[' + __name__ + '] {0}'.format(msg),_logger.LogLevel.ERROR)
+            return info
+        for system in result['systems']:
+
+            # fetch info
+
+            info['systems'][system] = solar_system_info(system)
+
+    return info
+
 def esi_affiliations(charid):
     # a more complete ESI affiliations check
 
