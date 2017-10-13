@@ -66,6 +66,7 @@ h_discords.append(326875011853975552)   # razor
 h_discords.append(281175860457898016)   # horde foreign legion
 h_discords.append(201704763874738176)   # horde
 h_discords.append(173578429206102016)   # army of new eden
+h_discords.append(197049562668466186)   # therapy - test corp
 
 discords = dict()
 discords['friendly'] = f_discords
