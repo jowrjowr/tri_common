@@ -5,7 +5,7 @@ import uuid
 
 from passlib.hash import ldap_salted_sha1
 
-def ldap_create_stub(function, charname):
+def ldap_create_stub(function, charname=None, charid=None):
 
     import common.request_esi
     import common.esihelpers as _esihelpers
@@ -13,40 +13,44 @@ def ldap_create_stub(function, charname):
 
     # make a very basic ldap entry for charname
 
-
-    # find the user's uid before proceeding further
-
-    result = _esihelpers.user_search(charname)
     user = dict()
 
-    if result == False:
-        # damage
-        msg = 'ESI search error'
-        return False, msg
-    elif len(result) is 0:
-        # nothing found.
-        msg = 'no such character'
-        return False, msg
-    elif len(result) > 1:
-        # too much found
-        msg = 'too many results'
-        return False, msg
+    if charname is not None:
+        # making a stub based on a charid
+        result = _esihelpers.user_search(charname)
 
-    # okay hopefuly nothing else fucked up by now
+        if result == False:
+            # damage
+            msg = 'ESI search error'
+            return False, msg
+        elif len(result) is 0:
+            # nothing found.
+            msg = 'no such character'
+            return False, msg
+        elif len(result) > 1:
+            # too much found
+            msg = 'too many results'
+            return False, msg
 
-    charid = result['character'][0]
+        # okay hopefuly nothing else fucked up by now
+
+        charid = result['character'][0]
+
+    if charid is None:
+        msg = 'no charname, no charid'
+        return False, msg
 
     user['uid'] = charid
+    affiliations = _esihelpers.esi_affiliations(charid)
 
     # get affiliations and shit
-    affiliations = _esihelpers.esi_affiliations(charid)
 
     charname = affiliations.get('charname')
 
     user['characterName'] = charname
 
     cn = charname.replace(" ", '')
-    cn = cn.replace("'", '')
+    cn = cn.replace("'", '_')
     cn = cn.lower()
     dn = "cn={},ou=People,dc=triumvirate,dc=rocks".format(cn)
 
