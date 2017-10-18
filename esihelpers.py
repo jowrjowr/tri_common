@@ -329,7 +329,7 @@ def alliance_info(alliance_id):
         return None
 
     request_url = 'alliances/{0}/?datasource=tranquility'.format(alliance_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
 
     if not code == 200:
         _logger.log('[' + __name__ + '] /alliances/ID API error ' + str(code) + ': ' + str(result['error']),
