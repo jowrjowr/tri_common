@@ -10,6 +10,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     from cachecontrol.caches.redis_cache import RedisCache
     from common.graphite import sendmetric
     from common.credentials.g_translate import translate_api_key
+    from commands.maint.tokens import eve_tokenthings
 
     # headers
 
@@ -30,14 +31,14 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     # if a charid is specified, this is going to be treated as an authenticated request
     # where an access token is added to the esi request url automatically
 
-    # snag the user's ldap token
+    # snag the user's tokens from ldap
     if charid is not None:
 
         _logger.log('[' + __name__ + '] authenticated {0} request for {1}: {2}'.format(base, charid, url),_logger.LogLevel.DEBUG)
 
         dn = 'ou=People,dc=triumvirate,dc=rocks'
         filterstr='(uid={})'.format(charid)
-        attrlist=[ 'esiAccessToken', 'discordAccessToken' ]
+        attrlist=[ 'esiAccessToken', 'esiAccessTokenExpires', 'discordAccessToken', ]
         code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
         if code == False:
@@ -52,6 +53,7 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         (dn, result), = result.items()
 
         esi_atoken = result.get('esiAccessToken')
+        esi_atoken_expires = result.get('esiAccessTokenExpires')
         discord_atoken = result.get('discordAccessToken')
 
         if esi_atoken == None and base == 'esi':
@@ -61,6 +63,14 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         if discord_atoken == None and base == 'discord':
             js = { 'error': 'no stored discord access token'}
             return 400, js
+
+        # make sure the ESI token is current if this is an ESI request
+
+        if base == 'esi' or base == 'esi_verify':
+            # at this point it this is an authenticated request.
+            # make sure that the token retrieved is current. if it is not, update it.
+
+            pass
 
     else:
         _logger.log('[' + __name__ + '] unauthenticated {0} request: {1}'.format(base, url),_logger.LogLevel.DEBUG)
@@ -104,6 +114,9 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
         # google translate
         base_url = 'https://translation.googleapis.com/language/translate/v2'
         base_url += '?key={0}&target=en&source=text&model=nmt&'.format(translate_api_key)
+    elif base == 'eve_market':
+        # eve marketdata
+        base_url = 'https://api.eve-marketdata.com/api/'
 
     # special google translate bullshit
 
@@ -174,6 +187,11 @@ def do_esi(function, url, method, charid=None, data=None, version='latest', base
     # check for warning headers. mostly for esi.
 
     warning = request.headers.get('warning')
+    pages = request.headers.get('X-Pages')
+
+    if pages:
+        msg = '{0} total pages'.format(pages)
+        _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.DEBUG)
 
     if warning:
         msg = '{0} deprecated endpoint: {1} - {2}'.format(base, url, warning)
