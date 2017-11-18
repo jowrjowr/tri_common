@@ -67,6 +67,11 @@ h_discords.append(281175860457898016)   # horde foreign legion
 h_discords.append(201704763874738176)   # horde
 h_discords.append(173578429206102016)   # army of new eden
 h_discords.append(197049562668466186)   # therapy - test corp
+h_discords.append(337198205869490186)   # army/tbc joint discord
+h_discords.append(93109726161682432)    # feign
+h_discords.append(186432588095815680)   # the dysfunctionals (fcon)
+h_discords.append(318725839589998593)   # fcon JF service
+h_discords.append(273603108393713665)   # UKOC - test corp
 
 discords = dict()
 discords['friendly'] = f_discords
