@@ -34,7 +34,7 @@ def ldap_create_stub(function, charname=None, charid=None):
 
         # okay hopefuly nothing else fucked up by now
 
-        charid = result['character'][0]
+        charid = result['character']
 
     if charid is None:
         msg = 'no charname, no charid'
