@@ -97,7 +97,8 @@ def ldap_create_stub(function, charname=None, charid=None):
 
     # no error. done!
 
-    return True, None
+    return True, dn
+
 
 def ldap_binding(function):
 

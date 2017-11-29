@@ -12,6 +12,10 @@ def refresh_token(old_rtoken):
     base_auth_url = base_url + '/oauth/authorize'
     redirect = _eve.redirect_url
 
+    # special headers to fix an sso bug
+
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'}
+
     extra = {
         'client_id': _eve.client_id,
         'client_secret': _eve.client_secret,
@@ -26,6 +30,7 @@ def refresh_token(old_rtoken):
             token_url,
             redirect_uri=redirect,
             refresh_token=old_rtoken,
+            headers=headers,
             **extra,
         )
 
