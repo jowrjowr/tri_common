@@ -72,6 +72,7 @@ h_discords.append(93109726161682432)    # feign
 h_discords.append(186432588095815680)   # the dysfunctionals (fcon)
 h_discords.append(318725839589998593)   # fcon JF service
 h_discords.append(273603108393713665)   # UKOC - test corp
+h_discords.append(167018766255915008)   # star frontiers - test corp
 
 discords = dict()
 discords['friendly'] = f_discords

@@ -10,6 +10,7 @@ class Channel(Enum):
     counterintel = 341589867840405524
     everyone = 269993133268271106
     tri_administration = 269997361827151872
+    notification_spam = 396667297277935628
 
 # oauth stuff for discord registration
 # not currently the same as sovereign

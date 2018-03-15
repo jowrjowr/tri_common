@@ -45,7 +45,7 @@ def esi_affiliations(charid):
 
     # character info
 
-    request_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+    request_url = 'characters/{0}/'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if code == 404:
         # 404's are a problem but not an ERROR problem
@@ -63,8 +63,8 @@ def esi_affiliations(charid):
     affiliations['corpid'] = result.get('corporation_id')
 
     # alliance id, if any
-    request_url = 'corporations/{0}/?datasource=tranquility'.format(affiliations['corpid'])
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
+    request_url = 'corporations/{0}/'.format(affiliations['corpid'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if not code == 200:
         error = result['error']
         _logger.log('[' + __name__ + '] unable to get corp info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
@@ -73,7 +73,7 @@ def esi_affiliations(charid):
         return affiliations
 
     affiliations['allianceid'] = result.get('alliance_id')
-    affiliations['corpname'] = result.get('corporation_name')
+    affiliations['corpname'] = result.get('name')
 
     if not affiliations['allianceid']:
         # no alliance so we're done getting information
@@ -81,15 +81,15 @@ def esi_affiliations(charid):
         return affiliations
 
     # alliance name
-    request_url = 'alliances/{0}/?datasource=tranquility'.format(affiliations['allianceid'])
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
+    request_url = 'alliances/{0}/'.format(affiliations['allianceid'])
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
     if not code == 200:
         error = result['error']
         _logger.log('[' + __name__ + '] unable to get alliance info for {0}: {1}'.format(affiliations['allianceid'], error),_logger.LogLevel.ERROR)
         affiliations['alliancename'] = False
         affiliations['error'] = error
         return affiliations
-    affiliations['alliancename'] = result.get('alliance_name')
+    affiliations['alliancename'] = result.get('name')
 
     return affiliations
 
@@ -127,7 +127,7 @@ def current_ship(charid):
         return False, None
         
     # fetch current ship
-    request_ship_url = 'characters/{}/ship/?datasource=tranquility'.format(charid)
+    request_ship_url = 'characters/{}/ship/'.format(charid)
     esi_ship_code, esi_ship_result = common.request_esi.esi(__name__, request_ship_url, version='v1', method='get', charid=charid)
     _logger.log('[' + __name__ + '] /characters output: {}'.format(esi_ship_result), _logger.LogLevel.DEBUG)
 
@@ -152,8 +152,8 @@ def find_types(charid, types):
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
         return False, None
         
-    request_assets_url = 'characters/{}/assets/?datasource=tranquility'.format(charid)
-    esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, version='v1', method='get', charid=charid)
+    request_assets_url = 'characters/{}/assets/'.format(charid)
+    esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, version='v3', method='get', charid=charid)
     _logger.log('[' + __name__ + '] /characters output: {}'.format(esi_assets_result), _logger.LogLevel.DEBUG)
     if esi_assets_code != 200:
         _logger.log('[' + __name__ + '] /characters/assets API error {0}: {1}'.format(esi_assets_code, esi_assets_result['error']),_logger.LogLevel.WARNING)
@@ -178,7 +178,7 @@ def solar_system_info(solar_system_id):
 
     # solar system level info
 
-    request_url = 'universe/systems/{0}/?datasource=tranquility'.format(solar_system_id)
+    request_url = 'universe/systems/{0}/'.format(solar_system_id)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
     _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
@@ -193,7 +193,7 @@ def solar_system_info(solar_system_id):
 
     # constellation level info
 
-    request_url = 'universe/constellations/{0}/?datasource=tranquility'.format(info['constellation_id'])
+    request_url = 'universe/constellations/{0}/'.format(info['constellation_id'])
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
     _logger.log('[' + __name__ + '] /universe/constellations output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
@@ -208,7 +208,7 @@ def solar_system_info(solar_system_id):
 
     # region level info
 
-    request_url = 'universe/regions/{0}/?datasource=tranquility'.format(info['region_id'])
+    request_url = 'universe/regions/{0}/'.format(info['region_id'])
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
     _logger.log('[' + __name__ + '] /universe/regions output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
@@ -236,7 +236,7 @@ def char_location(charid):
         return False, None
 
     # fetch character location
-    request_url = 'characters/{0}/location/?datasource=tranquility'.format(charid)
+    request_url = 'characters/{0}/location/'.format(charid)
     code, result = common.request_esi.esi(__name__, request_url, method='get', charid=charid, version='v1')
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
@@ -257,7 +257,7 @@ def char_location(charid):
 
     if structure_id is not None:
         # resolve a structure name
-        request_url = 'universe/structures/{}/?datasource=tranquility'.format(structure_id)
+        request_url = 'universe/structures/{}/'.format(structure_id)
         code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1', charid=charid)
         _logger.log('[' + __name__ + '] /universe/structures output: {}'.format(result), _logger.LogLevel.DEBUG)
         if code == 200:
@@ -269,7 +269,7 @@ def char_location(charid):
             _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
     if station_id is not None:
-        request_url = 'universe/names/?datasource=tranquility'
+        request_url = 'universe/names/'
         data = '[{}]'.format(station_id)
         code, result = common.request_esi.esi(__name__, request_url, method='post', version='v2', data=data)
         _logger.log('[' + __name__ + '] /universe/structures output: {}'.format(result), _logger.LogLevel.DEBUG)
@@ -292,10 +292,33 @@ def char_location(charid):
 
     return True, char_location
 
+def moon_info(moonid):
+
+    request_url = 'universe/moons/{0}/'.format(moonid)
+
+    code, result = common.request_esi.esi(__name__, request_url, 'get', version='v1')
+    if not code == 200:
+        # something broke severely
+        msg = '/universe/moons API error {0}: {1}'.format(code, result['error'])
+        _logger.log('[' + __name__ + '] {}'.format(msg), _logger.LogLevel.ERROR)
+
+    return result
+
+def type_info(typeid):
+
+    request_url = 'universe/types/{0}/'.format(typeid)
+
+    code, result = common.request_esi.esi(__name__, request_url, 'get', version='v3')
+    if not code == 200:
+        # something broke severely
+        msg = '/universe/types API error {0}: {1}'.format(code, result['error'])
+        _logger.log('[' + __name__ + '] {}'.format(msg), _logger.LogLevel.ERROR)
+
+    return result
 
 def character_info(char_id):
 
-    request_url = 'characters/{0}/?datasource=tranquility'.format(char_id)
+    request_url = 'characters/{0}/'.format(char_id)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
 
     if not code == 200:
@@ -311,7 +334,7 @@ def corporation_info(corp_id):
     if corp_id == None:
         return None
 
-    request_url = 'corporations/{0}/?datasource=tranquility'.format(corp_id)
+    request_url = 'corporations/{0}/'.format(corp_id)
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='latest')
 
     if not code == 200:
@@ -328,8 +351,8 @@ def alliance_info(alliance_id):
     if alliance_id == None:
         return None
 
-    request_url = 'alliances/{0}/?datasource=tranquility'.format(alliance_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2')
+    request_url = 'alliances/{0}/'.format(alliance_id)
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
 
     if not code == 200:
         _logger.log('[' + __name__ + '] /alliances/ID API error ' + str(code) + ': ' + str(result['error']),

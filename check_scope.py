@@ -10,7 +10,7 @@ def check_scope(function, charid, scopes, atoken=None):
     if atoken is not None:
         # grap token scopes direct from token
 
-        verify_url = 'verify/?datasource=tranquility&token={0}'.format(atoken)
+        verify_url = 'verify/?token={0}'.format(atoken)
         code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
         if not code == 200:
             _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
