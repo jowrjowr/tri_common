@@ -233,6 +233,7 @@ def ldap_search(function, dn, filter, attributes):
 
     # construct the response
     response = dict()
+
     for object in result:
         # split off the dn/info pair
         dn, info = object
@@ -243,13 +244,12 @@ def ldap_search(function, dn, filter, attributes):
             try:
                 # only return an array for multiple items
                 # or authGroup, a helpful typecast
-                if len(info[attribute]) > 1:
-                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
-                elif attribute == 'esiScope':
-                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
-                elif attribute == 'corporationRole':
-                    details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
-                elif attribute == 'authGroup':
+
+                # attributes that are ALWAYS RETURNED AS A LIST
+
+                forced_list = [ 'esiScope', 'corporationRole', 'authGroup' ]
+
+                if len(info[attribute]) > 1 or attribute in forced_list:
                     details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
                 else:
                     details[attribute] = info[attribute][0].decode('utf-8')
@@ -257,10 +257,26 @@ def ldap_search(function, dn, filter, attributes):
                 _logger.log('[' + function + '] dn {0} missing attribute {1}'.format(dn, attribute),_logger.LogLevel.DEBUG)
                 details[attribute] = None
 
-            # NoneType contamination fix
+            # typecasting if appropriate
+            if type(details[attribute]) is str:
 
-            if details[attribute] == 'None':
-                details[attribute] = None
+                # NoneType contamination fix
+
+                if details[attribute] == 'None':
+                    details[attribute] = None
+
+                # booleans
+
+                elif details[attribute] == 'True':
+                    details[attribute] = True
+
+                elif details[attribute] == 'False':
+                    details[attribute] = False
+
+                # integer casting
+
+                elif details[attribute].isdigit():
+                    details[attribute] = int(details[attribute])
 
         response[dn] = details
 
@@ -317,7 +333,7 @@ def update_singlevalue(dn, attribute, value):
     if value is None:
         mod_attrs = [ (ldap.MOD_DELETE, attribute, None) ]
     else:
-        mod_attrs = [ (ldap.MOD_REPLACE, attribute, value.encode('utf-8') ) ]
+        mod_attrs = [ (ldap.MOD_REPLACE, attribute, str(value).encode('utf-8') ) ]
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)
@@ -368,7 +384,7 @@ def add_value(dn, attribute, value):
     except ldap.LDAPError as error:
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
-    mod_attrs = [ (ldap.MOD_ADD, attribute, value.encode('utf-8') ) ]
+    mod_attrs = [ (ldap.MOD_ADD, attribute, str(value).encode('utf-8') ) ]
 
     try:
         result = ldap_conn.modify_s(dn, mod_attrs)

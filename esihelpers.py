@@ -133,7 +133,7 @@ def current_ship(charid):
 
     if esi_ship_code != 200:
         # something broke severely
-        _logger.log('[' + __name__ + '] /characters/ship API error {0}: {1}'.format(esi_ship_code, esi_ship_result['error']),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] /characters/ship API error {0}: {1}'.format(esi_ship_code, esi_ship_result),_logger.LogLevel.WARNING)
         return False, None
         
     return True, esi_ship_result
@@ -241,7 +241,7 @@ def char_location(charid):
     _logger.log('[' + __name__ + '] /characters output: {}'.format(result), _logger.LogLevel.DEBUG)
 
     if not code == 200:
-        _logger.log('[' + __name__ + '] /characters location API error {0}: {1}'.format(code, result['error']), _logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] /characters location API error {0}: {1}'.format(code, result), _logger.LogLevel.WARNING)
         return False, None
 
     location_id = result.get('solar_system_id')

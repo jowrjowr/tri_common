@@ -3,6 +3,17 @@ import logging as _logging
 import sys as _sys
 import time as _time
 import argparse
+import logging
+import time
+import sys
+import urllib
+
+import MySQLdb as mysql
+import common.request_esi
+import common.credentials.database as _database
+from enum import Enum
+from sys import stdout as STDOUT
+from logging.handlers import TimedRotatingFileHandler
 
 class LogFormat(_enum.Enum):
     SIMPLE = 0
@@ -16,6 +27,7 @@ class LogLevel(_enum.Enum):
     WARNING = _logging.WARNING
     ERROR = _logging.ERROR
     CRITICAL = _logging.CRITICAL
+
 
 
 class LogMode(_enum.Enum):
@@ -223,4 +235,220 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
         sql_conn.commit()
         sql_conn.close()
     return True
+
+
+##############
+# new logging setup. massive pain in the ass to convert.
+# easier to just put in new functions and import as standard names and slowly convert
+
+def LogLevel_new(log_lvl):
+
+    if log_lvl == 'DEBUG': return logging.DEBUG
+    if log_lvl == 'INFO': return logging.INFO
+    if log_lvl == 'WARNING': return logging.WARNING
+    if log_lvl == 'ERROR': return logging.ERROR
+    if log_lvl == 'CRITICAL': return logging.CRITICAL
+
+    return logging.INFO
+
+def getlogger_new(log_name=__name__):
+
+    # configure the root logger and handlers with default of info
+
+    log_level = logging.INFO
+    log_dir = 'logs/'
+
+    # build out the log format
+
+    log_fmt_str = "[%(asctime)s] [%(process)d] [%(threadName)s] [%(name)s] %(levelname)s: %(message)s"
+    log_fmt = logging.Formatter(log_fmt_str)
+
+    ## logging stream handlers:
+
+    # STDOUT - use the same log level
+
+    log_stdout = logging.StreamHandler(STDOUT)
+    log_stdout.setLevel(log_level)
+    log_stdout.setFormatter(log_fmt)
+
+    # file output that rotates. same log level as STDOUT
+
+    log_file = TimedRotatingFileHandler(
+        log_dir + log_name,
+        when='midnight',
+        backupCount=14,
+        utc=True,
+    )
+    log_file.suffix = "_%Y_%m_%d"
+    log_file.setLevel(log_level)
+    log_file.setFormatter(log_fmt)
+
+    # short term debug output that rotates every day
+
+    log_file_debug = TimedRotatingFileHandler(
+        log_dir + 'debug_' + log_name,
+        when='midnight',
+        backupCount=0,
+        utc=True,
+    )
+    log_file_debug.setLevel(logging.DEBUG)
+    log_file_debug.setFormatter(log_fmt)
+
+    # set the root logger
+
+    logger = logging.getLogger(log_name)
+    logger.addHandler(log_stdout)
+    logger.addHandler(log_file)
+    logger.addHandler(log_file_debug)
+    logger.setLevel(logging.DEBUG)
+
+    return logger
+
+def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddress=None, date=None, detail=None):
+
+    # log stuff into the security table
+
+    function = stack()[1][3]
+    log_name = + 'securitylog' + '_' + function
+    logger = getlogger(log_name=log_name, threaded=threaded)
+
+    if date == None:
+        date = time.time()
+
+    friendly_time = time.asctime( time.localtime(date) )
+
+    # mysql logging
+
+    try:
+        sql_conn = mysql.connect(
+            database=_database.DB_DATABASE,
+            user=_database.DB_USERNAME,
+            password=_database.DB_PASSWORD,
+            host=_database.DB_HOST)
+    except mysql.Error as err:
+        msg = 'mysql error: {0}'.format(err)
+        logger.critical(msg)
+        cursor = sql_conn.cursor()
+
+    # try to get character id if a charname (but no charid) is supplied
+
+    if not charname == None and charid == None:
+        query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
+        query = urllib.parse.urlencode(query)
+        esi_url = 'search/?' + query
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+        msg = 'search result code: {0} result: {1}'.format(code, result)
+        logger.debug(msg)
+
+        # not going to hardfail here, search is fuzzier than other endpoints
+
+        try:
+            charid = result['character'][0]
+        except KeyError as error:
+            msg = 'unable to identify charname: {0}'.format(charname)
+            logger.warning(msg)
+            charid = None
+
+    # try to get character name if a charid (but no charname) is supplied
+    if charname == None and not charid == None:
+        esi_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+        code, result = common.request_esi.esi(__name__, esi_url, 'get')
+
+        if code == 404:
+            msg = 'character id {0} not found'.format(charid)
+            logging.warning(msg)
+            return False
+        elif not code == 200:
+            msg = '/characters API error {0}: {1}'.format(code, result['error'])
+            logging.error(msg)
+            return False
+        try:
+            charname = result['name']
+        except KeyError as error:
+            msg = 'User does not exist: {0})'.format(charid)
+            logging.error(msg)
+            charname = None
+
+
+    msg = 'security log for charid {0} / charname {1} @ ip {2} on date {3}'.format(charid, charname, ipaddress, date)
+    logger.info(msg)
+    msg = 'action: {0} detail {1}'.format(action, detail)
+    logger.info(msg)
+
+    # log to security table
+
+    try:
+        query = 'INSERT INTO Security (charID, charName, IP, action, date, detail) VALUES(%s, %s, %s, %s, FROM_UNIXTIME(%s), %s)'
+        cursor.execute(query, (
+            charid,
+            charname,
+            ipaddress,
+            action,
+            date,
+            detail,
+        ),)
+    except mysql.Error as err:
+        msg = 'mysql error: {0}'.format(err)
+        logger.error(msg)
+        return False
+    finally:
+        cursor.close()
+        sql_conn.commit()
+        sql_conn.close()
+    return True
+
+
+def getlogger_new(log_name=__name__):
+
+    # configure the root logger and handlers with default of info
+
+    log_level = logging.INFO
+    log_dir = 'logs/'
+
+    # build out the log format
+
+    log_fmt_str = "[%(asctime)s] [%(process)d] [%(threadName)s] [%(name)s] %(levelname)s: %(message)s"
+    log_fmt = logging.Formatter(log_fmt_str)
+
+    ## logging stream handlers:
+
+    # STDOUT - use the same log level
+
+    log_stdout = logging.StreamHandler(STDOUT)
+    log_stdout.setLevel(log_level)
+    log_stdout.setFormatter(log_fmt)
+
+    # file output that rotates. same log level as STDOUT
+
+    log_file = TimedRotatingFileHandler(
+        log_dir + log_name,
+        when='midnight',
+        backupCount=14,
+        utc=True,
+    )
+    log_file.suffix = "_%Y_%m_%d"
+    log_file.setLevel(log_level)
+    log_file.setFormatter(log_fmt)
+
+    # short term debug output that rotates every day
+
+    log_file_debug = TimedRotatingFileHandler(
+        log_dir + 'debug_' + log_name,
+        when='midnight',
+        backupCount=0,
+        utc=True,
+    )
+    log_file_debug.setLevel(logging.DEBUG)
+    log_file_debug.setFormatter(log_fmt)
+
+    # set the root logger
+
+    logger = logging.getLogger(log_name)
+    logger.addHandler(log_stdout)
+    logger.addHandler(log_file)
+    logger.addHandler(log_file_debug)
+    logger.setLevel(logging.DEBUG)
+
+    return logger
 

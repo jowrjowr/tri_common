@@ -117,7 +117,7 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
         base_url = 'https://zkillboard.com/api'
     elif base == 'esi_verify':
         # special case where the endpoint isn't versioned
-        base_url = 'https://esi.tech.ccp.is'
+        base_url = 'https://esi.evetech.net'
         if charid is not None:
             # add the authenticated header
             headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
