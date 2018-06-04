@@ -2,6 +2,7 @@ import common.logger as _logger
 import ldap
 import hashlib
 import uuid
+import numbers
 
 from passlib.hash import ldap_salted_sha1
 
@@ -277,6 +278,13 @@ def ldap_search(function, dn, filter, attributes):
 
                 elif details[attribute].isdigit():
                     details[attribute] = int(details[attribute])
+
+                # float casting
+                else:
+                    try:
+                        details[attribute] = float(details[attribute])
+                    except Exception as e:
+                        pass
 
         response[dn] = details
 

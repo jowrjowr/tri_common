@@ -1,4 +1,3 @@
-from common.check_role import check_role
 import common.logger as _logger
 import common.check_scope as _check_scope
 import common.request_esi
@@ -49,14 +48,14 @@ def esi_affiliations(charid):
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if code == 404:
         # 404's are a problem but not an ERROR problem
-        error = result['error']
+        error = result
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.DEBUG)
-        affiliations['error'] = result['error']
+        affiliations['error'] = True
         return affiliations
     elif not code == 200:
-        error = result['error']
+        error = result
         _logger.log('[' + __name__ + '] unable to get character info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
-        affiliations['error'] = error
+        affiliations['error'] = True
         return affiliations
 
     affiliations['charname'] = result['name']
@@ -156,7 +155,7 @@ def find_types(charid, types):
     esi_assets_code, esi_assets_result = common.request_esi.esi(__name__, request_assets_url, version='v3', method='get', charid=charid)
     _logger.log('[' + __name__ + '] /characters output: {}'.format(esi_assets_result), _logger.LogLevel.DEBUG)
     if esi_assets_code != 200:
-        _logger.log('[' + __name__ + '] /characters/assets API error {0}: {1}'.format(esi_assets_code, esi_assets_result['error']),_logger.LogLevel.WARNING)
+        _logger.log('[' + __name__ + '] /characters/assets API error {0}: {1}'.format(esi_assets_code, esi_assets_result),_logger.LogLevel.WARNING)
         return False, None
         
     # locate the typeids in question
@@ -179,7 +178,7 @@ def solar_system_info(solar_system_id):
     # solar system level info
 
     request_url = 'universe/systems/{0}/'.format(solar_system_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v3')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     _logger.log('[' + __name__ + '] /universe/systems output: {}'.format(result), _logger.LogLevel.DEBUG)
     if not code == 200:
         msg = '/universe/systems api error {0}: {1}'.format(code, result.get('error'))
@@ -258,7 +257,7 @@ def char_location(charid):
     if structure_id is not None:
         # resolve a structure name
         request_url = 'universe/structures/{}/'.format(structure_id)
-        code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1', charid=charid)
+        code, result = common.request_esi.esi(__name__, request_url, method='get', version='v2', charid=charid)
         _logger.log('[' + __name__ + '] /universe/structures output: {}'.format(result), _logger.LogLevel.DEBUG)
         if code == 200:
             structure_name = result['name']
@@ -266,7 +265,7 @@ def char_location(charid):
             # unable to resolve structure name if the character has no ACL
             structure_name = 'UNAUTHORIZED STRUCTURE'
         else:
-            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
+            _logger.log('[' + __name__ + '] /universe/structures API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
     if station_id is not None:
         request_url = 'universe/names/'
@@ -277,7 +276,7 @@ def char_location(charid):
             structure_name = result[0]['name']
         else:
             print(type(station_id))
-            _logger.log('[' + __name__ + '] /universe/systems API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
+            _logger.log('[' + __name__ + '] /universe/structures API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
 
     else:

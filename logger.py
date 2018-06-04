@@ -192,7 +192,7 @@ def securitylog(function, action, charid=None, charname=None, ipaddress=None, da
     # try to get character id if a charname (but no charid) is supplied
 
     if not charname == None and charid == None:
-        query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
+        query = { 'categories': 'character', 'language': 'en-us', 'search': charname, 'strict': 'true' }
         query = urllib.parse.urlencode(query)
         esi_url = 'search/?' + query
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
@@ -333,7 +333,7 @@ def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddres
     # try to get character id if a charname (but no charid) is supplied
 
     if not charname == None and charid == None:
-        query = { 'categories': 'character', 'datasource': 'tranquility', 'language': 'en-us', 'search': charname, 'strict': 'true' }
+        query = { 'categories': 'character', 'language': 'en-us', 'search': charname, 'strict': 'true' }
         query = urllib.parse.urlencode(query)
         esi_url = 'search/?' + query
         code, result = common.request_esi.esi(__name__, esi_url, 'get')

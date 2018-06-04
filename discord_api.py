@@ -1,4 +1,4 @@
-def discord_forward(message, dest='ping_forwarding'):
+def discord_forward(message, server=269991543627055114, dest='ping_forwarding'):
 
     import common.logger as _logger
     import common.credentials.discord as _discord
@@ -8,6 +8,15 @@ def discord_forward(message, dest='ping_forwarding'):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = discord.Client(loop=loop,cache_auth=False)
+
+    token = None
+
+    if server == 358117641724100609:
+        token = _discord.social_token
+    elif server == 269991543627055114:
+        token = _discord.leadership_token
+    else:
+        return False
 
     @client.event
     async def on_ready():
@@ -24,7 +33,7 @@ def discord_forward(message, dest='ping_forwarding'):
         return await client.logout()
     try:
         _logger.log('[' + __name__ + '] Discord message to channel {0}: "{1}"'.format(dest, message), _logger.LogLevel.DEBUG)
-        client.run(_discord.token)
+        client.run(token)
         _logger.log('[' + __name__ + '] disconnected. job done.', _logger.LogLevel.DEBUG)
     except Exception as error:
         _logger.log('[' + __name__ + '][sovereign] Discord connection error: ' + str(error), _logger.LogLevel.ERROR)

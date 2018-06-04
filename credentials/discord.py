@@ -2,7 +2,9 @@ from enum import Enum
 
 # sovereign token for tri discord
 
-token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
+
+leadership_token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
+social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.DJ9p_Q.e2qHsXSgAy_Tb-ATApTFFsvMVmQ'
 
 class Channel(Enum):
     # a helpful enum because who the fuck knows what numbers mean
@@ -11,6 +13,7 @@ class Channel(Enum):
     everyone = 269993133268271106
     tri_administration = 269997361827151872
     notification_spam = 396667297277935628
+    pings = 432273498476380170
 
 # oauth stuff for discord registration
 # not currently the same as sovereign

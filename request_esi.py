@@ -205,6 +205,10 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
 
     warning = request.headers.get('warning')
     pages = request.headers.get('X-Pages')
+    content_type = request.headers.get('content-type')
+
+    if content_type:
+        content_type = content_type.lower()
 
     if pages:
         msg = '{0} total pages'.format(pages)
@@ -224,8 +228,8 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
     # TypeError: the JSON object must be str, not 'LocalProxy'
     try:
         result = json.loads(str(request.text))
-    except TypeError as error:
-        msg = 'google CDN error - cant convert esi response to json'
+    except Exception as error:
+        msg = 'could not convert {0} data to json: {1}'.format(base, full_url)
         _logger.log('[' + function + '] {0}'.format(msg), _logger.LogLevel.WARNING)
         return(500, { 'code': 500, 'error': msg }, request.headers)
 
