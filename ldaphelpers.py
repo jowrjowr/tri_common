@@ -6,7 +6,23 @@ import numbers
 
 from passlib.hash import ldap_salted_sha1
 
-def ldap_create_stub(function, charname=None, charid=None):
+def ldap_normalize_charname(charname):
+    # solve this shit once and for all
+
+    cn = charname.replace(" ", '')
+    cn = cn.replace("'", '_')
+    cn = cn.lower()
+
+    dn = "cn={},ou=People,dc=triumvirate,dc=rocks".format(cn)
+
+    return cn, dn
+
+
+def ldap_create_stub(
+    charname=None, charid=None, isalt=False,
+    altof=None, accountstatus='public', authgroups=['public'],
+    atoken=None, rtoken=None
+    ):
 
     import common.request_esi
     import common.esihelpers as _esihelpers
@@ -14,9 +30,11 @@ def ldap_create_stub(function, charname=None, charid=None):
 
     # make a very basic ldap entry for charname
 
+    function = __name__
+
     user = dict()
 
-    if charname is not None:
+    if charname is not None and charid is None:
         # making a stub based on a charid
         result = _esihelpers.user_search(charname)
 
@@ -41,24 +59,33 @@ def ldap_create_stub(function, charname=None, charid=None):
         msg = 'no charname, no charid'
         return False, msg
 
-    user['uid'] = charid
-    affiliations = _esihelpers.esi_affiliations(charid)
-
     # get affiliations and shit
 
+    affiliations = _esihelpers.esi_affiliations(charid)
+
     charname = affiliations.get('charname')
+    corpid = affiliations.get('corpid')
+    corpname = affiliations.get('corporation_name')
+    allianceid = affiliations.get('allianceid')
+    alliancename = affiliations.get('alliancename')
 
+    cn, dn = ldap_normalize_charname(charname)
+
+    user['uid'] = charid
     user['characterName'] = charname
+    user['corporation'] = corpid
 
-    cn = charname.replace(" ", '')
-    cn = cn.replace("'", '_')
-    cn = cn.lower()
-    dn = "cn={},ou=People,dc=triumvirate,dc=rocks".format(cn)
+    if allianceid:
+        user['alliance'] = allianceid
 
     user['cn'] = cn
     user['sn'] = cn
-    user['accountStatus'] = 'public'
-    user['authGroup'] = 'public'
+    user['accountStatus'] = accountstatus
+    user['authGroup'] = authgroups
+
+    if rtoken:
+        user['esiAccessToken'] = atoken
+        user['esiRefreshToken'] = rtoken
 
     # build the stub
 
@@ -74,7 +101,17 @@ def ldap_create_stub(function, charname=None, charid=None):
     # handle rest of crap
 
     for item in user.keys():
-        user[item] = [ str(user[item]).encode('utf-8') ]
+
+        # authgroup is a repeated attribute so has to be handled carefully
+
+        if item == 'authGroup':
+            newgroups = []
+            for group in authgroups:
+                group = str(group).encode('utf-8')
+                newgroups.append(group)
+            user['authGroup'] = newgroups
+        else:
+            user[item] = [ str(user[item]).encode('utf-8') ]
         attrs.append((item, user[item]))
 
     attrs.append(('objectClass', ['top'.encode('utf-8'), 'pilot'.encode('utf-8'), 'simpleSecurityObject'.encode('utf-8'), 'organizationalPerson'.encode('utf-8')]))
