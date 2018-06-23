@@ -13,7 +13,7 @@ def check_scope(function, charid, scopes, atoken=None):
         verify_url = 'verify/?token={0}'.format(atoken)
         code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
         if not code == 200:
-            _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result['error']),_logger.LogLevel.ERROR)
+            _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result),_logger.LogLevel.ERROR)
             return 'error', 'broken verify request'
         token_scopes = result['Scopes']
         token_scopes = token_scopes.split()

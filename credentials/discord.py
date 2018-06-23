@@ -4,7 +4,7 @@ from enum import Enum
 
 
 leadership_token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
-social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.DJ9p_Q.e2qHsXSgAy_Tb-ATApTFFsvMVmQ'
+social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.Dg7VGg.taxa5lBVWWfUosNxfcFZIIk3BAw'
 
 class Channel(Enum):
     # a helpful enum because who the fuck knows what numbers mean
@@ -19,6 +19,6 @@ class Channel(Enum):
 # not currently the same as sovereign
 
 client_id = '345393204784267265'
-client_secret = 'zp31sVBvYop6boVIfQXNtcEv28fU4lPV'
+client_secret = 'BGS-7JHC_iD757AEveHf1piesG0SDiPh'
 base_url = 'https://discordapp.com/api/v6'
 redirect_url = 'https://auth.triumvirate.rocks/discord/callback?server_type=discord'
