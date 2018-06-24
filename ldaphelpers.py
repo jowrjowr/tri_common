@@ -291,6 +291,14 @@ def ldap_search(function, dn, filter, attributes):
                     details[attribute] = list( map(lambda x: x.decode('utf-8'), info[attribute]) )
                 else:
                     details[attribute] = info[attribute][0].decode('utf-8')
+                # force cast them to an empty array
+
+                if attribute in forced_list and len(info[attribute]) == 222222222222220:
+                    print('reeeee')
+                    print(info[attribute])
+                    print(details[attribute])
+                    #details[attribute] = []
+
             except Exception as error:
                 _logger.log('[' + function + '] dn {0} missing attribute {1}'.format(dn, attribute),_logger.LogLevel.DEBUG)
                 details[attribute] = None
@@ -327,6 +335,27 @@ def ldap_search(function, dn, filter, attributes):
 
     ldap_conn.unbind()
     return True, response
+
+def purge_dn(dn):
+    import common.logger as _logger
+    import common.credentials.ldap as _ldap
+    import ldap
+
+    # remove the authGroups from a user
+
+    ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
+    try:
+        ldap_conn.simple_bind_s(_ldap.admin_dn, _ldap.admin_dn_password)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
+    try:
+        result = ldap_conn.delete_s(dn)
+        _logger.log('[' + __name__ + '] dn {0} deleted'.format(dn),_logger.LogLevel.INFO)
+    except ldap.LDAPError as error:
+        _logger.log('[' + __name__ + '] unable to delete dn {0}: {1}'.format(dn, error),_logger.LogLevel.ERROR)
+
+    ldap_conn.unbind()
+
 
 def purge_authgroups(dn, groups):
     import common.logger as _logger
