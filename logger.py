@@ -243,59 +243,6 @@ def LogLevel_new(log_lvl):
 
     return logging.INFO
 
-def getlogger_new(log_name=__name__):
-
-    # configure the root logger and handlers with default of info
-
-    log_level = logging.INFO
-    log_dir = 'logs/'
-
-    # build out the log format
-
-    log_fmt_str = "[%(asctime)s] [%(process)d] [%(threadName)s] [%(name)s] %(levelname)s: %(message)s"
-    log_fmt = logging.Formatter(log_fmt_str)
-
-    ## logging stream handlers:
-
-    # STDOUT - use the same log level
-
-    log_stdout = logging.StreamHandler(STDOUT)
-    log_stdout.setLevel(log_level)
-    log_stdout.setFormatter(log_fmt)
-
-    # file output that rotates. same log level as STDOUT
-
-    log_file = TimedRotatingFileHandler(
-        log_dir + log_name,
-        when='midnight',
-        backupCount=14,
-        utc=True,
-    )
-    log_file.suffix = "_%Y_%m_%d"
-    log_file.setLevel(log_level)
-    log_file.setFormatter(log_fmt)
-
-    # short term debug output that rotates every day
-
-    log_file_debug = TimedRotatingFileHandler(
-        log_dir + 'debug_' + log_name,
-        when='midnight',
-        backupCount=0,
-        utc=True,
-    )
-    log_file_debug.setLevel(logging.DEBUG)
-    log_file_debug.setFormatter(log_fmt)
-
-    # set the root logger
-
-    logger = logging.getLogger(log_name)
-    logger.addHandler(log_stdout)
-    logger.addHandler(log_file)
-    logger.addHandler(log_file_debug)
-    logger.setLevel(logging.DEBUG)
-
-    return logger
-
 def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddress=None, date=None, detail=None):
 
     # log stuff into the security table
