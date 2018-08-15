@@ -14,6 +14,7 @@ import common.credentials.database as _database
 from enum import Enum
 from sys import stdout as STDOUT
 from logging.handlers import TimedRotatingFileHandler
+from inspect import stack
 
 class LogFormat(_enum.Enum):
     SIMPLE = 0
@@ -248,8 +249,8 @@ def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddres
     # log stuff into the security table
 
     function = stack()[1][3]
-    log_name = + 'securitylog' + '_' + function
-    logger = getlogger(log_name=log_name, threaded=threaded)
+    log_name = 'securitylog' + '_' + function
+    logger = getlogger_new(log_name)
 
     if date == None:
         date = time.time()
@@ -267,11 +268,12 @@ def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddres
     except mysql.Error as err:
         msg = 'mysql error: {0}'.format(err)
         logger.critical(msg)
-        cursor = sql_conn.cursor()
+
+    cursor = sql_conn.cursor()
 
     # try to get character id if a charname (but no charid) is supplied
 
-    if not charname == None and charid == None:
+    if charname is not None and charid is None:
         query = { 'categories': 'character', 'language': 'en-us', 'search': charname, 'strict': 'true' }
         query = urllib.parse.urlencode(query)
         esi_url = 'search/?' + query
@@ -290,25 +292,21 @@ def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddres
             charid = None
 
     # try to get character name if a charid (but no charname) is supplied
-    if charname == None and not charid == None:
-        esi_url = 'characters/{0}/?datasource=tranquility'.format(charid)
+    if charname is None and charid is not None:
+        esi_url = 'characters/{0}/'.format(charid)
         code, result = common.request_esi.esi(__name__, esi_url, 'get')
 
         if code == 404:
             msg = 'character id {0} not found'.format(charid)
             logging.warning(msg)
-            return False
+            charname = 'Unknown'
         elif not code == 200:
             msg = '/characters API error {0}: {1}'.format(code, result['error'])
             logging.error(msg)
-            return False
-        try:
-            charname = result['name']
-        except KeyError as error:
-            msg = 'User does not exist: {0})'.format(charid)
-            logging.error(msg)
-            charname = None
+            charname = 'Unknown'
 
+        charname = result['name']
+        print(charname)
 
     msg = 'security log for charid {0} / charname {1} @ ip {2} on date {3}'.format(charid, charname, ipaddress, date)
     logger.info(msg)

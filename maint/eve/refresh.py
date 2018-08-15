@@ -8,8 +8,8 @@ def refresh_token(old_rtoken):
     import common.logger as _logger
 
     base_url = 'https://login.eveonline.com'
-    token_url = base_url + '/oauth/token'
-    base_auth_url = base_url + '/oauth/authorize'
+    token_url = base_url + '/v2/oauth/token'
+    base_auth_url = base_url + '/v2/oauth/authorize'
     redirect = _eve.redirect_url
 
     # special headers to fix an sso bug

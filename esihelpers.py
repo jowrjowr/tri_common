@@ -318,7 +318,7 @@ def type_info(typeid):
 def character_info(char_id):
 
     request_url = 'characters/{0}/'.format(char_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v1')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
 
     if not code == 200:
         _logger.log('[' + __name__ + '] /characters/ID API error ' + str(code) + ': ' + str(result['error']),
@@ -334,7 +334,7 @@ def corporation_info(corp_id):
         return None
 
     request_url = 'corporations/{0}/'.format(corp_id)
-    code, result = common.request_esi.esi(__name__, request_url, method='get', version='latest')
+    code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
 
     if not code == 200:
         _logger.log('[' + __name__ + '] /corporations/{0} API error '

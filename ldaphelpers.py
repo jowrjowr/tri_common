@@ -3,8 +3,16 @@ import ldap
 import hashlib
 import uuid
 import numbers
+import json
 
+import common.request_esi
+import common.logger as _logger
+import common.credentials.ldap as _ldap
+import common.esihelpers as _esihelpers
+
+from flask import Response, request
 from passlib.hash import ldap_salted_sha1
+
 
 def ldap_normalize_charname(charname):
     # solve this shit once and for all
@@ -24,9 +32,6 @@ def ldap_create_stub(
     atoken=None, rtoken=None
     ):
 
-    import common.request_esi
-    import common.esihelpers as _esihelpers
-    import common.credentials.ldap as _ldap
 
     # make a very basic ldap entry for charname
 
@@ -72,6 +77,7 @@ def ldap_create_stub(
     cn, dn = ldap_normalize_charname(charname)
 
     user['uid'] = charid
+    user['altof'] = altof
     user['characterName'] = charname
     user['corporation'] = corpid
 
@@ -82,6 +88,8 @@ def ldap_create_stub(
     user['sn'] = cn
     user['accountStatus'] = accountstatus
     user['authGroup'] = authgroups
+
+    print(accountstatus)
 
     if rtoken:
         user['esiAccessToken'] = atoken
@@ -141,7 +149,6 @@ def ldap_create_stub(
 def ldap_binding(function):
 
     # make an ldap connection
-    import common.credentials.ldap as _ldap
 
     ldap_conn = ldap.initialize(_ldap.ldap_host, bytes_mode=False)
     try:
@@ -171,12 +178,14 @@ def ldap_userinfo(uid):
 
     return info
 
-def ldap_uid2name(function, uid):
+def ldap_uid2name(uid):
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(uid={})'.format(uid)
     attrlist=['uid', 'characterName']
-    code, result = ldap_search(function, dn, filterstr, attrlist)
+    code, result = ldap_search(__name__, dn, filterstr, attrlist)
+
+    function = __name__
 
     if code == False:
         msg = 'unable to fetch ldap information: {}'.format(error)
@@ -189,10 +198,9 @@ def ldap_uid2name(function, uid):
         return None
     (dn, info), = result.items()
 
-    return info
+    return info['characterName']
 
 def ldap_cn2id(function, cn):
-    import common.logger as _logger
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(cn={})'.format(cn)
@@ -214,7 +222,6 @@ def ldap_cn2id(function, cn):
 
 
 def ldap_name2id(function, charname):
-    import common.logger as _logger
 
     dn = 'ou=People,dc=triumvirate,dc=rocks'
     filterstr='(characterName:caseIgnoreMatch:={})'.format(charname)
@@ -235,12 +242,6 @@ def ldap_name2id(function, charname):
     return info
 
 def ldap_search(function, dn, filter, attributes):
-
-    import ldap
-    import ldap.modlist
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    from flask import Response, request
 
     # initialize connections
 
@@ -337,9 +338,6 @@ def ldap_search(function, dn, filter, attributes):
     return True, response
 
 def purge_dn(dn):
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    import ldap
 
     # remove the authGroups from a user
 
@@ -358,11 +356,6 @@ def purge_dn(dn):
 
 
 def purge_authgroups(dn, groups):
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    import json
-    import ldap
-    import ldap.modlist
 
     if groups == []:
         return
@@ -389,11 +382,6 @@ def purge_authgroups(dn, groups):
     ldap_conn.unbind()
 
 def update_singlevalue(dn, attribute, value):
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    import json
-    import ldap
-    import ldap.modlist
 
     # update the user's (single valued!) attribute to value
     # (it clobbers multivalued)
@@ -418,12 +406,6 @@ def update_singlevalue(dn, attribute, value):
 
 def ldap_adduser(dn, attributes):
 
-    import ldap
-    import ldap.modlist
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    from flask import Response, request
-
     # initialize connections
 
     try:
@@ -444,11 +426,6 @@ def ldap_adduser(dn, attributes):
     ldap_conn.unbind()
 
 def add_value(dn, attribute, value):
-    import common.logger as _logger
-    import common.credentials.ldap as _ldap
-    import json
-    import ldap
-    import ldap.modlist
 
     # add an attribute to an empty/multivalued attribute
 
@@ -468,9 +445,6 @@ def add_value(dn, attribute, value):
     ldap_conn.unbind()
 
 def ldap_altupdate(function, main_charid, alt_charid):
-    import ldap
-    import common.credentials.ldap as _ldap
-    import common.logger as _logger
 
     # verify that the alt exists
 
