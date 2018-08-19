@@ -89,8 +89,6 @@ def ldap_create_stub(
     user['accountStatus'] = accountstatus
     user['authGroup'] = authgroups
 
-    print(accountstatus)
-
     if rtoken:
         user['esiAccessToken'] = atoken
         user['esiRefreshToken'] = rtoken

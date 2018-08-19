@@ -244,13 +244,14 @@ def LogLevel_new(log_lvl):
 
     return logging.INFO
 
-def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddress=None, date=None, detail=None):
+def securitylog_new(action=None, threaded=False, charid=None, charname=None, ipaddress=None, date=None, detail=None):
 
     # log stuff into the security table
 
     function = stack()[1][3]
     log_name = 'securitylog' + '_' + function
     logger = getlogger_new(log_name)
+    logger.propagate = False
 
     if date == None:
         date = time.time()
@@ -306,7 +307,6 @@ def securitylog_new(action, threaded=False, charid=None, charname=None, ipaddres
             charname = 'Unknown'
 
         charname = result['name']
-        print(charname)
 
     msg = 'security log for charid {0} / charname {1} @ ip {2} on date {3}'.format(charid, charname, ipaddress, date)
     logger.info(msg)
@@ -382,10 +382,12 @@ def getlogger_new(log_name=__name__):
     # set the root logger
 
     logger = logging.getLogger(log_name)
-    logger.addHandler(log_stdout)
-    logger.addHandler(log_file)
-    logger.addHandler(log_file_debug)
-    logger.setLevel(logging.DEBUG)
+
+    if not logger.handlers:
+        logger.addHandler(log_stdout)
+        logger.addHandler(log_file)
+        logger.addHandler(log_file_debug)
+        logger.setLevel(logging.DEBUG)
 
     return logger
 
