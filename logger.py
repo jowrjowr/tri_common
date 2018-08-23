@@ -302,7 +302,7 @@ def securitylog_new(action=None, threaded=False, charid=None, charname=None, ipa
             logging.warning(msg)
             charname = 'Unknown'
         elif not code == 200:
-            msg = '/characters API error {0}: {1}'.format(code, result['error'])
+            msg = '/characters API error on {0} {1}: {2}'.format(charid, code, result['error'])
             logging.error(msg)
             charname = 'Unknown'
 

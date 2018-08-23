@@ -1,49 +1,45 @@
+import logging
+from common.verify import verify
 
-def check_scope(function, charid, scopes, atoken=None):
+def check_scope(charid, scopes, atoken=None):
 
-    import common.logger as _logger
+    # import recursion protection since check_scope is used there
+
     import common.ldaphelpers as _ldaphelpers
-    import common.request_esi
 
     # we want to check an array of scopes and make sure that the token has access to them
 
-    if atoken is not None:
-        # grap token scopes direct from token
-
-        verify_url = 'verify/?token={0}'.format(atoken)
-        code, result = common.request_esi.esi(__name__, verify_url, method='get', base='esi_verify')
-        if not code == 200:
-            _logger.log('[' + __name__ + '] unable to get token information for {0}: {1}'.format(charid, result),_logger.LogLevel.ERROR)
-            return 'error', 'broken verify request'
-        token_scopes = result['Scopes']
-        token_scopes = token_scopes.split()
-    else:
-
+    if not atoken:
         # grab token scopes from ldap
         dn = 'ou=People,dc=triumvirate,dc=rocks'
         filterstr = 'uid={}'.format(charid)
-        attrlist = ['esiScope']
+        attrlist = ['esiAccessToken']
 
         code, result = _ldaphelpers.ldap_search(__name__, dn, filterstr, attrlist)
 
         if code == False:
-            _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
-            return
+            msg = "LDAP connection error: {}".format(error)
+            logging.error(msg)
+            return None
 
         if result == None:
-            return
+            return False
 
         (dn, info), = result.items()
 
-        token_scopes = info.get('esiScope')
+        atoken = info.get('esiAccessToken')
 
-    if token_scopes == None:
-        return False, ''
+    # grap token scopes direct from token
+    try:
+        _, charname, token_scopes = verify(atoken)
+    except Exception as e:
+        msg = "unable to unpack token: {}".format(e)
+        return None
 
     token_scopes = set(token_scopes)
     intersection = token_scopes.intersection(scopes)
 
     if len(intersection) > 0:
-        return True, ''
-    else:
-        return False, ''
+        return True
+
+    return False

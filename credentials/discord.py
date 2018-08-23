@@ -4,7 +4,7 @@ from enum import Enum
 
 
 leadership_token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
-social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.Dg7VGg.taxa5lBVWWfUosNxfcFZIIk3BAw'
+social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.DlzaAw.9I1hZcD6MGY7sqleu8yDnwe9Ta0'
 
 class Channel(Enum):
     # a helpful enum because who the fuck knows what numbers mean

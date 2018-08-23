@@ -117,9 +117,9 @@ def current_ship(charid):
     # check if ship scope is available
     
     test_scopes = ['esi-location.read_ship_type.v1']
-    scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
+    result = _check_scope.check_scope(charid, test_scopes)
 
-    if scope_code == False:
+    if not result:
         # does not have proper scopes
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
@@ -143,9 +143,9 @@ def find_types(charid, types):
     # check if ship scope is available
     
     test_scopes = ['esi-assets.read_assets.v1']
-    scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
+    result = check_scope.check_scope(charid, test_scopes)
 
-    if scope_code == False:
+    if not result:
         # does not have proper scopes
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
@@ -226,9 +226,9 @@ def char_location(charid):
     # check if location scope is available
 
     test_scopes = ['esi-location.read_online.v1']
-    scope_code, result = _check_scope.check_scope(__name__, charid, test_scopes)
+    result = _check_scope.check_scope(charid, test_scopes)
 
-    if scope_code == False:
+    if not result:
         # does not have proper scopes
         msg = 'character {0} missing ESI scopes: {1}'.format(charid, result)
         _logger.log('[' + __name__ + '] ' + msg,_logger.LogLevel.WARNING)
