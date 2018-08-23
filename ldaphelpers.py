@@ -379,7 +379,7 @@ def purge_authgroups(dn, groups):
 
     ldap_conn.unbind()
 
-def update_singlevalue(dn, attribute, value):
+def update_singlevalue(dn, attribute, value, delete=False):
 
     # update the user's (single valued!) attribute to value
     # (it clobbers multivalued)
@@ -391,8 +391,13 @@ def update_singlevalue(dn, attribute, value):
         _logger.log('[' + __name__ + '] LDAP connection error: {}'.format(error),_logger.LogLevel.ERROR)
 
     if value is None:
+        # purge the whole thing
         mod_attrs = [ (ldap.MOD_DELETE, attribute, None) ]
+    elif delete is True:
+        # delete a specific value - don't purge the entire thing
+        mod_attrs = [ (ldap.MOD_DELETE, attribute, [ str(value).encode('utf-8') ]) ]
     else:
+        # replace the value
         mod_attrs = [ (ldap.MOD_REPLACE, attribute, str(value).encode('utf-8') ) ]
 
     try:
