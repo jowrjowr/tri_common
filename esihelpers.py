@@ -1,8 +1,7 @@
 import common.logger as _logger
-import common.check_scope as _check_scope
 import common.request_esi
 import urllib
-import time
+from common.check_scope import check_scope
 
 def region_solar_systems(region_id):
     # spew out every solar system in a region
@@ -117,7 +116,7 @@ def current_ship(charid):
     # check if ship scope is available
     
     test_scopes = ['esi-location.read_ship_type.v1']
-    result = _check_scope.check_scope(charid, test_scopes)
+    result = check_scope(charid, test_scopes)
 
     if not result:
         # does not have proper scopes
@@ -143,7 +142,7 @@ def find_types(charid, types):
     # check if ship scope is available
     
     test_scopes = ['esi-assets.read_assets.v1']
-    result = check_scope.check_scope(charid, test_scopes)
+    result = check_scope(charid, test_scopes)
 
     if not result:
         # does not have proper scopes
@@ -226,7 +225,7 @@ def char_location(charid):
     # check if location scope is available
 
     test_scopes = ['esi-location.read_online.v1']
-    result = _check_scope.check_scope(charid, test_scopes)
+    result = check_scope(charid, test_scopes)
 
     if not result:
         # does not have proper scopes
@@ -265,7 +264,7 @@ def char_location(charid):
             # unable to resolve structure name if the character has no ACL
             structure_name = 'UNAUTHORIZED STRUCTURE'
         else:
-            _logger.log('[' + __name__ + '] /universe/structures API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
+            _logger.log('[' + __name__ + '] /universe/structures API error {0}: {1}'.format(code, result), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
     if station_id is not None:
         request_url = 'universe/names/'
@@ -275,8 +274,9 @@ def char_location(charid):
         if code == 200:
             structure_name = result[0]['name']
         else:
-            print(type(station_id))
-            _logger.log('[' + __name__ + '] /universe/structures API error ' + str(code) + ': ' + str(result['error']), _logger.LogLevel.WARNING)
+            print(station_id)
+            print(result)
+            _logger.log('[' + __name__ + '] /universe/structures API error {0}: {1}'.format(code, result), _logger.LogLevel.WARNING)
             structure_name = 'Unknown'
 
     else:

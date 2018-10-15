@@ -70,7 +70,7 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
 
         # make sure the ESI token is current if this is an ESI request
 
-        if base == 'esi' or base == 'esi_verify':
+        if base == 'esi':
             # at this point it this is an authenticated request.
             # make sure that the token retrieved is current. if it is not, update it.
 
@@ -115,12 +115,6 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
     elif base == 'zkill':
         # zkillboard
         base_url = 'https://zkillboard.com/api'
-    elif base == 'esi_verify':
-        # special case where the endpoint isn't versioned
-        base_url = 'https://esi.evetech.net'
-        if charid is not None:
-            # add the authenticated header
-            headers['Authorization'] = 'Bearer {0}'.format(esi_atoken)
     elif base == 'triapi':
         # tri api
         base_url = 'https://api.triumvirate.rocks'
@@ -194,8 +188,20 @@ def do_esi(function, url, method, page, charid=None, data=None, version='latest'
 
     if not request.status_code == 200:
         sendmetric(function, base, 'request', 'failure', 1)
+
+        if request.status_code == 204:
+            # empty return
+            return(request.status_code, [], request.headers)
+        elif request.status_code == 502:
+            # load balancer error, don't bother.
+            msg = "ESI LB error"
+            _logger.log('[' + function + '] ' + msg + ' ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.INFO)
+
+            return(request.status_code, [], request.headers)
+
+
         # don't bother to log 404 and 403s
-        if not request.status_code == 404 and not request.status_code == 403:
+        elif not request.status_code == 404 and not request.status_code == 403:
             _logger.log('[' + function + '] ESI API error ' + str(request.status_code) + ': ' + str(request.text), _logger.LogLevel.WARNING)
             _logger.log('[' + function + '] ESI API error URL: ' + str(url), _logger.LogLevel.WARNING)
     else:
@@ -275,7 +281,7 @@ def esi(function, url, method='get', charid=None, data=None, version='latest', b
         if code >= 500:
             retry_count += 1
             sendmetric(function, base, 'request', 'retry' , 1)
-            _logger.log('[' + function + '] ESI call on page {0} failed. sleeping {1} seconds before retrying'.format(current_page, sleep), _logger.LogLevel.WARNING)
+            _logger.log('[' + function + '] {0} page {1} failed. sleeping {2} seconds before retrying'.format(url, current_page, sleep), _logger.LogLevel.WARNING)
             time.sleep(1)
         else:
 

@@ -4,16 +4,18 @@ from enum import Enum
 
 
 leadership_token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
-social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.DlzaAw.9I1hZcD6MGY7sqleu8yDnwe9Ta0'
+social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.Dqa1iw.SlgauymZHbMr9100ndauRFzB898'
 
 class Channel(Enum):
     # a helpful enum because who the fuck knows what numbers mean
-    ping_forwarding = 288786919175749632
-    counterintel = 341589867840405524
-    everyone = 269993133268271106
-    tri_administration = 269997361827151872
-    notification_spam = 396667297277935628
-    pings = 432273498476380170
+
+    general = 432273498476380170
+    supers = 501506421406564352
+    administration = 501507311471296513
+    skyteam = 501508052374257674
+    skirmish = 501508105474146305
+    notifications = 501506486996828201
+    ping_forwarding = 501508332641714176
 
 # oauth stuff for discord registration
 # not currently the same as sovereign
