@@ -1,4 +1,4 @@
-def discord_forward(message, server=269991543627055114, dest='ping_forwarding'):
+def discord_forward(message, server=358117641724100609, dest='ping_forwarding'):
 
     import common.logger as _logger
     import common.credentials.discord as _discord
@@ -11,12 +11,7 @@ def discord_forward(message, server=269991543627055114, dest='ping_forwarding'):
 
     token = None
 
-    if server == 358117641724100609:
-        token = _discord.social_token
-    elif server == 269991543627055114:
-        token = _discord.leadership_token
-    else:
-        return False
+    token = _discord.social_token
 
     @client.event
     async def on_ready():

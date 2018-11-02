@@ -4,7 +4,7 @@ from enum import Enum
 
 
 leadership_token = 'MjkwMTQ0MzMxOTY3MjM0MDU4.C6Wq7Q.c5B4veLpSStSafrC94WBb3UNUyo'
-social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.Dqa1iw.SlgauymZHbMr9100ndauRFzB898'
+social_token = 'MzQ1MzkzMjA0Nzg0MjY3MjY1.DqbaIQ.VJwjEr1IVbxLuSstGWkLppLn1Ko'
 
 class Channel(Enum):
     # a helpful enum because who the fuck knows what numbers mean
@@ -14,7 +14,7 @@ class Channel(Enum):
     administration = 501507311471296513
     skyteam = 501508052374257674
     skirmish = 501508105474146305
-    notifications = 501506486996828201
+    esi_notifications = 501506486996828201
     ping_forwarding = 501508332641714176
 
 # oauth stuff for discord registration
