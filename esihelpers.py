@@ -64,7 +64,7 @@ def esi_affiliations(charid):
     request_url = 'corporations/{0}/'.format(affiliations['corpid'])
     code, result = common.request_esi.esi(__name__, request_url, method='get', version='v4')
     if not code == 200:
-        error = result['error']
+        error = result
         _logger.log('[' + __name__ + '] unable to get corp info for {0}: {1}'.format(charid, error),_logger.LogLevel.ERROR)
         affiliations['allianceid'] = False
         affiliations['error'] = error
